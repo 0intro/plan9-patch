@@ -173,6 +173,7 @@ macdef(void)
 	Sym *s, *a;
 	char *args[NARG], *np, *base;
 	int n, i, c, len;
+	int str;
 
 	s = getsym();
 	if(s == S)
@@ -209,6 +210,7 @@ macdef(void)
 			c = getnsc();
 	base = hunk;
 	len = 1;
+	str = 0;
 	for(;;) {
 		if(isalpha(c) || c == '_') {
 			np = symb;
@@ -232,6 +234,31 @@ macdef(void)
 			base = allocn(base, len, 2);
 			base[len++] = '#';
 			base[len++] = 'a' + i;
+			continue;
+		}
+		if (c == '"') {
+			base = allocn(base, len, 1);
+			base[len++] = c;
+			str = !str;
+			c = getc();
+			continue;
+		}
+		if (str) {
+			base = allocn(base, len, 1);
+			base[len++] = c;
+
+			if (c == '\\') { 
+				c = getc();
+				if (c == '"') {
+					base = allocn(base, len, 1);
+					base[len++] = c;
+					c = getc();
+				}
+
+				continue;
+			}
+
+			c = getc();
 			continue;
 		}
 		if(c == '/') {
