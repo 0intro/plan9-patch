@@ -438,24 +438,7 @@ nextboot(int fd, Fhdr *fp, ExecHdr *hp)
 	return 1;
 }
 
-static Shdr*
-elfsectbyname(int fd, Ehdr *hp, Shdr *sp, char *name)
-{
-	int i, offset, n;
-	char s[64];
 
-	offset = sp[hp->shstrndx].offset;
-	for(i = 1; i < hp->shnum; i++) {
-		seek(fd, offset+sp[i].name, 0);
-		n = read(fd, s, sizeof(s)-1);
-		if(n < 0)
-			continue;
-		s[n] = 0;
-		if(strcmp(s, name) == 0)
-			return &sp[i]; 
-	}
-	return 0;
-}
 /*
  *	Decode an Irix 5.x ELF header
  */
@@ -464,96 +447,49 @@ elfdotout(int fd, Fhdr *fp, ExecHdr *hp)
 {
 
 	Ehdr *ep;
-	Shdr *es, *txt, *init, *s;
-	long addr, size, offset, bsize;
+	Phdr ph[3];
 
+	/* undo the previous incorrect swap and redo it properly */
 	ep = &hp->e;
-	if(ep->type != 8 || ep->machine != 2 || ep->version != 1)
+	hswal((long*)ep, sizeof *ep / sizeof(long), beswal);
+	ep->type = beswab(ep->type);
+	ep->machine = beswab(ep->machine);
+	ep->version = beswal(ep->version);
+	ep->elfentry = beswal(ep->elfentry);
+	ep->phoff = beswal(ep->phoff);
+	ep->shoff = beswal(ep->shoff);
+	ep->flags = beswal(ep->flags);
+	ep->ehsize = beswab(ep->ehsize);
+	ep->phentsize = beswab(ep->phentsize);
+	ep->phnum = beswab(ep->phnum);
+	ep->shentsize = beswab(ep->shentsize);
+	ep->shnum = beswab(ep->shnum);
+	ep->shstrndx = beswab(ep->shstrndx);
+	if(ep->type != 2 || ep->machine != 8 || ep->version != 1)
 		return 0;
 
 	fp->magic = ELF_MAG;
 	fp->hdrsz = (ep->ehsize+ep->phnum*ep->phentsize+16)&~15;
 
-	if(ep->shnum <= 0) {
-		werrstr("no ELF header sections");
-		return 0;
-	}
-	es = malloc(sizeof(Shdr)*ep->shnum);
-	if(es == 0)
-		return 0;
-
-	seek(fd, ep->shoff, 0);
-	if(read(fd, es, sizeof(Shdr)*ep->shnum) < 0){
-		free(es);
+	if(ep->phnum != 3) {
+		werrstr("unexpected ELF headers");
 		return 0;
 	}
 
-	txt = elfsectbyname(fd, ep, es, ".text");
-	init = elfsectbyname(fd, ep, es, ".init");
-	if(txt == 0 || init == 0 || init != txt+1)
-		goto bad;
-	if(txt->addr+txt->size != init->addr)
-		goto bad;
-	settext(fp, ep->elfentry, txt->addr, txt->size+init->size, txt->offset);
+	seek(fd, ep->phoff, 0);
+	if(read(fd, ph, sizeof(Phdr)*ep->phnum) < 0)
+		return 0;
+	hswal((long*)ph, sizeof(Phdr)*ep->phnum/sizeof(long), beswal);
 
-	addr = 0;
-	offset = 0;
-	size = 0;
-	s = elfsectbyname(fd, ep, es, ".data");
-	if(s) {
-		addr = s->addr;
-		size = s->size;
-		offset = s->offset;
+	if(ph[0].type != LOAD || ph[1].type != LOAD || ph[2].type != NOPTYPE) {
+		werrstr("unexpected ELF headers");
+		return 0;
 	}
 
-	s = elfsectbyname(fd, ep, es, ".rodata");
-	if(s) {
-		if(addr){
-			if(addr+size != s->addr)
-				goto bad;
-		} else {
-			addr = s->addr;
-			offset = s->offset;
-		}
-		size += s->size;
-	}
-
-	s = elfsectbyname(fd, ep, es, ".got");
-	if(s) {
-		if(addr){
-			if(addr+size != s->addr)
-				goto bad;
-		} else {
-			addr = s->addr;
-			offset = s->offset;
-		}
-		size += s->size;
-	}
-
-	bsize = 0;
-	s = elfsectbyname(fd, ep, es, ".bss");
-	if(s) {
-		if(addr){
-			if(addr+size != s->addr)
-				goto bad;
-		} else {
-			addr = s->addr;
-			offset = s->offset;
-		}
-		bsize = s->size;
-	}
-
-	if(addr == 0)
-		goto bad;
-
-	setdata(fp, addr, size, offset, bsize);
-	fp->name = "IRIX Elf a.out executable";
-	free(es);
+	settext(fp, ep->elfentry, ph[0].vaddr, ph[0].memsz, ph[0].offset);
+	setdata(fp, ph[1].vaddr, ph[1].memsz, ph[1].offset, ph[1].memsz - ph[1].filesz);
+	setsym(fp, ph[2].filesz, 0, ph[2].memsz, ph[2].offset);
 	return 1;
-bad:
-	free(es);
-	werrstr("ELF sections scrambled");
-	return 0;
 }
 
 /*
