@@ -1903,6 +1903,7 @@ atapnp(void)
 			 * address for the registers (0x50?).
 			 */
 			break;
+		case (0x5513<<16)|0x1039:	/* SiS 962 */
 		case (0x0646<<16)|0x1095:	/* CMD 646 */
 		case (0x0571<<16)|0x1106:	/* VIA 82C686 */
 		case (0x0211<<16)|0x1166:	/* ServerWorks IB6566 */
