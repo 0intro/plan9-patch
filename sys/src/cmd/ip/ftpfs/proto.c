@@ -2,6 +2,8 @@
 #include <libc.h>
 #include <bio.h>
 #include <ip.h>
+#include <mp.h>
+#include <libsec.h>
 #include <auth.h>
 #include <fcall.h>
 #include <ctype.h>
@@ -36,6 +38,7 @@ String	*remrootpath;	/* path on remote side to remote root */
 char	*user;
 int	nopassive;
 long	lastsend;
+extern int usetls;
 
 static void	sendrequest(char*, char*);
 static int	getreply(Biobuf*, char*, int, int);
@@ -60,6 +63,8 @@ hello(char *dest)
 {
 	char *p;
 	char dir[Maxpath];
+	int ts;
+	TLSconn conn;
 
 	Binit(&stdin, 0, OREAD);	/* init for later use */
 
@@ -68,6 +73,7 @@ hello(char *dest)
 		fprint(2, "can't dial %s: %r\n", dest);
 		exits("dialing");
 	}
+		
 	Binit(&ctlin, ctlfd, OREAD);
 
 	/* remember network for the data connections */
@@ -82,6 +88,29 @@ hello(char *dest)
 		fatal("bad hello");
 	if(strstr(msg, "Plan 9"))
 		os = Plan9;
+
+	if(usetls){
+		sendrequest("AUTH", "TLS");
+		if(getreply(&ctlin, msg, sizeof(msg), 1) != Success)
+			fatal("bad auth tls");
+
+		ts = tlsClient(ctlfd, &conn);
+		if(ts < 0)
+			fatal("tlsClient failed");
+		ctlfd = ts;
+
+		if(conn.cert != nil)
+			free(conn.cert);
+
+		Binit(&ctlin, ctlfd, OREAD);
+
+		sendrequest("PBSZ", "0");
+		if(getreply(&ctlin, msg, sizeof(msg), 1) != Success)
+			fatal("bad pbsz 0");
+		sendrequest("PROT", "P");
+		if(getreply(&ctlin, msg, sizeof(msg), 1) != Success)
+			fatal("bad prot p");
+	}
 }
 
 /*
@@ -1193,9 +1222,10 @@ port(void)
 static int
 active(int mode, Biobuf **bpp, char *cmda, char *cmdb)
 {
-	int cfd, dfd, rv;
+	int cfd, dfd, rv, ts;
 	char newdir[Maxpath];
 	char datafile[Maxpath + 6];
+	TLSconn conn;
 
 	if(port() < 0)
 		return TempFail;
@@ -1220,6 +1250,18 @@ active(int mode, Biobuf **bpp, char *cmda, char *cmdb)
 	close(cfd);
 	if(dfd < 0)
 		fatal("opening data connection");
+
+	if(usetls){
+		memset(&conn, 0, sizeof(conn));
+		ts = tlsClient(dfd, &conn);
+		if(ts < 0)
+			fatal("tlsClient failed");
+		dfd = ts;
+
+		if(conn.cert != nil)
+			free(conn.cert);
+	}
+
 	Binit(&dbuf, dfd, mode);
 	*bpp = &dbuf;
 	return Extra;
@@ -1235,7 +1277,8 @@ passive(int mode, Biobuf **bpp, char *cmda, char *cmdb)
 	char ds[1024];
 	char *f[6];
 	char *p;
-	int x, fd;
+	int x, fd, ts;
+	TLSconn conn;
 
 	if(nopassive)
 		return Impossible;
@@ -1285,7 +1328,18 @@ passive(int mode, Biobuf **bpp, char *cmda, char *cmdb)
 		return x;
 	}
 
+	if(usetls){
+		memset(&conn, 0, sizeof(conn));
+		ts = tlsClient(fd, &conn);
+		if(ts < 0)
+			fatal("tlsClient failed");
+		fd = ts;
+
+		if(conn.cert != nil)
+			free(conn.cert);
+	}
 	Binit(&dbuf, fd, mode);
+
 	*bpp = &dbuf;
 	return Extra;
 }

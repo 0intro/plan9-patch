@@ -26,6 +26,7 @@ Fcall	rhdr;
 Fcall	thdr;
 int	debug;
 int	usenlst;
+int usetls;
 char	*ext;
 int	quiet;
 int	kapid = -1;
@@ -87,7 +88,7 @@ char *keyspec = "";
 void
 usage(void)
 {
-	fprint(2, "ftpfs [-/dqn] [-a passwd] [-m mountpoint] [-e ext] [-o os] [-r root] [net!]address\n");
+	fprint(2, "ftpfs [-/dqnt] [-a passwd] [-m mountpoint] [-e ext] [-o os] [-r root] [net!]address\n");
 	exits("usage");
 }
 
@@ -103,6 +104,7 @@ main(int argc, char *argv[])
 
 	defos = Unix;
 	user = strdup(getuser());
+	usetls = 0;
 
 	ARGBEGIN {
 	case '/':
@@ -129,6 +131,9 @@ main(int argc, char *argv[])
 	case 'e':
 		ext = ARGF();
 		break;
+	case 't':
+		usetls = 1;
+		break;
 	case 'o':
 		cp = ARGF();
 		for(o = oslist; o->os != Unknown; o++)
@@ -154,7 +159,7 @@ main(int argc, char *argv[])
 
 	/* initial handshakes with remote side */
 	hello(*argv);
-	if(cpassword == 0)
+	if (cpassword == 0)
 		rlogin(*argv, keyspec);
 	else
 		clogin("anonymous", cpassword);
@@ -247,19 +252,15 @@ kaproc(void)
 void
 io(void)
 {
-	char *err, buf[ERRMAX];
+	char *err;
 	int n;
 
 	kapid = kaproc();
 
 	while(!dying){
 		n = read9pmsg(mfd, mdata, messagesize);
-		if(n <= 0){
-			errstr(buf, sizeof buf);
-			if(buf[0]=='\0' || strstr(buf, "hungup"))
-				exits("");
-			fatal("mount read: %s\n", buf);
-		}
+		if(n <= 0)
+			fatal("mount read");
 		if(convM2S(mdata, n, &thdr) == 0)
 			continue;
 
