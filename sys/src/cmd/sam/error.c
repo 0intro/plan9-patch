@@ -63,7 +63,7 @@ static char *wmsg[]={
 	"null characters elided",
 	"can't run pwd",
 	"last char not newline",
-	"exit status not 0",
+	"exit status not 0",		/* replaced by errstr() */
 };
 
 void
@@ -123,7 +123,7 @@ warn_SS(Warn s, String *a, String *b)
 void
 warn_s(Warn s, char *a)
 {
-	dprint("?warning: %s `%s'\n", wmsg[s], a);
+	dprint("?warning: `%s'\n", s == Wbadstatus ? a : wmsg[s]);
 }
 
 void
