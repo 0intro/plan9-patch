@@ -733,7 +733,7 @@ printdate(Biobuf *b)
 
 	return Bprint(b, "Date: %s, %d %s %d %2.2d:%2.2d:%2.2d %s%.4d\n",
 		ascwday[tm->wday], tm->mday, ascmon[tm->mon], 1900+tm->year,
-		tm->hour, tm->min, tm->sec, tz>0?"+":"", tz);
+		tm->hour, tm->min, tm->sec, tz>=0?"+":"", tz);
 }
 
 int
@@ -935,7 +935,7 @@ printunixfrom(int fd)
 	return fprint(fd, "From %s %s %s %d %2.2d:%2.2d:%2.2d %s%.4d %d\n",
 		user,
 		ascwday[tm->wday], ascmon[tm->mon], tm->mday,
-		tm->hour, tm->min, tm->sec, tz>0?"+":"", tz, 1900+tm->year);
+		tm->hour, tm->min, tm->sec, tz>=0?"+":"", tz, 1900+tm->year);
 }
 
 char *specialfile[] =
