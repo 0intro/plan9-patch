@@ -28,20 +28,11 @@ case checkready checkdone
 		export mountfs
 		exit
 	}
-	if(~ $fstype fossil+venti && ! ps | grep -s ' venti$'){
-		if(! logprog venti/venti -a tcp!127.1!17034 -c $venti >>[2]/srv/log){
-			echo 'venti: '^$status
-			mountfs=ready
-			export mountfs
-			exit oops
-		}
-		if(ps |grep -s ' fossil$'){
-			# reconnect to venti
-			echo fsys main venti 127.0.0.1 >>/srv/fscons
-		}
-	}
 	if(! ps | grep -s ' fossil$'){
-		{echo 'srv -p fscons'; echo 'srv -AP fossil'; fossil/conf $fossil | sed 's/^fsys main open .*/& -AWP/'}>/env/fossilconf
+		echo 'srv -p fscons' > /env/fossilconf
+		echo 'srv -AP fossil' >> /env/fossilconf
+		fossil/conf $fossil | sed 's/^fsys main open .*/& -AWP/' |
+			sed 's/^fsys main snaptime .*//' >> /env/fossilconf
 		if(! logprog fossil/fossil -c .' /env/fossilconf'>>[2]/srv/log){
 			echo 'fossil: '^$status
 			mountfs=ready
@@ -92,8 +83,6 @@ case checkready checkdone
 		echo fsys main create /active/dist/replica/client/plan9.log sys sys a664 >>/srv/fscons
 	}
 	if(test -d /n/fossil/dist/replica/client && test -f /n/fossil/adm/users){
-		# the rest of the install assumes /n/kfs
-		bind -c /n/fossil /n/kfs
 		mountfs=done
 		export mountfs
 		exit
@@ -108,7 +97,7 @@ case go
 		echo
 		echo 'Please choose one to use as the Venti server.'
 		echo
-		files=(`{ls /dev/sd*/v.arenas* /dev/fs/v.arenas* >[2]/dev/null})
+		files=(`{ls /dev/sd*/arenas* /dev/fs/arenas* >[2]/dev/null})
 		ls -l $files
 		echo
 		if(~ $#venti 1 && ~ $venti $files)

@@ -46,11 +46,11 @@
 			compactdb	555 sys sys /sys/lib/dist/pc/sub/compactdb
 			pull		555 sys sys
 		venti	d555 sys sys
-#VENTI			venti	555 sys sys
-#VENTI			conf		555 sys sys
-#VENTI			fmtarenas	555 sys sys
-#VENTI			fmtindex	555 sys sys
-#VENTI			fmtisect	555 sys sys
+#			venti	555 sys sys
+			conf		555 sys sys
+			fmtarenas	555 sys sys
+			fmtindex	555 sys sys
+			fmtisect	555 sys sys
 		9660srv	555 sys sys
 # acme could go
 #		acme	555 sys sys
@@ -73,7 +73,8 @@
 		ed	555 sys sys
 # if cpu goes, exportfs could go
 #		exportfs	555 sys sys
-		ext2srv	555 sys sys
+#		ext2srv	555 sys sys
+		fcp		555	sys	sys
 		grep	555 sys sys
 		hget	555 sys sys
 		hoc	555 sys sys
