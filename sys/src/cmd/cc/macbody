@@ -234,6 +234,34 @@ macdef(void)
 			base[len++] = 'a' + i;
 			continue;
 		}
+		if (c == '\'' || c == '"') {
+			int e;
+
+			base = allocn(base, len, 1);
+			base[len++] = c;
+			e = c;
+
+			for (;;) {
+				int p;
+
+				p = c;
+				if ((c = getc()) == '\n')
+					break;
+
+				base = allocn(base, len, 1);
+				base[len++] = c;
+
+				if (p == '\\' && c == e)
+					continue;
+
+				if (c == e) {
+					c = getc();
+					break;
+				}
+			}
+
+			continue;
+		}
 		if(c == '/') {
 			c = getc();
 			if(c == '/'){
