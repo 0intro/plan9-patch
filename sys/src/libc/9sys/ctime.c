@@ -254,9 +254,9 @@ rd_name(char **f, char *p)
 		if(c != ' ' && c != '\n')
 			break;
 	}
-	for(i=0; i<3; i++) {
+	for(i=0; i<=4; i++) {
 		if(c == ' ' || c == '\n')
-			return 1;
+			break;
 		*p++ = c;
 		c = *(*f)++;
 	}
