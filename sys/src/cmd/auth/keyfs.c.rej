@@ -1,0 +1,62 @@
+--- sys/src/cmd/auth/keyfs.c	Tue Feb  8 05:09:25 2005
++++ sys/src/cmd/auth/keyfs.c	Tue Feb  8 05:09:24 2005
+@@ -31,7 +31,6 @@
+ enum{
+ 	Sok,
+ 	Sdisabled,
+-	Stempdisabled,
+ 	Smax,
+ };
+ 
+@@ -259,6 +265,11 @@
+ 				break;
+ 
+ 			case Quser:
++				if(strcmp(name, "..") == 0) {
++					qtype = Qroot;
++					user = 0;
++					goto Accept;
++				}
+ 				max = Qmax;
+ 				for(j = Quser + 1; j < Qmax; j++)
+ 					if(strcmp(name, qinfo[j]) == 0){
+@@ -305,8 +316,10 @@
+ Clunk(Fid *f)
+ {
+ 	f->busy = 0;
+-	if(f->user && --f->user->ref == 0 && f->user->removed)
++	if(f->user && --f->user->ref == 0 && f->user->removed) {
++		free(f->user->name);
+ 		free(f->user);
++	}
+ 	f->user = 0;
+ 	return 0;
+ }
+@@ -566,8 +579,10 @@
+ 		f->user->warnings = 0;
+ 	else if(f->qtype == Quser)
+ 		removeuser(f->user);
+-	else
++	else {
++		Clunk(f);
+ 		return "permission denied";
++	}
+ 	Clunk(f);
+ 	writeusers();
+ 	return 0;
+@@ -772,15 +787,6 @@
+ 	uchar *p, *buf, *ep;
+ 	User *u;
+ 	Dir *d;
+-
+-	if(usepass) {
+-		if(*authkey == 0)
+-			getpass(authkey, nil, 0, 0);
+-	} else {
+-		if(!getauthkey(authkey))
+-			print("keyfs: warning: can't read /dev/key\n");
+-	}
+-
+ 
+ 	/* read file into an array */
+ 	fd = open(userkeys, OREAD);

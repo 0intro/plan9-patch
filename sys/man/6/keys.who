@@ -1,0 +1,35 @@
+.TH who 6
+.SH NAME
+who \- biographic user information
+.SH SYNOPSIS
+.B /adm/keys.who
+.EX
+
+name|postid|real name|dept|email...
+.EE
+.SH DESCRIPTION
+When users are created or modified using auth/changeuser
+biographic information is stored in
+.IR /adm/keys.who .
+Each line in this file contains a number of fields, seperated by
+bars '\fB|\fR'. 
+.PP
+These fields are, in order:
+.TP
+.B name
+.br
+user's name as specified in \fI/adm/users\fR.
+.TP
+.B postid
+their position in their organisation.
+.TP
+.B realname
+their real name of the user as understood by humans.
+.TP
+.B dept
+.br
+the name of the department to which they belong.
+.TP
+.B email[|...]
+An arbitary number of email addresses. These are used to
+notify the user of their password's immenent expiry.
