@@ -541,7 +541,7 @@ io(void)
 		if(write(mfd[1], mdata, n) != n)
 			error("mount write");
 	}
-	if (buf[0]=='\0' || strncmp(buf, "write to hung", 13)==0)
+	if (buf[0]=='\0' || strncmp(buf, "i/o on hungup channel", 22)==0)
 		exits("");
 	fprint(2, "%s: mount read: %s\n", argv0, buf);
 	exits(buf);
