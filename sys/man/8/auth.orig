@@ -8,7 +8,7 @@ changeuser, wrkey, convkeys, convkeys2, printnetkey, status, authsrv, guard.srv,
 .PP
 .B auth/wrkey
 .PP
-.B auth/convkeys2
+.B auth/convkeys
 .RB [ -p ]
 .I keyfile
 .PP
