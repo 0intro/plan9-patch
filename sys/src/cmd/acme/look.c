@@ -423,6 +423,7 @@ dirname(Text *t, Rune *r, int n)
 	if(slash < 0)
 		goto Rescue;
 	runemove(b+slash+1, r, n);
+	b[slash+1+n] = '\0';
 	free(r);
 	return cleanrname((Runestr){b, slash+1+n});
 
