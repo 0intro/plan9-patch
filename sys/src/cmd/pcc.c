@@ -82,6 +82,7 @@ main(int argc, char *argv[])
 		case 'N':
 		case 'S':
 		case 'V':
+		case 'T':
 			append(&cc, smprint("-%c", ARGC()));
 			break;
 		case 's':

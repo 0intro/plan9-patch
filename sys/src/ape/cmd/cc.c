@@ -112,7 +112,8 @@ main(int argc, char *argv[])
 				append(&srchlibs, lib);
 			break;
 		case 'N':
-			append(&cc, "-N");
+		case 'T':
+			append(&cc, smprint("-%c", ARGC()));
 			break;
 		case 'O':
 			break;
