@@ -1,0 +1,27 @@
+.TH FIND 1
+.SH NAME
+find \- find files and directories on the system.
+.SH SYNOPSIS
+.B find 
+[
+.B -f
+] 
+[
+.B dir1 dir2 ...
+]
+.SH DESCRIPTION
+.I Find
+lists recursively all files under the directories supplied, or the current directory.
+.PP
+.B -f
+causes 
+.I find
+to skip reporting any warnings and errors.
+.SH SOURCE
+.B /sys/src/cmd/find.c
+.SH BUGS
+No options familiar from lunix' find, such as 
+.B -type 
+and 
+.B -name,
+available.
