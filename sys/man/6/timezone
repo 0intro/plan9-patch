@@ -1,0 +1,25 @@
+.TH TIMEZONE 6
+.SH NAME
+timezone \- timezone file format
+.SH SYNOPSIS
+.B /adm/timezone/*
+.SH DESCRIPTION
+.LP
+At boot the file \fI/adm/timezone/local\fR is copied into \fI/env/timezone\fR.
+The date and time conversion libraries then use these values when
+converting the system clock, in Universal Coordinated Time (UTC),
+and local time.
+.LP
+The first line of a \fItimezone\fR file contains four fields, 
+.LP
+.nf
+	Name of this timezone
+	Difference between this timezone and UTC in seconds
+	Name of Daylight Saving Time (DST) in this timezone
+	Difference between DST and UTC in seconds
+.fi
+.LP
+The following lines contain values giving the seconds since
+epoch of DST changeovers; The first entry being the start of DST in 1970.
+.SH BUGS
+All dates expire in 2036.
