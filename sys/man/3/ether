@@ -77,6 +77,7 @@ file returns status information such as the Ethernet address of the
 card and general statistics, independent of the interface;
 .B ifstats
 contains device-specific data and statistics about the card.
+Addresses consist of the letters 0123456789abcdef.
 .PP
 An interface normally receives only those packets whose 
 destination address is that of the interface or is the

@@ -132,7 +132,7 @@ is a
 .IR print (2)
 formatter for Ethernet (verb
 .BR E )
-addresses,
+addresses (consisting of the letters 0123456789abcdef),
 IP V6 (verb
 .BR I )
 addresses,

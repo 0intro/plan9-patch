@@ -90,7 +90,7 @@ turn on debugging.
 .B N
 look in /lib/ndb for the IP parameters.  This only works if the
 interface is an ethernet.  It uses the ethernet address to find
-a matching entry.
+a matching entry (consisting of the letters 0123456789abcdef).
 .TP
 .B G
 use only generic DHCP options.  Without this option,

@@ -167,7 +167,7 @@ Internet domain name
 Internet address
 .TP
 .B ether
-Ethernet address
+Ethernet address (consisting of the letters 0123456789abcdef)
 .TP
 .B bootf
 file to download for initial bootstrap
