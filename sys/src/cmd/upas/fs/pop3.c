@@ -80,9 +80,10 @@ pop3resp(Pop *pop)
 {
 	char *s;
 	char *p;
+	static char *l = nil;
 
 	alarm(60*1000);
-	if((s = Brdline(&pop->bin, '\n')) == nil){
+	if((s = Brdstr(&pop->bin, '\n', 0)) == nil){
 		close(pop->fd);
 		pop->fd = -1;
 		alarm(0);
@@ -90,6 +91,10 @@ pop3resp(Pop *pop)
 	}
 	alarm(0);
 
+	if(l){
+		free(l);
+		l = s;
+	}
 	p = s+Blinelen(&pop->bin)-1;
 	while(p >= s && (*p == '\r' || *p == '\n'))
 		*p-- = '\0';
