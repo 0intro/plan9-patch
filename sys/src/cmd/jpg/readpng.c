@@ -1,5 +1,3 @@
-//  work in progress...  this version only good enough to read
-//  non-interleaved, 24bit RGB images
 
 #include <u.h>
 #include <libc.h>
@@ -17,27 +15,38 @@ enum{  IDATSIZE=1000000,
 	FilterSub	=	1,	/* new[x][y] = buf[x][y] + new[x-1][y] */ 
 	FilterUp	=	2,	/* new[x][y] = buf[x][y] + new[x][y-1] */ 
 	FilterAvg	=	3,	/* new[x][y] = buf[x][y] + (new[x-1][y]+new[x][y-1])/2 */ 
-	FilterPaeth=	4,	/* new[x][y] = buf[x][y] + paeth(new[x-1][y],new[x][y-1],new[x-1][y-1]) */ 
+	FilterPaeth=	4,	/* new[x][y] = buf[x][y] + paeth(new[x-1][y],new[x][y-1],new[x-1][y-1]) */
 	FilterLast	=	5,
 	PropertyBit =	1<<5,
 };
+
+
+typedef struct ZlibW{
+	uchar *ch[4]; // Rawimage channels
+	int nch;		// number of input chans
+	int	chl;		// number of bytes allocated to ch[x]
+
+	uchar *scan;	// new scanline
+	uchar *pscan;	// previous scanline
+	int scanl;		// scan len
+	int scanp;		// scan pos
+
+	int ncol;		// pixels per scanline
+	int bpp;		// (bits per pixel) per channel
+	int palsize;	// # of color entries
+	int row;		// current scanline number
+	int nrow;		// number of rows in image
+	int pass;		// adam7 pass#, 0 means no adam7
+	uchar palette[3*256];
+} ZlibW;
 
 typedef struct ZlibR{
 	Biobuf *bi;
 	uchar *buf;
 	uchar *b;	// next byte to decompress
 	uchar *e;	// past end of buf
+	ZlibW *w;
 } ZlibR;
-
-typedef struct ZlibW{
-	uchar *r, *g, *b; // Rawimage channels
-	int chan;	// next channel to write
-	int col;	// column index of current pixel
-			// -1 = one-byte pseudo-column for filter spec
-	int row;	// row index of current pixel
-	int ncol, nrow;	// image width, height
-	int filter;	// algorithm for current scanline
-} ZlibW;
 
 static ulong *crctab;
 static uchar PNGmagic[] = {137,80,78,71,13,10,26,10};
@@ -120,10 +129,19 @@ refill_buffer:
 		if(n < 0 || strcmp(type, "IEND") == 0)
 			return -1;
 		z->e = z->b + n;
+		if(!strcmp(type,"PLTE")) {
+			if (n < 3 || n > 3*256 || n%3)
+				sysfatal("invalid PLTE chunk len %d", n);
+			memcpy(z->w->palette, z->b, n);
+			z->w->palsize = n/3;
+			goto refill_buffer;
+		}
 		if(type[0] & PropertyBit)
 			goto refill_buffer;  /* skip auxiliary chunks for now */
-		if(strcmp(type,"IDAT") != 0)
+		if(strcmp(type,"IDAT")) {
 			sysfatal("unrecognized mandatory chunk %s", type);
+			goto refill_buffer;
+		}
 	}
 	return *z->b++;
 }
@@ -146,40 +164,167 @@ paeth(uchar a, uchar b, uchar c)
 }
 
 static void
-unfilter(int alg, uchar *buf, uchar *ebuf, int up)
+unfilter(int alg, uchar *buf, uchar *up, int len, int bypp)
 {
+	int i;
 	switch(alg){
+	case FilterNone:
+		break;
+
 	case FilterSub:
-		while (++buf < ebuf)
-			*buf += buf[-1];
+		for (i = bypp; i < len; ++i)
+			buf[i] += buf[i-bypp];
 		break;
+
 	case FilterUp:
-		if (up != 0)
-			do
-				*buf += buf[up];
-			while (++buf < ebuf);
+		for (i = 0; i < len; ++i)
+			buf[i] += up[i];
 		break;
+
 	case FilterAvg:
-		if (up == 0)
-			while (++buf < ebuf)
-				*buf += buf[-1]/2;
-		else{
-			*buf += buf[up]/2;
-			while (++buf < ebuf)
-				*buf += (buf[-1]+buf[up])/2;
-		}
+		for (i = 0; i < bypp; ++i)
+			buf[i] += (0+up[i])/2;
+		for (; i < len; ++i)
+			buf[i] += (buf[i-bypp]+up[i])/2;
 		break;
+
 	case FilterPaeth:
-		if (up == 0)
-			while (++buf < ebuf)
-				*buf += buf[-1];
-		else{
-			*buf += paeth(0, buf[up], 0);
-			while (++buf < ebuf)
-				*buf += paeth(buf[-1], buf[up], buf[up-1]);
-		}
+		for (i = 0; i < bypp; ++i)
+			buf[i] += paeth(0, up[i], 0);
+		for (; i < len; ++i)
+			buf[i] += paeth(buf[i-bypp], up[i], up[i-bypp]);
 		break;
+	default:
+		sysfatal("unknown filtering scheme %d\n", alg);
 	}
+}
+
+static void
+convertpix(ZlibW *z, uchar *pixel, uchar *r, uchar *g, uchar *b, uchar *a)
+{
+	int off;
+	switch (z->nch) {
+	case 1:	/* gray or indexed */
+		pixel[1] = 255;	/* opaque */
+	case 2:	/* gray+alpha */
+		if (z->bpp < 8)
+			pixel[0] >>= 8-z->bpp;
+		if (pixel[0] > z->palsize)
+			sysfatal("index %d out of bounds %d", pixel[0], z->palsize);
+		off = 3*pixel[0];
+		*r = z->palette[off];
+		*g = z->palette[off+1];
+		*b = z->palette[off+2];
+		*a = pixel[1];
+		break;
+	case 3:	/* rgb */
+		pixel[3] = 255; /* opaque */
+	case 4:	/* rgb+alpha */
+		*r = pixel[0];
+		*g = pixel[1];
+		*b = pixel[2];
+		*a = pixel[3];
+		break;
+	default:
+		sysfatal("bad number of channels: %d", z->nch);
+	} 
+}
+
+struct {
+	int xo;
+	int yo;
+	int Δx;
+	int Δy;
+} adam7[] = {
+	{0,0,1,1},	/* eve alone */
+	{0,0,8,8},	/* pass 1 */
+	{4,0,8,8},	/* pass 2 */
+	{0,4,4,8},	/* pass 3 */
+	{2,0,4,4},	/* pass 4 */
+	{0,2,2,4},	/* pass 5 */
+	{1,0,2,2},	/* pass 6 */
+	{0,1,1,2},	/* pass 7 */
+};
+
+static void
+scan(int len, ZlibW *z)
+{
+	uchar *p;
+	int i, j, bit, n, ch, nch, pd;
+	uchar cb;
+	uchar pixel[4];
+
+	p = z->scan;
+	nch = z->nch;
+
+	unfilter(p[0], p+1, z->pscan+1, len-1, (nch*z->bpp+7)/8);
+
+	ch = 0;
+	n = 0;
+	cb = 128;
+	pd = z->row * z->ncol;
+	pd += adam7[z->pass].xo;
+
+	for (i = 0; i < 4; ++i)
+		pixel[i] = 0;
+
+	for (i = 1; i < len; ++i)
+		for (bit = 128; bit > 0; bit /= 2) {
+
+			pixel[ch] &= ~cb;
+			if (p[i] & bit)
+				pixel[ch] |= cb;
+
+			cb >>= 1;
+
+			if (++n == z->bpp) {
+				cb = 128;
+				n = 0;
+				ch++;
+			}
+			if (ch == nch) {
+				if (pd < z->chl)
+					convertpix(z,pixel,
+						z->ch[0]+pd,
+						z->ch[1]+pd,
+						z->ch[2]+pd,
+						z->ch[3]+pd);
+
+				for (j = 0; j < 4; ++j)
+					pixel[j] = 0;
+
+				pd += adam7[z->pass].Δx;
+				if (pd - z->row*z->ncol >= z->ncol)
+					goto out;
+				ch = 0;
+			}
+		}
+out: ;
+}
+
+static int
+scanbytes(ZlibW *z)
+{
+	int ncol, bpp;
+	int xo, Δx;
+
+	bpp = z->bpp * z->nch;
+	Δx = adam7[z->pass].Δx;
+	xo = adam7[z->pass].xo;
+	ncol = z->ncol;
+
+	return 1 + (((ncol-xo-1) / Δx + 1) * bpp + 7) / 8;
+}
+
+static int
+nextpass(ZlibW *z)
+{
+		int i;
+		z->pass = (z->pass+1)%8;
+		z->row = adam7[z->pass].yo;
+		for (i = 0; i < z->scanl; ++i)
+			z->pscan[i] = 0;
+		return scanbytes(z);
 }
 
 static int
@@ -187,47 +332,33 @@ zwrite(void *va, void *vb, int n)
 {
 	ZlibW *z = va;
 	uchar *buf = vb;
-	int i, up;
-	for(i=0; i<n; i++){
-		if(z->col == -1){
-			// set filter byte
-			z->filter = *buf++;
-			if (z->filter >= FilterLast)
-				sysfatal("unknown filter algorithm %d for row %d", z->row, z->filter);
-			z->col++;
-			continue;
+	int i, j, scanl;
+
+	j = z->scanp;
+
+	scanl = scanbytes(z);
+	while (scanl < 2)
+		nextpass(z);
+
+	for (i = 0; i < n; ++i) {
+		z->scan[j++] = buf[i];
+		if (j >= scanl) {
+			uchar *tp;
+			scan(scanl, z);
+			tp = z->scan;
+			z->scan = z->pscan;
+			z->pscan = tp;
+			z->row += adam7[z->pass].Δy;
+			j = 0;
 		}
-		switch(z->chan){
-		case 0:
-			*z->r++ = *buf++;
-			z->chan = 1;
-			break;
-		case 1:
-			*z->g++ = *buf++;
-			z->chan = 2;
-			break;
-		case 2:
-			*z->b++ = *buf++;
-			z->chan = 0;
-			z->col++;
-			if(z->col == z->ncol){
-				if (z->filter){
-					if(z->row == 0)
-						up = 0;
-					else
-						up = -z->ncol;
-					unfilter(z->filter, z->r - z->col, z->r, up);
-					unfilter(z->filter, z->g - z->col, z->g, up);
-					unfilter(z->filter, z->b - z->col, z->b, up);
-				}
-				z->col = -1;
-				z->row++;
-				if((z->row >= z->nrow) && (i < n-1) )
-					sysfatal("header said %d rows; data goes further", z->nrow);
-			}
-			break;
+		if (z->row >= z->nrow) {
+			do
+				scanl = nextpass(z);
+			while (scanl < 2);
 		}
 	}
+	z->scanp = j;
+
 	return n;
 }
 
@@ -239,7 +370,9 @@ readslave(Biobuf *b)
 	Rawimage *image;
 	char type[5];
 	uchar *buf, *h;
-	int k, n, nrow, ncol, err;
+	int k, n, nrow, ncol, err, bpp, nch;
+
+	zr.w = &zw;
 
 	buf = pngmalloc(IDATSIZE, 0);
 	Bread(b, buf, sizeof PNGmagic);
@@ -256,16 +389,47 @@ readslave(Biobuf *b)
 		sysfatal("impossible image size nrow=%d ncol=%d", nrow, ncol);
 	if(debug)
 		fprint(2, "readpng nrow=%d ncol=%d\n", nrow, ncol);
-	if(*h++ != 8)
-		sysfatal("only 24 bit per pixel supported for now [%d]", h[-1]);
-	if(*h++ != 2)
-		sysfatal("only rgb supported for now [%d]", h[-1]);
+
+	bpp = *h++;
+	nch = 0;
+	switch (*h++) {
+	case 0:	/* grey */
+		nch = 1;
+		break;
+	case 2:	/* rgb */
+		nch = 3;
+		break;
+	case 3: /* indexed rgb with PLTE */
+		nch = 1;
+		break;
+	case 4:	/* grey+alpha */
+		nch = 2;
+		break;
+	case 6:	/* rgb+alpha */
+		nch = 4;
+		break;
+	default:
+		sysfatal("unsupported color scheme %d", h[-1]);
+	}
+
+	/* generate default palette for grayscale */
+	zw.palsize = 256;
+	if (nch < 3 && bpp < 9)
+		zw.palsize = 1<<bpp;
+	for (k = 0; k < zw.palsize; ++k) {
+		zw.palette[3*k] = (k*255)/(zw.palsize-1);
+		zw.palette[3*k+1] = (k*255)/(zw.palsize-1);
+		zw.palette[3*k+2] = (k*255)/(zw.palsize-1);
+	}
+
 	if(*h++ != 0)
 		sysfatal("only deflate supported for now [%d]", h[-1]);
 	if(*h++ != FilterNone)
 		sysfatal("only FilterNone supported for now [%d]", h[-1]);
-	if(*h != 0)
-		sysfatal("only non-interlaced supported for now [%d]", h[-1]);
+
+	zw.pass = 0;
+	if (*h == 1)	/* Adam7 interleaving */
+		zw.pass = 1;
 
 	image = pngmalloc(sizeof(Rawimage), 1);
 	image->r = Rect(0, 0, ncol, nrow);
@@ -278,23 +442,35 @@ readslave(Biobuf *b)
 	image->giftrindex = 0;
 	image->chandesc = CRGB;
 	image->nchans = 3;
-	for(k=0; k<3; k++)
-		image->chans[k] = pngmalloc(ncol*nrow, 0);
+
+	zw.chl = ncol*nrow;
+	for(k=0; k<4; k++)
+		image->chans[k] = zw.ch[k] = pngmalloc(ncol*nrow, 1);
+
 	zr.bi = b;
 	zr.buf = buf;
 	zr.b = zr.e = buf + IDATSIZE;
-	zw.r = image->chans[0];
-	zw.g = image->chans[1];
-	zw.b = image->chans[2];
-	zw.chan = 0;
-	zw.col = -1;
+
+	zw.scanp = 0;
 	zw.row = 0;
-	zw.ncol = ncol;
 	zw.nrow = nrow;
+	zw.ncol = ncol;
+	zw.scanl = (nch*ncol*bpp+7)/8+1;
+	zw.scan = pngmalloc(zw.scanl, 1);
+	zw.pscan = pngmalloc(zw.scanl, 1);
+	zw.nch = nch;
+	zw.bpp = bpp;
+
 	err = inflatezlib(&zw, zwrite, &zr, zread);
+
 	if(err)
 		sysfatal("inflatezlib %s\n", flateerr(err));
+
+	free(image->chans[3]);
+	image->chans[3] = nil;
 	free(buf);
+	free(zw.scan);
+	free(zw.pscan);
 	return image;
 }
 
