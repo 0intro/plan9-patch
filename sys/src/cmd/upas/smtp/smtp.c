@@ -3,11 +3,12 @@
 #include <ctype.h>
 #include <mp.h>
 #include <libsec.h>
+#include <ndb.h>
 #include <auth.h>
 
 static	char*	connect(char*);
 static	char*	dotls(char*);
-static	char*	doauth(void);
+static	char*	doauth(char*);
 char*	hello(char*, int);
 char*	mailfrom(char*);
 char*	rcptto(char*);
@@ -238,11 +239,9 @@ main(int argc, char **argv)
 	}
 
 	rv = data(from, &bfile);
-if(debug) fprint(2, "data rv %s\n", rv);
 	if(rv != 0)
 		goto error;
 	quit(0);
-if(debug) fprint(2, "rcvrs %d ok %d\n", rcvrs, ok);
 	if(rcvrs == ok)
 		exits(0);
 
@@ -267,10 +266,8 @@ error:
 		ping ? "ping" : "delivery",
 		addr, s_to_c(reply));
 	fprint(2, "%s connect to %s:\n%s\n", thedate(), addr, s_to_c(reply));
-if(debug) fprint(2, "errors %s\n", rv);
 	if(!filter)
 		quit(rv);
-if(debug) fprint(2, "exits %s\n", rv);
 	exits(rv);
 }
 
@@ -367,42 +364,96 @@ dotls(char *me)
 	 */
 	Binit(&bin, fd, OREAD);
 	fd = dup(fd, -1);
-if(debug)fprint(2, "bout fd = %d\n", fd);
 	Binit(&bout, fd, OWRITE);
 
 	syslog(0, "smtp", "started TLS to %q", ddomain);
 	return(hello(me, 1));
 }
 
-static char *
-doauth(void)
+char *
+meta(char *m)
 {
-	char *buf, *base64;
+	Ndb *db;
+	char *r, *s = m +1;
+	Ndbtuple *t;
+
+	if ((db = ndbopen(nil)) == nil)
+		return m;
+
+	if ((t = ndbipinfo(db, "sys", alt_sysname_read(), &s, 1)) == nil){
+		ndbclose(db);
+		return m;
+	}
+	r = strdup(t->val);
+	ndbfree(t);
+	ndbclose(db);
+	return r;
+}
+
+static char *
+doauth(char *methods)
+{
+	char *sys, *buf, *base64;
 	UserPasswd *p;
 	int n;
 
+	sys = ddomain;
+	if (*sys == '$')
+		sys = meta(sys);
+
 	if(user != nil)
 		p = auth_getuserpasswd(nil,
-	  	  "proto=pass service=smtp server=%q user=%q", ddomain, user);
+	  	  "proto=pass service=smtp server=%q user=%q", sys, user);
 	else
 		p = auth_getuserpasswd(nil,
-	  	  "proto=pass service=smtp server=%q", ddomain);
+	  	  "proto=pass service=smtp server=%q", sys);
 	if (p == nil)
 		return Giveup;
-	n = strlen(p->user) + strlen(p->passwd) + 3;
-	buf = malloc(n);
-	base64 = malloc(2 * n);
-	if (buf == nil || base64 == nil) {
-		free(buf);
-		return Retry;	/* Out of memory */
+
+	if (strstr(methods, "LOGIN")){
+		dBprint("AUTH LOGIN\r\n");
+		if (getreply() != 3)
+			return Retry;
+
+		n = strlen(p->user);
+		base64 = malloc(2*n);
+		if (base64 == nil)
+			return Retry;	/* Out of memory */
+		enc64(base64, 2*n, (uchar *)p->user, n);
+		dBprint("%s\r\n", base64);
+		if (getreply() != 3)
+			return Retry;
+
+		n = strlen(p->passwd);
+		base64 = malloc(2*n);
+		if (base64 == nil)
+			return Retry;	/* Out of memory */
+		enc64(base64, 2*n, (uchar *)p->passwd, n);
+		dBprint("%s\r\n", base64);
+		if (getreply() != 2)
+			return Retry;
+
+		free(base64);
 	}
-	snprint(buf, n, "%c%s%c%s", 0, p->user, 0, p->passwd);
-	enc64(base64, 2 * n, (uchar *)buf, n - 1);
-	free(buf);
-	dBprint("AUTH PLAIN %s\r\n", base64);
-	free(base64);
-	if (getreply() != 2)
-		return Retry;
+	else
+	if (strstr(methods, "PLAIN")){
+		n = strlen(p->user) + strlen(p->passwd) + 3;
+		buf = malloc(n);
+		base64 = malloc(2 * n);
+		if (buf == nil || base64 == nil) {
+			free(buf);
+			return Retry;	/* Out of memory */
+		}
+		snprint(buf, n, "%c%s%c%s", 0, p->user, 0, p->passwd);
+		enc64(base64, 2 * n, (uchar *)buf, n - 1);
+		free(buf);
+		dBprint("AUTH PLAIN %s\r\n", base64);
+		free(base64);
+		if (getreply() != 2)
+			return Retry;
+	}
+	else
+		return "No supported AUTH method;
 	return(0);
 }
 
@@ -411,7 +462,7 @@ hello(char *me, int encrypted)
 {
 	int ehlo;
 	String *r;
-	char *s, *t;
+	char *ret, *s, *t;
 
 	if (!encrypted)
 		switch(getreply()){
@@ -458,10 +509,10 @@ hello(char *me, int encrypted)
 		}
 		if(tryauth && (encrypted || insecure) &&
 		    (strncmp(s, "250 AUTH", strlen("250 AUTH")) == 0 ||
-		     strncmp(s, "250-AUTH", strlen("250 AUTH")) == 0) &&
-		    strstr(s, "PLAIN") != nil){
+		     strncmp(s, "250-AUTH", strlen("250 AUTH")) == 0)){
+			ret = doauth(s + strlen("250 AUTH "));
 			s_free(r);
-			return(doauth());
+			return ret;
 		}
 	}
 	s_free(r);
