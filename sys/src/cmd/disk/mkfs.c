@@ -345,7 +345,7 @@ void
 copy(Dir *d)
 {
 	char cptmp[LEN], *p;
-	long tot;
+	vlong tot;
 	int f, t, n, needwrite;
 	Dir nd;
 
@@ -399,7 +399,7 @@ copy(Dir *d)
 			error("can't write zero at end of %q: %r", newfile);
 	}
 	if(tot != d->length){
-		warn("wrong number bytes written to %q (was %d should be %d)\n",
+		warn("wrong number bytes written to %q (was %lld should be %lld)\n",
 			newfile, tot, d->length);
 		if(fskind == Archive){
 			warn("seeking to proper position\n");
