@@ -798,7 +798,6 @@ rfget(int fix, int save, int setfont, char *name)
 		if(reffonts[fix])
 			rfclose(reffonts[fix]);
 		reffonts[fix] = r;
-		free(fontnames[fix]);
 		fontnames[fix] = name;
 	}
 	if(setfont){
