@@ -301,7 +301,7 @@ kexit(Ureg*)
 void
 trap(Ureg* ureg)
 {
-	int clockintr, i, vno, user;
+	int clockintr = 0, i, vno, user;
 	char buf[ERRMAX];
 	Vctl *ctl, *v;
 	Mach *mach;
