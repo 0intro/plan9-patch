@@ -1,0 +1,30 @@
+.TH ydec 1
+.SH NAME
+ydec \- decode \fIyenc\fR encoded files.
+.SH SYNOPSIS
+.B ydec
+[
+.BI -v
+] [
+.B file...
+]
+.SH DESCRIPTION
+.I Ydec
+decodes the given email or news files (or standard input if none)
+to a standard output. If the \fB-v\fR option is supplied it prints some
+information about decoded file on standard error.
+.PP
+Multipart files can be decoded but must be presented in order.
+.PP
+Yenc is a depricated and thus no encoder is supplied,
+for further information see www.exit109.com/~jeremy/news/yenc.html
+"Why Yenc is bad for Usenet".
+.PP
+.SH EXAMPLE
+.EX
+	nntpfs
+	cd /mnt/news/alt/binaries/sounds/mp3/blues
+	ydec 1234*/body | ydec | mp3
+.EE
+.SH SOURCE
+.B /sys/src/cmd/ydec.c
