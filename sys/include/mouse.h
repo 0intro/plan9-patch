@@ -44,3 +44,4 @@ extern void		setcursor(Mousectl*, Cursor*);
 extern void		drawgetrect(Rectangle, int);
 extern Rectangle	getrect(int, Mousectl*);
 extern int	 		menuhit(int, Mousectl*, Menu*, Screen*);
+extern int			piemenuhit(int, Mousectl*, Menu*, Screen*);

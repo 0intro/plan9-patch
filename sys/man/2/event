@@ -1,6 +1,6 @@
 .TH EVENT 2
 .SH NAME
-event, einit, estart, estartfn, etimer, eread, emouse, ekbd, ecanread, ecanmouse, ecankbd, ereadmouse, eatomouse, eresized, egetrect, edrawgetrect, emenuhit, emoveto, esetcursor, Event, Mouse, Menu \- graphics events
+event, einit, estart, estartfn, etimer, eread, emouse, ekbd, ecanread, ecanmouse, ecankbd, ereadmouse, eatomouse, eresized, egetrect, edrawgetrect, emenuhit, epiemenuhit, emoveto, esetcursor, Event, Mouse, Menu \- graphics events
 .SH SYNOPSIS
 .nf
 .PP
@@ -69,6 +69,8 @@ void	edrawgetrect(Rectangle r, int up)
 .B
 int	emenuhit(int but, Mouse *m, Menu *menu)
 .PP
+.B
+int       epiemenuhit(int but, Mouse *m, Menu *menu)
 .PP
 .B
 int	emoveto(Point p)
@@ -359,6 +361,12 @@ or \-1 for no selection.
 The
 .I m
 argument is filled in with the final mouse event.
+.PP
+.I Epiemenuhit
+is the same like
+.I emenuhit
+, but draws instead a piemenu, where menuitems longer then eight characters
+are shortened.
 .PP
 .I Emoveto
 moves the mouse cursor to the position
