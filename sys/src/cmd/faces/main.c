@@ -597,12 +597,14 @@ click(int button, Mouse *m)
 			eresized(0);
 			return;
 		}else{
-			for(i=first; i<last; i++)	/* clear vwhois faces */
-				if(ptinrect(p, facerect(i-first)) 
-				&& strstr(faces[i]->str[Sshow], "/mail/fs/mbox/XXX")){
+			for(i=first; i<last; i++){	/* clear vwhois faces */
+				char *s = strrchr(faces[i]->str[Sshow], '/');
+				if(ptinrect(p, facerect(i-first)) &&
+				    s && strstr(s, "/XXX")){
 					delface(i);
 					flushimage(display, 1);
 				}
+			}
 		}
 		break;
 	case 2:
@@ -674,7 +676,7 @@ startproc(void (*f)(void), int index)
 void
 usage(void)
 {
-	fprint(2, "usage: faces [-hi]\n");
+	fprint(2, "usage: faces [-hi] [-m mail-fs-dir]\n");
 	exits("usage");
 }
 
