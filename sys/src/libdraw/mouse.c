@@ -5,12 +5,40 @@
 #include <cursor.h>
 #include <mouse.h>
 
+extern char 	state[1024];
+Channel			*cookc;			/* chan(Mouse)[0] */
+Channel			*modec;			/* chan(int)[0] */
+int mousemode;
+
+int
+Mfmt(Fmt* f)
+{
+	int	m;
+	char	buf[8];
+
+	m = va_arg(f->args, int);
+	memset(buf, '-', sizeof(buf));
+	seprint(buf+5, buf+sizeof(buf), "%1.1x", m&7);
+	if (m&MCLICK)
+		buf[4] = 'c';
+	if (m&MDOUBLE)
+		buf[3] = 'd';
+	if (m&MSELECT)
+		buf[2] = 's';
+	if (m&MCHORD)
+		buf[1] = 'm';
+	if (m&MEND)
+		buf[0] = 'e';
+	return fmtprint(f, buf);
+}
+
 void
 moveto(Mousectl *m, Point pt)
 {
 	fprint(m->mfd, "m%d %d", pt.x, pt.y);
 	m->xy = pt;
 }
+
 
 void
 closemouse(Mousectl *mc)
@@ -30,6 +58,7 @@ closemouse(Mousectl *mc)
 	free(mc);
 }
 
+
 int
 readmouse(Mousectl *mc)
 {
@@ -41,6 +70,7 @@ readmouse(Mousectl *mc)
 	}
 	return 0;
 }
+
 
 static
 void
@@ -76,17 +106,23 @@ _ioproc(void *arg)
 			m.xy.y = atoi(buf+1+1*12);
 			m.buttons = atoi(buf+1+2*12);
 			m.msec = atoi(buf+1+3*12);
-			send(mc->c, &m);
+			if (mousemode==MCOOKED)
+				send(cookc, &m);
+			else {
+				send(mc->c, &m);
 			/*
-			 * mc->Mouse is updated after send so it doesn't have wrong value if we block during send.
-			 * This means that programs should receive into mc->Mouse (see readmouse() above) if
-			 * they want full synchrony.
+			 * mc->Mouse is updated after send so it doesn't have 
+			 * wrong value if we block during send.
+			 * This means that programs should receive into mc->Mouse 
+			 * (see readmouse() above) if they want full synchrony.
 			 */
-			mc->Mouse = m;
+				mc->Mouse = m;
+			}
 			break;
 		}
 	}
 }
+
 
 Mousectl*
 initmouse(char *file, Image *i)
@@ -94,6 +130,7 @@ initmouse(char *file, Image *i)
 	Mousectl *mc;
 	char *t, *sl;
 
+	state[0]='\0';
 	mc = mallocz(sizeof(Mousectl), 1);
 	if(file == nil)
 		file = "/dev/mouse";
@@ -119,9 +156,12 @@ initmouse(char *file, Image *i)
 	mc->image = i;
 	mc->c = chancreate(sizeof(Mouse), 0);
 	mc->resizec = chancreate(sizeof(int), 2);
+	mousemode = MRAW ;
+	modec = chancreate(sizeof(int), 0);
 	proccreate(_ioproc, mc, 4096);
 	return mc;
 }
+
 
 void
 setcursor(Mousectl *mc, Cursor *c)
@@ -137,3 +177,5 @@ setcursor(Mousectl *mc, Cursor *c)
 		write(mc->cfd, curs, sizeof curs);
 	}
 }
+
+

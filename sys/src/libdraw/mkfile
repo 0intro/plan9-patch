@@ -10,6 +10,7 @@ OFILES=\
 	border.$O\
 	buildfont.$O\
 	bytesperline.$O\
+	cook.$O\
 	chan.$O\
 	cloadimage.$O\
 	computil.$O\

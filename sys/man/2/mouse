@@ -1,6 +1,6 @@
 .TH MOUSE 2
 .SH NAME
-initmouse, readmouse, closemouse, moveto, cursorswitch, getrect, drawgetrect, menuhit, setcursor \- mouse control
+initmouse, setmousemode, readmouse, closemouse, moveto, cursorswitch, getrect, drawgetrect, menuhit, setcursor, Mfmt \- mouse control
 .SH SYNOPSIS
 .nf
 .B
@@ -18,6 +18,9 @@ initmouse, readmouse, closemouse, moveto, cursorswitch, getrect, drawgetrect, me
 .PP
 .B
 Mousectl	*initmouse(char *file, Image *i)
+.PP
+.B
+int		setmousemode(Mousectl* mc, int mode)
 .PP
 .B
 int		readmouse(Mousectl *mc)
@@ -42,6 +45,12 @@ void		drawgetrect(Rectangle r, int up)
 .PP
 .B
 int		menuhit(int but, Mousectl *mc, Menu *menu, Screen *scr)
+.PP
+.B
+int		MCHORDB(int buttons, int idx)
+.PP
+.B
+int		Mfmt(Fmt*)
 .fi
 .SH DESCRIPTION
 These functions access and control a mouse in a multi-threaded environment.
@@ -63,7 +72,7 @@ defined in
 typedef struct Mouse Mouse;
 struct Mouse
 {
-	int	buttons;	/* bit array: LMR=124 */
+	int	buttons; /* bit array: LMR=124 and flags */
 	Point	xy;
 	ulong	msec;
 };
@@ -74,8 +83,9 @@ The
 .B xy
 records the position of the cursor,
 .B buttons
-the state of the buttons (three bits representing, from bit 0 up, the buttons from left to right,
-0 if the button is released, 1 if it is pressed),
+the state of the buttons (in raw mode, three bits representing, from bit 0 up, the buttons from left to right,
+0 if the button is released, 1 if it is pressed; in cooked mode, it also informs about mouse events, see bellow
+for more information on mouse modes),
 and
 .BR msec ,
 a millisecond time stamp.
@@ -118,17 +128,86 @@ and the image is the window in which the program is running, held in the variabl
 after a call to
 .IR initdraw .
 .PP
-Once the
-.B Mousectl
-is set up,
-mouse motion will be reported by messages of type
-.B Mouse
-sent on the
-.B Channel
-.BR Mousectl.c .
-Typically, a message will be sent every time a read of
+There are two ways of handling the mouse, in raw mode, messages are
+sent to
+.B Channel Mousectl.c
+every time the state of the mouse changes.  In cooked mode, digested
+mouse events are transmited by
+.B Channel Mousectl.c.
+The mouse is initialized by default on raw mode.  Once
+.I initmouse
+has been successfully called,
+.I Setmousemode
+can be used to switch between modes.
+.I Mode
+is one of MRAW or MCOOKED. 
+.I Setmousemode
+returns the new mode, -1 on error.
+.PP
+On raw mode, a message will be sent every time a read of
 .B /dev/mouse
-succeeds, which is every time the state of the mouse changes.
+succeeds.
+.PP
+On cooked mode,
+.B Channel Mousectl.c
+will only report complete or partial mouse events.
+.PP
+While on cooked mode, 
+.B Mouse.buttons
+is colored with some additional flags, MCLICK, MCHORD, MDOUBLE, MEND and other info.
+.PP
+Mouse events are clicks (MCLICK), 
+selections (MSELECT) and chords (MCHORD). Any event can be double (MDOUBLE).
+A single click is done by pressing and releasing in quick sucession a mouse button
+without moving the mouse. 
+A double click is two sucessive clicks of the same button in a short time without
+moving the mouse.  A
+chord is achieved by pressing two mouse buttons succesively and then
+releasing them in any order.  Pressing a mouse button and moving the
+mouse gives you a selection. The selection can be terminated by releasing
+the button or by performing a chord.
+.PP
+When an event is completely recognized, it is sent with the MEND flag set.
+For example, an application interested in double click for the first button
+would check MDOUBLE|MCLICK|MEND|1.
+.PP
+While the event is still in the oven, some other half cooked or 
+partial events may be sent so that the
+application can, for example draw a selection in the screen.
+Examples of this are click, chord and slide.
+Click happens whenever a button starts being pressed and none where pressed before.
+It marks the start of any event. Slide happens when
+any button is pressed and the mouse is moved. It sets the rest
+of the
+.B Mouse.buttons
+of the complete event. Chord happens when a second button
+starts being pressed.
+Note that the starting click of a slide may not have the MSELECT flag set, as
+partial events are in a sense independant.
+.PP
+Partial and complete chords set additionally the three upper nibbles of 
+.B Mouse.buttons
+with the order of the first three buttons
+pressed. The macro MCHORDB returns which button was pressed in idx, for example
+the first button pressed would be
+.B MCHORDB(m->buttons,0).
+.PP
+The cooked mode is backwards compatible except for chord events where all the
+buttons which have been pressed until that moment appear as pressed on the
+.B Mouse.buttons. Another issue is that some libraries wait for events with
+no buttons pressed. This has to be changed to work with cooked mode.
+For example pressing button 1 then pressing and releasing button 2
+and then (still not releasing button 1), pressing button 3 would give a hard double
+chord event with the three buttons pressed. In raw mode it would have given
+just two buttons pressed.
+.PP
+The variable verbstate can be set to one to print the state of the interpreter
+of events for debbuging purposes. The function
+.B Mfmt
+can be used to format mouse events to aid debugging.
+.PP
+If you are waiting for a MEND flag, changing to raw mode can have
+unpleasant consecuences.
 .PP
 When the window is resized, a message is sent on
 .BR Mousectl.resizec .
