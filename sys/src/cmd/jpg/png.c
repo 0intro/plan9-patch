@@ -154,15 +154,17 @@ show(int fd, char *name, int outc)
 	Bterm(&b);
 
 	r = array[0];
-	if(!dflag && !inited){
-		if(initdraw(0, 0, 0) < 0){
-			fprint(2, "png: initdraw failed: %r\n");
-			return "initdraw";
+	if(!dflag){
+		if (!inited) {
+			if(initdraw(0, 0, 0) < 0){
+				fprint(2, "png: initdraw failed: %r\n");
+				return "initdraw";
+			}
+			einit(Ekeyboard|Emouse);
+			inited++;
 		}
-		einit(Ekeyboard|Emouse);
 		if(defaultcolor && screen->depth>8 && outchan==CMAP8)
 			outchan = RGB24;
-		inited++;
 	}
 	if(outchan == CMAP8)
 		c = torgbv(r, !eflag);
