@@ -213,6 +213,7 @@ udp=domain port=53
 udp=dns port=53
 udp=portmap port=111
 udp=ntp port=123
+tcp=nbns port=137
 udp=snmp port=161
 udp=rip port=520
 udp=nfs port=2049
