@@ -1,6 +1,7 @@
 #include	"mk.h"
 
 #define		MKFILE		"mkfile"
+#define		MKFILEVAR	"MKFILE"
 
 static char *version = "@(#)mk general release 4 (plan 9)";
 int debug;
@@ -34,6 +35,7 @@ main(int argc, char **argv)
 	Biobuf tb;
 	Bufblock *buf;
 	Bufblock *whatif;
+	char	*skel;
 
 	/*
 	 *  start with a copy of the current environment variables
@@ -172,6 +174,14 @@ main(int argc, char **argv)
 	if(f == files){
 		if(access(MKFILE, 4) == 0)
 			parse(MKFILE, open(MKFILE, 0), 0);
+		else {
+			skel = getenv(MKFILEVAR);
+			if (skel != nil){
+				if (access(skel, 4) == 0)
+					parse(skel, open(skel, 0), 0);
+				free(skel);
+			}
+		}
 	} else
 		for(ff = files; ff < f; ff++)
 			parse(*ff, open(*ff, 0), 0);

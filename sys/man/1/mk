@@ -53,7 +53,13 @@ The environment variable
 determines how many targets may be updated simultaneously;
 Plan 9 sets
 .B $NPROC
-automatically to the number of CPUs on the current machine.
+automatically to the number of CPUs on the current machine. The
+variable
+.B $MKFILE
+may be set to indicate which
+.B mkfile
+should be read if there is no one in the current
+directory.
 .PP
 Options are:
 .TP \w'\fL-d[egp]\ 'u
