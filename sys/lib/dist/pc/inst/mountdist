@@ -1,5 +1,11 @@
 #!/bin/rc
 
+# We don't support ext2 because I'm not motivated enough
+# to convert ext2srv, a server that only half works to begin with,
+# to 9P2000.  If someone else wants to update ext2srv, I'll be happy
+# to put back support for installing from ext2 partitions back.
+#			- rsc
+
 # prereq: mountfs configdist
 # desc: locate and mount the distribution
 
@@ -67,7 +73,7 @@ case checkready
 	}
 		
 case go
-	kfs=()
+#	kfs=()
 	fat=()
 	ext2=()
 	x9660=()
@@ -79,17 +85,17 @@ case go
 	for (i in $parts) {
 		echo -n '	'^$i
 		n=`{echo $i | sed 's;/;_;g'}
-		if(! test -f /tmp/localpart.$n)
-			dd -if $i -bs 2048 -count 32 -of /tmp/localpart.$n >[2]/dev/null
-		if(iskfs /tmp/localpart.$n)
-			kfs=($kfs $i)
-		if(isfat /tmp/localpart.$n)
+		#if(! test -f /tmp/localpart.$n)
+		#	dd -if $i -bs 2048 -count 32 -of /tmp/localpart.$n >[2]/dev/null
+#		if(iskfs $i)
+#			kfs=($kfs $i)
+		if(isfat $i)
 			fat=($fat $i)
-	#	if(isext2 /tmp/localpart.$n)
-	#		ext2=($ext2 $i)
-		if(is9660 /tmp/localpart.$n)
+		if(isext2 $i)
+			ext2=($ext2 $i)
+		if(is9660 $i)
 			x9660=($x9660 $i)
-		if(isfossil /tmp/localpart.$n)
+		if(isfossil $i)
 			fossil=($fossil $i)
 		echo
 	}
@@ -99,8 +105,8 @@ case go
 	echo
 	for(i in $parts){
 		switch($i){
-		case $kfs
-			echo	'	'^$i^' (plan9 kfs)'
+#		case $kfs
+#			echo	'	'^$i^' (plan9 kfs)'
 		case $fat
 			echo 	'	'^$i^' (microsoft fat)'
 		case $ext2
@@ -123,10 +129,10 @@ case go
 		switch($disk){
 		case $fs
 			mountmedia=(bind /n/newfs /n/distmedia)
-		case $kfs
-			kname=`{kfsname $disk}
-			srvmedia=(disk/kfs -f $disk -n $kname)
-			mountmedia=(mount /srv/kfs.$kname /n/distmedia)
+#		case $kfs
+#			kname=`{kfsname $disk}
+#			srvmedia=(disk/kfs -f $disk -n $kname)
+#			mountmedia=(mount /srv/kfs.$kname /n/distmedia)
 		case $fat
 			srvmedia=(dossrv)
 			mountmedia=(mount /srv/dos /n/distmedia $disk)
