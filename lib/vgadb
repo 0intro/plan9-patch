@@ -230,6 +230,7 @@ ctlr
 	vid=0x1002 did=0x4C50		# LP
 	vid=0x1002 did=0x5654		# VT
 	vid=0x1002 did=0x5656		# VV
+	vid=0x1002 did=0x4755		# 3D Rage II+
 	0xC00DC="MACH64CTPCIU"				# ATI Graphics Xpression
 	0xC00E7="MACH64GPPCIM"				# ATI xpert@work
 	0xC00E7="MACH64GBPCIM"				# ATI xpert@work
