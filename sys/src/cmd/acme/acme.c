@@ -122,9 +122,9 @@ threadmain(int argc, char *argv[])
 	snarffd = open("/dev/snarf", OREAD|OCEXEC);
 	if(cputype){
 		sprint(buf, "/acme/bin/%s", cputype);
-		bind(buf, "/bin", MBEFORE);
+		bind(buf, "/bin", MAFTER);
 	}
-	bind("/acme/bin", "/bin", MBEFORE);
+	bind("/acme/bin", "/bin", MAFTER);
 	getwd(wdir, sizeof wdir);
 
 	if(geninitdraw(nil, derror, fontnames[0], "acme", nil, Refnone) < 0){
