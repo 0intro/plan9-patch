@@ -44,12 +44,12 @@ allocfid(Fidpool *pool, ulong fid)
 	f->pool = pool;
 
 	incfidref(f);
-	incfidref(f);
 	if(caninsertkey(pool->map, fid, f) == 0){
 		closefid(f);
 		return nil;
 	}
 
+	incfidref(f);
 	return f;
 }
 
