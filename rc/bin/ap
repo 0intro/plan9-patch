@@ -31,8 +31,9 @@ if not
 	hget $wire/^$1^.story |
 		htmlfmt |
 		sed '
-			1,/^By Associated Press$/d
 			s/\| Article licensing.*$//
 			/^Copyright ©/p
 			/^Copyright ©/,$d
-			'
+			1,/^Top Stories$/d
+			/^$/,/^$/d
+		'
