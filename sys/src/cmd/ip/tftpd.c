@@ -1,5 +1,6 @@
 #include <u.h>
 #include <libc.h>
+#include <auth.h>
 #include <bio.h>
 #include <ip.h>
 #include <ndb.h>
@@ -354,13 +355,14 @@ nak(int fd, int code, char *msg)
 void
 setuser(void)
 {
-	int f;
+	int fd;
 
-	f = open("/dev/user", OWRITE);
-	if(f < 0)
-		return;
-	write(f, "none", sizeof("none"));
-	close(f);
+	fd = open("#c/user", OWRITE);
+	if(fd < 0 || write(fd, "none", strlen("none")) < 0)
+		sysfatal("can't become none: %r");
+	close(fd);
+	if(newns("none", nil) < 0)
+		sysfatal("can't build namespace: %r");
 }
 
 char*
