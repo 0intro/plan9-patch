@@ -18,7 +18,7 @@ smon='s/Jan/01/
 	s/Dec/12/'
 
 fn usage {
-	echo 'usage: yesterday [-abcCdDN] [-[[[yy]yy]mm]dd] [-n daysago] file ...' >[1=2]
+	echo 'usage: yesterday [-abcCdDs] [-[[[yy]yy]mm]dd] [-n daysago] file ...' >[1=2]
 	exit 'usage'
 }
 
