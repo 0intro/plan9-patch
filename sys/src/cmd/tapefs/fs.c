@@ -18,6 +18,7 @@ Idmap	*gidmap;
 int	replete;
 int	verbose;
 int	newtap;		/* tap with time in sec */
+uchar	statbuf[STATMAX];
 
 Fid *	newfid(int);
 int	ramstat(Ram*, uchar*, int);
@@ -301,8 +302,11 @@ ropen(Fid *f)
 		thdr.qid = r->qid;
 		return 0;
 	}
-	if(mode & ORCLOSE)
-		return Eperm;
+	if(mode & ORCLOSE){
+		if(r->qid.path==0)
+			return Eperm;
+		f->rclose = 1;
+	}
 	trunc = mode & OTRUNC;
 	mode &= OPERM;
 	if(mode==OWRITE || mode==ORDWR || trunc)
@@ -416,14 +420,16 @@ rclunk(Fid *f)
 	f->busy = 0;
 	f->open = 0;
 	f->ram = 0;
-	return 0;
+	return nil;
 }
 
 char *
 rremove(Fid *f)
 {
-	USED(f);
-	return Eperm;
+	if(f->ram->qid.path == 0)
+		return Eperm;
+	f->ram->busy = 0;
+	return nil;
 }
 
 char *
@@ -435,12 +441,56 @@ rstat(Fid *f)
 	return 0;
 }
 
+static Ram *
+firstent(Ram *r)
+{
+	Ram *s, *t;
+	for(s = r->parent; s; s = s->next)
+		if (s->child)
+			for (t = s->child; t; t = t->next)
+				if (t == r)
+					return s->child;
+	sysfatal("firstent: internal error - can't ever happen\n");
+	return nil;
+}
+
 char *
 rwstat(Fid *f)
 {
+	Ram *r, *s;
+	Dir dir;
+
 	if(f->ram->busy == 0)
 		return Enotexist;
-	return Eperm;
+
+	convM2D(rhdr.stat, rhdr.nstat, &dir, (char*)statbuf);
+	r = f->ram;
+
+	if(dir.length!=~0 && dir.length!=r->ndata)
+		return Eperm;
+
+	if (dir.name[0] != '\0' && strcmp(dir.name, r->name) != 0)
+		for(s = firstent(f->ram); s; s = s->next)
+			if(s->busy && strcmp(dir.name, s->name)==0)
+				return Eexist;
+
+
+	/* all valid, now do it */
+
+	if(dir.mode != ~0){
+		dir.mode &= ~DMDIR;	/* cannot change dir bit */
+		dir.mode |= r->perm&DMDIR;
+		r->perm = dir.mode;
+	}
+	if(dir.name[0] != '\0'){
+		free(r->name);
+		r->name = estrdup(dir.name);
+	}
+	if(dir.uid[0] != '\0')
+		r->user = estrdup(dir.uid);
+	if(dir.gid[0] != '\0')
+		r->group = estrdup(dir.gid);
+	return 0;
 }
 
 int
