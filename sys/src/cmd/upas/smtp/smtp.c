@@ -4,6 +4,7 @@
 #include <mp.h>
 #include <libsec.h>
 #include <auth.h>
+#include <ndb.h>
 
 static	char*	connect(char*);
 static	char*	dotls(char*);
@@ -339,21 +340,50 @@ if(debug)fprint(2, "bout fd = %d\n", fd);
 	return(hello(me, 1));
 }
 
+char *
+meta(char *m)
+{
+	Ndb *db;
+	char *r, *s = m +1;
+	Ndbtuple *t;
+
+	if ((db = ndbopen(nil)) == nil)
+		return m;
+
+	if ((t = ndbipinfo(db, "sys", alt_sysname_read(), &s, 1)) == nil){
+		ndbclose(db);
+		return m;
+	}
+	r = strdup(t->val);
+	ndbfree(t);
+	ndbclose(db);
+	return r;
+}
+
+
 static char *
 doauth(void)
 {
-	char *buf, *base64;
+	char *sys, *buf, *base64;
 	UserPasswd *p;
 	int n;
 
+	sys = ddomain;
+	if (*sys == '$')
+		sys = meta(sys);
+
 	if(user != nil)
 		p = auth_getuserpasswd(nil,
-	  	  "proto=pass service=smtp server=%q user=%q", ddomain, user);
+	  	  "proto=pass service=smtp server=%q user=%q", sys, user);
 	else
 		p = auth_getuserpasswd(nil,
-	  	  "proto=pass service=smtp server=%q", ddomain);
-	if (p == nil)
+	  	  "proto=pass service=smtp server=%q", sys);
+
+	if (p == nil){
+		syslog(0, "smtp.fail", "%r");
 		return Giveup;
+	}
+
 	n = strlen(p->user) + strlen(p->passwd) + 3;
 	buf = malloc(n);
 	base64 = malloc(2 * n);
@@ -421,7 +451,10 @@ hello(char *me, int encrypted)
 			s_free(r);
 			return(dotls(me));
 		}
-		if(tryauth && encrypted &&
+		if(tryauth &&
+#ifdef AUTH_ON_TLS_SESSIONS_ONLY
+encrypted && 
+#endif
 		    (strncmp(s, "250 AUTH", strlen("250 AUTH")) == 0 ||
 		     strncmp(s, "250-AUTH", strlen("250 AUTH")) == 0) &&
 		    strstr(s, "PLAIN") != nil){
