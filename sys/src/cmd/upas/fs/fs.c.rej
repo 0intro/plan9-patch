@@ -1,0 +1,74 @@
+--- sys/src/cmd/upas/fs/fs.c	Sun Apr  2 04:50:52 2006
++++ sys/src/cmd/upas/fs/fs.c	Sun Apr  2 04:50:31 2006
+@@ -2,6 +2,7 @@
+ #include <auth.h>
+ #include <fcall.h>
+ #include <libsec.h>
++#include <ctype.h>
+ #include "dat.h"
+ 
+ enum
+@@ -139,7 +140,7 @@
+ void
+ usage(void)
+ {
+-	fprint(2, "usage: %s [-b -m mountpoint]\n", argv0);
++	fprint(2, "usage: upas/fs [-bdlnps] [-f mboxfile] [-m mountpoint]\n");
+ 	exits("usage");
+ }
+ 
+@@ -176,10 +177,10 @@
+ 		break;
+ 	case 'f':
+ 		fflag = 1;
+-		mboxfile = ARGF();
++		mboxfile = EARGF(usage());
+ 		break;
+ 	case 'm':
+-		mntpt = ARGF();
++		mntpt = EARGF(usage());
+ 		break;
+ 	case 'd':
+ 		debug = 1;
+@@ -200,6 +201,8 @@
+ 		usage();
+ 	}ARGEND
+ 
++	if(argc)
++		usage();
+ 	if(pipe(p) < 0)
+ 		error("pipe failed");
+ 	mfd[0] = p[0];
+@@ -1432,21 +1435,20 @@
+ String*
+ stringconvert(String *s, char *uneaten, int len)
+ {
+-	char *token;
+-	char *p;
+-	int i;
++	char *token, *p, *e;
+ 
+ 	s = s_reset(s);
+ 	p = uneaten;
+-	for(i = 0; i < len; i++){
+-		if(*p++ == '='){
+-			token = rfc2047start(uneaten, p);
+-			if(token != nil){
+-				s_nappend(s, uneaten, token-uneaten);
+-				if(rfc2047convert(s, token, p - token) < 0)
+-					s_nappend(s, token, p - token);
+-				uneaten = p;
+-			}
++	for(e = p+len; p < e; ){
++		while(*p++ == '=' && (token = rfc2047start(uneaten, p))){
++			s_nappend(s, uneaten, token-uneaten);
++			if(rfc2047convert(s, token, p - token) < 0)
++				s_nappend(s, token, p - token);
++			uneaten = p;
++			for(; p<e && isspace(*p);)
++				p++;
++			if(p+2 < e && p[0] == '=' && p[1] == '?')
++				uneaten = p;	// paste
+ 		}
+ 	}
+ 	if(p > uneaten)
