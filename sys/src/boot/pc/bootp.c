@@ -587,7 +587,7 @@ pxewalk(File* f, char* name)
 	default:
 		return -1;
 	case 0:
-		if(strcmp(name, "cfg") == 0){
+		if(strcmp(name, "lib") == 0){
 			f->walked = 1;
 			return 1;
 		}
@@ -599,17 +599,18 @@ pxewalk(File* f, char* name)
 		}
 		break;
 	case 2:
-		if(strcmp(name, "%E") != 0)
-			break;
-		f->walked = 3;
-
 		if(bootpopen(f->fs->dev, nil, &rep, 0) < 0)
 			return 0;
-
 		ini = pxether[f->fs->dev].ini;
-		snprint(ini, INIPATHLEN, "/cfg/pxe/%E", rep.chaddr);
-		f->path = ini;
 
+		if(strcmp(name, "default") == 0)
+			snprint(ini, INIPATHLEN, "/lib/pxe/default");
+		else if (strcmp(name, "%E") == 0)
+			snprint(ini, INIPATHLEN, "/lib/pxe/%E", rep.chaddr);
+		else
+			return 0;
+		f->walked = 3;
+		f->path = ini;
 		return 1;
 	}
 	return 0;

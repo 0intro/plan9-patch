@@ -16,7 +16,7 @@ static char *diskinis[] = {
 	0
 };
 static char *etherinis[] = {
-	"/cfg/pxe/%E",
+	"/lib/pxe/default",
 	0
 };
 
