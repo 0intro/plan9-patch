@@ -4,20 +4,20 @@ newuser \- adding a new user
 .SH SYNOPSIS
 .B /sys/lib/newuser
 .SH DESCRIPTION
-To establish a new user on Plan 9,
-add the user's name to
-.B /adm/users
-by running the
-.B newuser
-command on the console of the file server
-(see
-.IR users (6)
-and
-.IR fs (8)).
-Next, give the user a password using the
-.B changeuser
-command on the console of the authentication server
-(see
+To create a new user on Plan 9, add the user to
+.IR fossil (4)
+with the
+.B uname
+command and create
+.BR /mail/box/$user
+to hold the user's mailbox
+with the
+.B create
+command (see
+.IR fossilcons(8)).
+Next, give the user a password using
+.B auth/changeuser
+on the console of the authentication server (see
 .IR auth (8)).
 At this point, the user can bootstrap a terminal using the new name and
 password.
@@ -41,8 +41,11 @@ type
 .EE
 .PP
 to build the necessary directories in
-.B /usr/$user
-and create a reasonable initial profile in
+.B /usr/$user,
+create
+.BR /mail/box/$user/mbox,
+.BR /cron/$user/cron,
+a reasonable initial profile in
 .BR /usr/$user/lib/profile
 and
 plumbing rules in
@@ -52,7 +55,7 @@ plumbing rules in
 The script then runs the profile which, as its last step, brings up
 .IR rio (1).
 At this point the user's environment is established and running.
-(There is no need to reboot.)
+There is no need to reboot.
 It may be prudent at this point to run
 .IR passwd (1)
 to change the password, depending on how the initial password was chosen.
@@ -80,6 +83,7 @@ case terminal
 case cpu
 	if (test -e /mnt/term/mnt/wsys) {
 		# rio already running
+		wsys = /mnt/term^`{cat /mnt/term/env/wsys}
 		bind -a /mnt/term/mnt/wsys /dev
 		echo -n $sysname > /dev/label
 	}
@@ -93,6 +97,8 @@ case cpu
 	if (! test -e /mnt/term/mnt/wsys) {
 		# cpu call from drawterm
 		font=/lib/font/bit/pelm/latin1.8.font
+		auth/factotum
+		plumber
 		exec rio
 	}
 case con
@@ -104,16 +110,22 @@ case con
 Sites may make changes to
 .B /sys/lib/newuser
 that reflect the properties of the local environment.
-.PP
-Use the
-.B -c
-option of
-.IR mail (1)
-to create a mailbox.
+.SH EXAMPLES
+To add $user to
+.B fossil
+and create directory
+.BR /mail/box/$user:
+.IP
+.EX
+echo uname $user $user >> /srv/fscons
+echo fsys main create /active/mail/box/$user \\
+	$user upas d775 >> /srv/fscons
+.EE
 .SH "SEE ALSO"
 .IR passwd (1),
 .IR rio (1),
 .IR namespace (4),
+.IR fossil (4),
 .IR users (6),
 .IR auth (8),
-.IR fs (8)
+.IR fossilcons (8).
