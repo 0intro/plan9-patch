@@ -1,0 +1,13 @@
+.TH SIG 1
+.SH NAME
+sig \- function prototype (signature)
+.SH SYNOPSIS
+.B sig
+.I pattern...
+.SH DESCRIPTION
+.I Sig
+prints function prototypes from the on-line manuals that match the supplied pattern(s).
+.SH FILES
+.B /sys/man/2/*
+.SH SOURCE
+.B /rc/bin/sig
