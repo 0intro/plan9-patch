@@ -61,7 +61,7 @@ void	unreadline(char*);
 
 int	verbose;
 char	*net;
-char	tcpdir[64];
+char	tcpdir[NETPATHLEN];
 int	headerprint;
 
 struct {
