@@ -1,5 +1,6 @@
 #include <u.h>
 #include <libc.h>
+#include <libsec.h>
 #include <auth.h>
 #include <authsrv.h>
 
@@ -75,6 +76,64 @@ setenv(char *var, char *val)
 		close(fd);
 	}
 }
+
+void
+memrandom(void *p, int n)
+{
+	uchar *cp;
+
+	for(cp = (uchar*)p; n > 0; n--)
+		*cp++ = fastrand();
+}
+
+/*
+ *  create a change uid capability 
+ */
+AuthInfo*
+mkcap(char *from, char *to)
+{
+	AuthInfo *ai;
+	uchar rand[20];
+	char *cap;
+	char *key;
+	int nfrom, nto, caphashfd;
+	uchar hash[SHA1dlen];
+
+	caphashfd = open("#¤/caphash", OWRITE);
+	if(caphashfd < 0)
+		return nil;
+
+	/* create the capability */
+	nto = strlen(to);
+	nfrom = strlen(from);
+	cap = malloc(nfrom+1+nto+1+sizeof(rand)*3+1);
+	if(!cap)
+		return nil;
+	sprint(cap, "%s@%s", from, to);
+	memrandom(rand, sizeof(rand));
+	key = cap+nfrom+1+nto+1;
+	enc64(key, sizeof(rand)*3, rand, sizeof(rand));
+
+	/* hash the capability */
+	hmac_sha1((uchar*)cap, strlen(cap), (uchar*)key, strlen(key), hash, nil);
+
+	/* give the kernel the hash */
+	key[-1] = '@';
+	if(write(caphashfd, hash, SHA1dlen) < 0){
+		free(cap);
+		return nil;
+	}
+
+	ai = malloc(sizeof *ai);
+	if(ai) {
+		ai->cap = cap;
+		ai->cuid = strdup(to);
+		ai->suid = strdup("");
+		ai->secret = (uchar*)strdup("");
+	}
+	return ai;
+}
+
 
 /*
  *  become the authenticated user
@@ -160,19 +219,22 @@ main(int argc, char *argv[])
 
 	rfork(RFENVG|RFNAMEG);
 
-	service = getenv("service");
-	if(strcmp(service, "cpu") == 0)
-		sysfatal("not from a cpu server!");
 	if(argc != 1){
 		fprint(2, "usage: login username\n");
 		exits("usage");
 	}
 	user = argv[0];
-	memset(pass, 0, sizeof(pass));
-	readln("Password: ", pass, sizeof(pass), 1);
+	service = getenv("service");
+	if(strcmp(service, "cpu") == 0);
+		print("warning: running on the cpu server!\n");
 
 	/* authenticate */
-	ai = auth_userpasswd(user, pass);
+	ai = mkcap(getuser(), user);
+	if(!ai) {
+		memset(pass, 0, sizeof(pass));
+		readln("Password: ", pass, sizeof(pass), 1);
+		ai = auth_userpasswd(user, pass);
+	}
 	if(ai == nil || ai->cap == nil)
 		sysfatal("login incorrect");
 
