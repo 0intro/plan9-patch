@@ -264,6 +264,8 @@ rdconf(void)
 		nexterror();
 	}
 	*ccp = namec(s, Aopen, OREAD, 0);
+	if (*ccp == nil)
+		panic("devfs rdconf %s", s);
 	devtab[(*ccp)->type]->read(*ccp, confstr, sizeof(confstr), 0);
 	cclose(*ccp);
 	*ccp = nil;
