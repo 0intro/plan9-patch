@@ -1,0 +1,22 @@
+.TH DELKEY 1
+.SH NAME
+delekey \- delete unwanted keys from factotum
+.SH SYNOPSIS
+.B delkey
+.I pattern
+.SH DESCRIPTION
+.I Delkey
+prints lines from factotum's key database that match the given
+.IR pattern
+and prompts the user wether this key should be deleted. The letter
+\fBy\fR confirms the key should be deleted, \fBq\fR aborts the key list,
+and a blank line keeps the key.
+.PP
+A factotum mounted from a remote terminal is always chosen over a local
+one - This is the expected behaveiour on cpu servers. 
+.SH FILES
+.B /mnt/factotum/ctl
+.br
+/mnt/term/mnt/factotum/ctl
+.SH SOURCE
+.B /rc/bin/delkey

@@ -1,0 +1,24 @@
+.TH SCREENLOCK 1
+.SH NAME
+screenlock \- disable access to a terminal
+.SH SYNOPSIS
+.B screenlock
+[
+.B -p
+]
+.SH DESCRIPTION
+.I Screenlock
+grabs the screen, keyboard, and mouse devices to disable access to a Plan 9 terminal.
+The screen can be unlocked by typing the password followed by a newline.
+.PP
+The
+.B -p
+option sets the password.
+.SH FILES
+.TP
+.B /usr/$user/lib/lockhash
+the SHA1 hash of the password
+.SH SOURCE
+.B /sys/src/cmd/screenlock.c
+.SH BUGS
+Use of this program is anti-social.
