@@ -1,0 +1,9 @@
+--- sys/src/cmd/vnc/mkfile	Mon Apr 19 00:16:01 2004
++++ sys/src/cmd/vnc/mkfile	Mon Apr 19 00:16:00 2004
+@@ -57,3 +57,6 @@
+ 
+ errstr.h:	error.h
+ 	sed 's/extern //;s,;.*/\* (.*) \*/, = "\1";,' < error.h > errstr.h
++
++kbds.$O:	ksym2utf.h
++kbdv.$O:	utf2ksym.h
