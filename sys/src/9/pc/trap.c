@@ -313,6 +313,7 @@ trap(Ureg* ureg)
 		cycles(&up->kentry);
 	}
 
+	clockintr = 0;
 	vno = ureg->trap;
 	if(ctl = vctl[vno]){
 		if(ctl->isintr){
