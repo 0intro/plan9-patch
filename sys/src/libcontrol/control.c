@@ -111,8 +111,8 @@ _ctllookup(char *s, char *tab[], int ntab)
 {
 	int i;
 
-	for(i=0; i<ntab && tab[i] != nil; i++)
-		if(strcmp(s, tab[i]) == 0)
+	for(i=0; i<ntab; i++)
+		if(tab[i] != nil && strcmp(s, tab[i]) == 0)
 			return i;
 	return -1;
 }

@@ -26,7 +26,6 @@ enum	/* types */
 	Ctltabs,
 	Ctltext,
 	Ctltextbutton,
-	Ctltextbutton3,
 	Ctlgroup,		// divider between controls and metacontrols
 	Ctlboxbox,
 	Ctlcolumn,
