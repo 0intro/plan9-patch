@@ -284,6 +284,8 @@ elogapply(File *f)
 			}
 			textconstrain(t, b.q0, b.q0+b.nd, &tq0, &tq1);
 			textdelete(t, tq0, tq1, TRUE);
+			q0 = t->q0;
+			q1 = t->q1;
 			break;
 
 		case Insert:
