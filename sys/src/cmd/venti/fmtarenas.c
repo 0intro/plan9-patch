@@ -5,7 +5,7 @@
 void
 usage(void)
 {
-	fprint(2, "usage: fmtarenas [-Z] [-b blocksize] [-a arenasize] name file\n");
+	fprint(2, "usage: fmtarenas [-Z] [-b blocksize] [-a arenasize | -n arenanum] name file\n");
 	exits(0);
 }
 
@@ -17,7 +17,7 @@ main(int argc, char *argv[])
 	Arena *arena;
 	u64int addr, limit, asize, apsize;
 	char *file, *name, aname[ANameSize];
-	int i, n, blockSize, tabSize, zero;
+	int i, anum, blockSize, tabSize, zero;
 
 	fmtinstall('V', vtScoreFmt);
 	fmtinstall('R', vtErrFmt);
@@ -25,11 +25,14 @@ main(int argc, char *argv[])
 	statsInit();
 
 	blockSize = 8 * 1024;
-	asize = 512 * 1024 *1024;
+	asize = 0;
+	anum = 0;
 	tabSize = 64 * 1024;		/* BUG: should be determine from number of arenas */
 	zero = 1;
 	ARGBEGIN{
 	case 'a':
+		if (anum > 0)
+			usage();
 		asize = unittoull(ARGF());
 		if(asize == TWID64)
 			usage();
@@ -42,6 +45,13 @@ main(int argc, char *argv[])
 			fprint(2, "block size too large, max %d\n", MaxDiskBlock);
 			exits("usage");
 		}
+		break;
+	case 'n':
+		if (asize > 0)
+			usage();
+		anum = unittoull(ARGF());
+		if(anum == TWID64)
+			usage();
 		break;
 	case 'Z':
 		zero = 0;
@@ -72,17 +82,22 @@ main(int argc, char *argv[])
 		fatal("can't initialize arena: %R");
 
 	apsize = ap->size - ap->arenaBase;
-	n = apsize / asize;
+	if (asize == 0 && anum == 0)
+		asize = 512 * 1024 * 1024;
+	if (anum == 0)
+		anum = apsize / asize;
+	else
+		asize = apsize / anum;
 
 	fprint(2, "configuring %s with arenas=%d for a total storage of bytes=%lld and directory bytes=%d\n",
-		file, n, apsize, ap->tabSize);
+		file, anum, apsize, ap->tabSize);
 
-	ap->narenas = n;
-	ap->map = MKNZ(AMap, n);
-	ap->arenas = MKNZ(Arena*, n);
+	ap->narenas = anum;
+	ap->map = MKNZ(AMap, anum);
+	ap->arenas = MKNZ(Arena*, anum);
 
 	addr = ap->arenaBase;
-	for(i = 0; i < n; i++){
+	for(i = 0; i < anum; i++){
 		limit = addr + asize;
 		snprint(aname, ANameSize, "%s%d", name, i);
 		fprint(2, "adding arena %s at [%lld,%lld)\n", aname, addr, limit);
