@@ -58,6 +58,9 @@ users' files
 .br
 .B /lib/ndb/auth
 for mapping local userid to RADIUS userid
+.br
+.B /sys/log/secstore
+log file (secstored logs to /dev/cons if it does not exist)
 .SH SOURCE
 .B /sys/src/cmd/auth/secstore
 .SH SEE ALSO
