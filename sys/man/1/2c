@@ -52,7 +52,6 @@ Let the first letter of the compiler name be
 .IR O =
 .BR 1 ,
 .BR 2 ,
-.BR 4 ,
 .BR 5 ,
 .BR 7 ,
 .BR 8 ,

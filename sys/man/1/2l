@@ -18,8 +18,8 @@ load the named
 into executable files for the corresponding architectures; see
 .IR 2c (1)
 for the correspondence between an architecture and the character
-.RB ( 0 ,
-.RB 1 ,
+.RB ( 1 ,
+.RB 2 ,
 etc.) that specifies it.
 The files should be object files or libraries (archives of object files)
 for the appropriate architecture.
