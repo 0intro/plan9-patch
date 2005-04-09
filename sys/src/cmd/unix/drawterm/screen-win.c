@@ -405,7 +405,7 @@ WindowProc(HWND hwnd, UINT msg, WPARAM wparam, LPARAM lparam)
 			kbdputc(Kins);
 			break;
 		case VK_DELETE:
-			kbdputc(Kdel);
+			kbdputc(0x7F);
 			break;
 		case VK_UP:
 			kbdputc(Kup);
