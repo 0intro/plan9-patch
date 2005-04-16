@@ -38,8 +38,6 @@ hwdraw \- drawing routines for memory-resident images
 .SH SYNOPSIS
 .nf
 .B #include <u.h>
-.nf
-.B #include <u.h>
 .B #include <libc.h>
 .B #include <draw.h>
 .B #include <memdraw.h>
