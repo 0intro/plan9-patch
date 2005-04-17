@@ -298,5 +298,13 @@ since installation, run
 since 
 .I changes
 is a local-only operation, the network need not be configured.)
+.SH SOURCE
+.B /rc/bin/replica/pull
+.br
+.B /rc/bin/replica/push
+.br
+.B /rc/bin/replica/changes
+.br
+.B /rc/bin/replica/scan
 .SH SEE ALSO
 .IR replica (8)

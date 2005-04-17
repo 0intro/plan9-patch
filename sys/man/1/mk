@@ -133,7 +133,7 @@ A rule takes the form
 .IP
 .EX
 target: prereq1 prereq2
-        rc \f2recipe using\fP prereq1, prereq2 \f2to build\fP target
+        \f2recipe using\fP prereq1, prereq2 \f2to build\fP target
 .EE
 .PP
 When the recipe is executed,
@@ -254,6 +254,8 @@ Rules may make use of
 environment variables.
 A legal reference of the form
 .B $OBJ
+or
+.B ${name}
 is expanded as in
 .IR rc (1).
 A reference of the form
@@ -303,6 +305,7 @@ and any command line assignment as an argument to
 .IR mk .
 A variable assignment argument overrides the first (but not any subsequent)
 assignment to that variable.
+.PP
 The variable
 .B MKFLAGS
 contains all the option arguments (arguments starting with
@@ -628,21 +631,29 @@ x.tab.h:Pcmp -s:	y.tab.h
 .SH SEE ALSO
 .IR rc (1),
 .IR regexp (6)
-.br
+.PP
 A. Hume,
-``Mk: a Successor to Make''.
-.br
-Bob Flandrena,
-``Plan 9 Mkfiles''.
+``Mk: a Successor to Make''
+(Tenth Edition Research Unix Manuals).
+.PP
+Andrew G. Hume and Bob Flandrena,
+``Maintaining Files on Plan 9 with Mk''.
+DOCPREFIX/doc/mk.pdf
+.SH HISTORY
+Andrew Hume wrote
+.I mk
+for Tenth Edition Research Unix.
+It was later ported to Plan 9.
+This software is a port of the Plan 9 version back to Unix.
 .SH BUGS
 Identical recipes for regular expression meta-rules only have one target.
-.br
+.PP
 Seemingly appropriate input like
 .B CFLAGS=-DHZ=60
 is parsed as an erroneous attribute; correct it by inserting
 a space after the first 
 .LR = .
-.br
+.PP
 The recipes printed by
 .I mk
 before being passed to
