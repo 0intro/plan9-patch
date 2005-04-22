@@ -10,6 +10,7 @@
  *		68020,
  *		i386,
  *		sparc,
+ *		sparc64,
  *		mips2 (R4000)
  *		arm
  *		power pc
@@ -30,6 +31,7 @@ enum
 	MPOWER,
 	MALPHA,
 	NMIPS,
+	MSPARC64,
 				/* types of executables */
 	FNONE = 0,		/* unidentified */
 	FMIPS,			/* v.out */
@@ -54,6 +56,7 @@ enum
 	FALPHA,			/* 7.out */
 	FALPHAB,		/* DEC Alpha bootable */
 	FMIPSLE,		/* 3k little endian */
+	FSPARC64,	/* u.out */
 
 	ANONE = 0,		/* dissembler types */
 	AMIPS,
@@ -68,6 +71,7 @@ enum
 	AARM,
 	APOWER,
 	AALPHA,
+	ASPARC64,
 				/* object file types */
 	Obj68020 = 0,		/* .2 */
 	ObjSparc,		/* .k */
@@ -81,6 +85,7 @@ enum
 	ObjPower,		/* .q */
 	ObjMips2le,		/* .0 */
 	ObjAlpha,		/* .7 */
+	ObjSparc64,	/* .u */
 	Maxobjtype,
 
 	CNONE  = 0,		/* symbol table classes */
