@@ -1,0 +1,22 @@
+#!/bin/rc
+
+opts=$1;shift
+f=$1;shift
+
+switch ($f) {
+case (~ $f  '(\.tar\.gz|\.tgz)$')
+	c='gzip'
+	uc='gunzip'
+case (~ $f  '(\.tar\.bz|\.tbz|\.tar\.bz2|\.tbz2)$')
+	c='bzip2'
+	uc='bunzip2'
+case (~ $f  '(\.tar\.Z|\.tz)$')
+	c='compress'
+	uc='uncompress'
+}
+
+if(~ $opts 'x')
+	cat $f | $uc | tar $opts 
+if not {
+	tar $opts $* | $c > $f
+}

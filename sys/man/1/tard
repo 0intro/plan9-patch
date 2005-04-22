@@ -1,0 +1,18 @@
+.TH TARD 1
+.SH NAME
+tard \- tar with file compression detection
+.SH SYNOPSIS
+.B tard 
+.I opts
+.I  file 
+[
+.I files ...
+]
+.SH DESCRIPTION
+.I Tard 
+Calls tar and does (de)compression depending on the extension of the third parameter.
+
+.SH SOURCE
+.B /rc/bin/tard
+.SH "SEE ALSO"
+.IR tar (1)

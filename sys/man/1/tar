@@ -108,40 +108,7 @@ With
 .BR t ,
 give more details about the
 archive entries.
-.TP
-.B z
-Operate on compressed tar archives.
-The type of compression is inferred from the file name extension:
-.IR gzip (1)
-for
-.B .tar.gz
-and
-.BR .tgz ;
-.I bzip2
-(see
-.IR gzip (1))
-for
-.BR .tar.bz ,
-.BR .tbz ,
-.BR .tar.bz2 ,
-and
-.BR .tbz2 ;
-.I compress
-(not distributed)
-for
-.B .tar.Z
-and
-.BR .tz .
-If no extension matches,
-.I gzip
-is used.
-The
-.B z
-flag is unnecessary (but allowed) when using the
-.B t
-and
-.B x
-verbs on archives with recognized extensions.
+
 .SH EXAMPLES
 .I Tar
 can be used to copy hierarchies thus:
@@ -155,6 +122,7 @@ can be used to copy hierarchies thus:
 .IR ar (1),
 .IR bundle (1),
 .IR tapefs (1)
+.IR tard (1)
 .SH BUGS
 There is no way to ask for any but the last
 occurrence of a file.

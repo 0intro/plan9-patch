@@ -93,18 +93,6 @@ typedef union {
 	};
 } Hdr;
 
-typedef struct {
-	char	*comp;
-	char	*decomp;
-	char	*sfx[4];
-} Compress;
-
-static Compress comps[] = {
-	"gzip",		"gunzip",	{ ".tar.gz", ".tgz" },	/* default */
-	"compress",	"uncompress",	{ ".tar.Z",  ".tz" },
-	"bzip2",	"bunzip2",	{ ".tar.bz", ".tbz",
-					  ".tar.bz2",".tbz2" },
-};
 
 typedef struct {
 	int	kid;
@@ -125,7 +113,6 @@ static int argid;
 static int relative = 1;
 static int settime;
 static int verbose;
-static int docompress;
 static int keepexisting;
 static Off nexthdr;
 
@@ -143,80 +130,6 @@ usage(void)
 	exits("usage");
 }
 
-/* compression */
-
-static Compress *
-compmethod(char *name)
-{
-	int i, nmlen = strlen(name), sfxlen;
-	Compress *cp;
-
-	for (cp = comps; cp < comps + nelem(comps); cp++)
-		for (i = 0; i < nelem(cp->sfx) && cp->sfx[i]; i++) {
-			sfxlen = strlen(cp->sfx[i]);
-			if (nmlen > sfxlen &&
-			    strcmp(cp->sfx[i], name + nmlen - sfxlen) == 0)
-				return cp;
-		}
-	return docompress? comps: nil;
-}
-
-/*
- * push a filter, cmd, onto fd.  if input, it's an input descriptor.
- * returns a descriptor to replace fd, or -1 on error.
- */
-static int
-push(int fd, char *cmd, int input, Pushstate *ps)
-{
-	int nfd, pifds[2];
-	String *s;
-
-	ps->open = 0;
-	ps->fd = fd;
-	ps->input = input;
-	if (fd < 0 || pipe(pifds) < 0)
-		return -1;
-	ps->kid = fork();
-	switch (ps->kid) {
-	case -1:
-		return -1;
-	case 0:
-		if (input)
-			dup(pifds[Wr], Stdout);
-		else
-			dup(pifds[Rd], Stdin);
-		close(pifds[input? Rd: Wr]);
-		dup(fd, (input? Stdin: Stdout));
-		s = s_new();
-		if (cmd[0] != '/')
-			s_append(s, "/bin/");
-		s_append(s, cmd);
-		execl(s_to_c(s), cmd, nil);
-		sysfatal("can't exec %s: %r", cmd);
-	default:
-		nfd = pifds[input? Rd: Wr];
-		close(pifds[input? Wr: Rd]);
-		break;
-	}
-	ps->rfd = nfd;
-	ps->open = 1;
-	return nfd;
-}
-
-static char *
-pushclose(Pushstate *ps)
-{
-	Waitmsg *wm;
-
-	if (ps->fd < 0 || ps->rfd < 0 || !ps->open)
-		return "not open";
-	close(ps->rfd);
-	ps->rfd = -1;
-	ps->open = 0;
-	while ((wm = wait()) != nil && wm->pid != ps->kid)
-		continue;
-	return wm? wm->msg: nil;
-}
 
 /*
  * block-buffer management
@@ -674,19 +587,13 @@ replace(char **argv)
 	ulong blksleft, blksread;
 	Off bytes;
 	Hdr *hp;
-	Compress *comp = nil;
-	Pushstate ps;
 
 	if (usefile && docreate) {
 		ar = create(usefile, OWRITE, 0666);
-		if (docompress)
-			comp = compmethod(usefile);
 	} else if (usefile)
 		ar = open(usefile, ORDWR);
 	else
 		ar = Stdout;
-	if (comp)
-		ar = push(ar, comp->comp, Output, &ps);
 	if (ar < 0)
 		sysfatal("can't open archive %s: %r", usefile);
 
@@ -720,8 +627,6 @@ replace(char **argv)
 	getblkz(ar);
 	putlastblk(ar);
 
-	if (comp)
-		return pushclose(&ps);
 	if (ar > Stderr)
 		close(ar);
 	return nil;
@@ -913,16 +818,11 @@ extract(char **argv)
 	int ar;
 	char *longname;
 	Hdr *hp;
-	Compress *comp = nil;
-	Pushstate ps;
 
 	if (usefile) {
 		ar = open(usefile, OREAD);
-		comp = compmethod(usefile);
 	} else
 		ar = Stdin;
-	if (comp)
-		ar = push(ar, comp->decomp, Input, &ps);
 	if (ar < 0)
 		sysfatal("can't open archive %s: %r", usefile);
 
@@ -934,8 +834,6 @@ extract(char **argv)
 			skip(ar, hp, longname);
 	}
 
-	if (comp)
-		return pushclose(&ps);
 	if (ar > Stderr)
 		close(ar);
 	return nil;
@@ -993,9 +891,6 @@ main(int argc, char *argv[])
 		break;
 	case 'x':
 		verb = Xtract;
-		break;
-	case 'z':
-		docompress++;
 		break;
 	case '-':
 		break;
