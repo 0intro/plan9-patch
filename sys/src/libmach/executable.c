@@ -57,6 +57,7 @@ extern	Mach	mmips;
 extern	Mach	mmips2le;
 extern	Mach	mmips2be;
 extern	Mach	msparc;
+extern	Mach	msparc64;
 extern	Mach	m68020;
 extern	Mach	mi386;
 extern	Mach	marm;
@@ -121,6 +122,14 @@ ExecTable exectab[] =
 		sizeof(struct sparcexec),
 		beswal,
 		sparcboot },
+	{ U_MAGIC,			/* Sparc64 u.out */
+		"sparc64 plan 9 executable",
+		"sparc64 plan 9 dlm",
+		FSPARC64,
+		&msparc64,
+		sizeof(Exec),
+		beswal,
+		adotout },
 	{ A_MAGIC,			/* 68020 2.out & boot image */
 		"68020 plan 9 executable",
 		"68020 plan 9 dlm",
@@ -506,6 +515,10 @@ elfdotout(int fd, Fhdr *fp, ExecHdr *hp)
 		mach = &mmips;
 		fp->type = FMIPS;
 		break;
+	case SPARC64:
+		mach = &msparc64;
+		fp->type = FSPARC64;
+		break;
 	case POWER:
 		mach = &mpower;
 		fp->type = FPOWER;
@@ -542,6 +555,29 @@ elfdotout(int fd, Fhdr *fp, ExecHdr *hp)
 			is = i;
 	}
 	if(it == -1 || id == -1) {
+		/* 
+		 * The SPARC64 boot image is something of an ELF hack.
+		 * Text+Data+BSS are represented by ph[0].  Symbols
+		 * are represented by ph[1]:
+		 *
+		 *		filesz, memsz, vaddr, paddr, off
+		 * ph[0] : txtsz+datsz, txtsz+datsz+bsssz, txtaddr-KZERO, datasize,  txtoff
+		 * ph[1] : symsz, lcsz, 0, 0, symoff
+		 */
+		if(ep->machine == SPARC64 && ep->phnum == 2) {
+			ulong txtaddr, txtsz, dataddr, bsssz;
+
+			txtaddr = ph[0].vaddr | 0x80000000;
+			txtsz = ph[0].filesz - ph[0].paddr;
+			dataddr = txtaddr + txtsz;
+			bsssz = ph[0].memsz - ph[0].filesz;
+			settext(fp, ep->elfentry | 0x80000000, txtaddr, txtsz, ph[0].offset);
+			setdata(fp, dataddr, ph[0].paddr, ph[0].offset + txtsz, bsssz);
+			setsym(fp, ph[1].filesz, 0, ph[1].memsz, ph[1].offset);
+			free(ph);
+			return 1;
+		}
+
 		werrstr("No TEXT or DATA sections");
 		free(ph);
 		return 0;

@@ -11,6 +11,7 @@ FILES=executable\
 	setmach\
 	v\
 	k\
+	u\
 	q\
 	0\
 	2\
@@ -19,6 +20,7 @@ FILES=executable\
 	7\
 	vdb\
 	kdb\
+	udb\
 	qdb\
 	2db\
 	8db\
@@ -26,6 +28,7 @@ FILES=executable\
 	7db\
 	vobj\
 	kobj\
+	uobj\
 	2obj\
 	8obj\
 	5obj\

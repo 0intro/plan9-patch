@@ -79,6 +79,7 @@ enum {
 	I860 = 7,		/* Intel i860 */
 	MIPS = 8,		/* Mips R2000 */
 	S370 = 9,		/* Amdhal	*/
+	SPARC64 = 18,	/* Sun SPARC v9 */
 	POWER = 20,		/* PowerPC */
 
 	NO_VERSION = 0,		/* version, ident[VERSION] */
