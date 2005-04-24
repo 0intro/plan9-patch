@@ -123,6 +123,7 @@ bar(Biobuf *b)
 	Event e;
 	int k, die, parent, child;
 
+	child = -1;
 	parent = getpid();
 
 	die = 0;
@@ -148,7 +149,6 @@ bar(Biobuf *b)
 		drawbar();
 	}
 	postnote(PNCTL, child, "kill");
-	die = 1;
 }
 
 
@@ -192,14 +192,16 @@ main(int argc, char **argv)
 	while(q = strchr(p, ','))
 		*q = ' ';
 	Binit(&b, lfd, OREAD);
-	if(textmode || newwin(p) < 0){
-		textmode = 1;
-		rbar = Rect(0, 0, 60, 1);
-	}else{
-		initdraw(0, 0, "bar");
-		initcolor();
-		einit(Emouse|Ekeyboard);
-		eresized(0);
+	rbar = Rect(0, 0, 60, 1);
+	if(!textmode) {
+		if(newwin(p) < 0){
+			textmode = 1;
+		}else{
+			initdraw(0, 0, "bar");
+			initcolor();
+			einit(Emouse|Ekeyboard);
+			eresized(0);
+		}
 	}
 	bar(&b);
 }
@@ -233,7 +235,7 @@ newwin(char *win)
 {
 	char *srv, *mntsrv;
 	char spec[100];
-	int srvfd, cons, pid;
+	int srvfd, cons;
 
 	switch(rfork(RFFDG|RFPROC|RFNAMEG|RFENVG|RFNOTEG|RFNOWAIT)){
 	case -1:
@@ -255,9 +257,7 @@ newwin(char *win)
 		srv = malloc(strlen(mntsrv)+10);
 		sprint(srv, "/mnt/term%s", mntsrv);
 		free(mntsrv);
-		pid  = 0;			/* can't send notes to remote processes! */
-	}else
-		pid = getpid();
+	}
 	srvfd = open(srv, ORDWR);
 	free(srv);
 	if(srvfd == -1){
