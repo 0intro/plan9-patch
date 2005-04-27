@@ -12,7 +12,7 @@ OFILES=\
 HFILES=dat.h
 LIB=
 
-BIN=../$objtype
+BIN=/acme/bin/$objtype
 
 UPDATE=\
 	mkfile\

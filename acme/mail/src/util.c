@@ -77,18 +77,14 @@ egrow(char *s, char *sep, char *t)
 void
 error(char *fmt, ...)
 {
-	Fmt f;
-	char buf[64];
+	char buf[128];
 	va_list arg;
 
-	fmtfdinit(&f, 2, buf, sizeof buf);
-	fmtprint(&f, "Mail: ");
 	va_start(arg, fmt);
-	fmtvprint(&f, fmt, arg);
+	vsnprint(buf, sizeof buf, fmt, arg);
 	va_end(arg);
-	fmtprint(&f, "\n");
-	fmtfdflush(&f);
-	threadexitsall(fmt);
+	fprint(2, "Mail: %s\n", buf);
+	threadexitsall(buf);
 }
 
 void
