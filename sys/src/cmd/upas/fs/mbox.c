@@ -292,6 +292,7 @@ parseheaders(Message *m, int justmime, Mailbox *mb, int addfrom)
 			s_free(m->unixdate);
 			m->unixdate = nil;
 		}
+if(0){
 		// look for the date in the first Received: line.
 		// it's likely to be the right time zone (it's
 	 	// the local system) and in a convenient format.
@@ -310,6 +311,25 @@ parseheaders(Message *m, int justmime, Mailbox *mb, int addfrom)
 				}
 			}
 		}
+}else{
+		char *hp = m->header;
+		while (cistrncmp(hp, "received:", 9)==0){
+			if((q = strchr(hp, ';')) != nil){
+				p = q;
+				while((p = strchr(p, '\n')) != nil){
+					if(p[1] != ' ' && p[1] != '\t' && p[1] != '\n')
+						break;
+					p++;
+				}
+			}
+			hp = p;
+		}
+		if(p && *p=='\n'){
+			*p = '\0';
+			m->unixdate = date822tounix(q+1);
+			*p = '\n';
+		}
+}
 
 		// fall back on the rfc822 date	
 		if(m->unixdate==nil && m->date822)
@@ -1126,24 +1146,6 @@ convert(Message *m)
 			len = 2*len + m->bend - m->body + 1;
 			x = emalloc(len);
 			len = windows1257toutf(x, m->body, m->bend);
-			if(m->ballocd)
-				free(m->body);
-			m->body = x;
-			m->bend = x + len;
-			m->ballocd = 1;
-		}
-	} else if(cistrcmp(s_to_c(m->charset), "windows-1251") == 0){
-		len = xtoutf("cp1251", &x, m->body, m->bend);
-		if(len != 0){
-			if(m->ballocd)
-				free(m->body);
-			m->body = x;
-			m->bend = x + len;
-			m->ballocd = 1;
-		}
-	} else if(cistrcmp(s_to_c(m->charset), "koi8-r") == 0){
-		len = xtoutf("koi8", &x, m->body, m->bend);
-		if(len != 0){
 			if(m->ballocd)
 				free(m->body);
 			m->body = x;
