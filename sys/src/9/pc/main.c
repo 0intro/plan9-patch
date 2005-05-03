@@ -346,6 +346,7 @@ confinit(void)
 	char *p;
 	int userpcnt;
 	ulong kpages;
+	// uvlong kb;
 
 	if(p = getconf("*kernelpercent"))
 		userpcnt = 100 - strtol(p, 0, 0);
@@ -353,6 +354,8 @@ confinit(void)
 		userpcnt = 0;
 
 	conf.npage = conf.npage0 + conf.npage1;
+	// kb = (((uvlong)conf.npage * BY2PG)/1024);
+	// print("mem = %,llud.%3.3lludMB\n", kb/1024, ((kb%1024)*1000)/1024);
 
 	conf.nproc = 100 + ((conf.npage*BY2PG)/MB)*5;
 	if(cpuserver)
@@ -376,7 +379,12 @@ confinit(void)
 		 * The patch of nimage is a band-aid, scanning the whole
 		 * page list in imagereclaim just takes too long.
 		 */
-		if(kpages > (64*MB + conf.npage*sizeof(Page))/BY2PG){
+		/* 64MB is not always enough with Gbe */
+		if(kpages > (96*MB + conf.npage*sizeof(Page))/BY2PG){
+			kpages = (96*MB + conf.npage*sizeof(Page))/BY2PG;
+			conf.nimage = 2000;
+			kpages += (conf.nproc*KSTACK)/BY2PG;
+		} else if(kpages > (64*MB + conf.npage*sizeof(Page))/BY2PG){
 			kpages = (64*MB + conf.npage*sizeof(Page))/BY2PG;
 			conf.nimage = 2000;
 			kpages += (conf.nproc*KSTACK)/BY2PG;
@@ -631,6 +639,8 @@ shutdown(int ispanic)
 			break;
 	}
 
+	if (getconf("*debug"))
+		delay(5*60*1000);
 	if(active.ispanic && m->machno == 0){
 		if(cpuserver)
 			delay(10000);
@@ -640,6 +650,12 @@ shutdown(int ispanic)
 	}
 	else
 		delay(1000);
+	/*
+	 * give the poor terminal user a chance to read the crash messages
+	 * before clearing the screen!
+	 */
+	if (active.ispanic && !cpuserver)
+		delay(60*1000);
 }
 
 void
