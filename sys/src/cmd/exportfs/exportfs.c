@@ -67,7 +67,7 @@ usage(void)
 void
 main(int argc, char **argv)
 {
-	char buf[ERRMAX], ebuf[ERRMAX];
+	char buf[ERRMAX], ebuf[ERRMAX], isauth;
 	Fsrpc *r;
 	int n, fd;
 	char *dbfile, *srv, *file, *na, *nsfile, *keyspec;
@@ -80,24 +80,12 @@ main(int argc, char **argv)
 	na = nil;
 	nsfile = nil;
 	keyspec = "";
+	isauth = 'n';
 
 	ai = nil;
 	ARGBEGIN{
 	case 'a':
-		/*
-		 * We use p9any so we don't have to visit this code again, with the
-		 * cost that this code is incompatible with the old world, which
-		 * requires p9sk2. (The two differ in who talks first, so compatibility
-		 * is awkward.)
-		 */
-		ai = auth_proxy(0, auth_getkey, "proto=p9any role=server %s", keyspec);
-		if(ai == nil)
-			fatal("auth_proxy: %r");
-		if(nonone && strcmp(ai->cuid, "none") == 0)
-			fatal("exportfs by none disallowed");
-		if(auth_chuid(ai, nsfile) < 0)
-			fatal("auth_chuid: %r");
-		putenv("service", "exportfs");
+		isauth = 'y';
 		break;
 
 	case 'k':
@@ -172,6 +160,23 @@ main(int argc, char **argv)
 		usage();
 	}ARGEND
 	USED(argc, argv);
+
+	if(isauth == 'y'){
+		/*
+		 * We use p9any so we don't have to visit this code again, with the
+		 * cost that this code is incompatible with the old world, which
+		 * requires p9sk2. (The two differ in who talks first, so compatibility
+		 * is awkward.)
+		 */
+		ai = auth_proxy(0, auth_getkey, "proto=p9any role=server %s", keyspec);
+		if(ai == nil)
+			fatal("auth_proxy: %r");
+		if(nonone && strcmp(ai->cuid, "none") == 0)
+			fatal("exportfs by none disallowed");
+		if(auth_chuid(ai, nsfile) < 0)
+			fatal("auth_chuid: %r");
+		putenv("service", "exportfs");
+	}
 
 	if(na){
 		if(srv == nil)

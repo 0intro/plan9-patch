@@ -72,8 +72,12 @@ creates a new name space for each connection, using
 by default (see
 .IR namespace (6)).
 The
-.B -n
+.B -N
 option gives an alternative name space file.
+.PP
+The
+.B -n
+option disallows the export to the user none.
 .PP
 The
 .B -R
