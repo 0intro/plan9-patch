@@ -1,2 +1,6 @@
 #!/bin/rc
+
+if(! test -e /mnt/keys/*/secret)
+	auth/keyfs -wp -m /mnt/keys /adm/keys >/dev/null >[2=1]
+
 /bin/auth/authsrv -d $3
