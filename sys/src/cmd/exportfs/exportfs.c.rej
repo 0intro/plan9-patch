@@ -1,0 +1,18 @@
+--- sys/src/cmd/exportfs/exportfs.c	Mon Apr  5 23:27:16 2004
++++ sys/src/cmd/exportfs/exportfs.c	Mon Apr  5 23:27:16 2004
+@@ -68,13 +68,14 @@
+ 	char buf[ERRMAX], ebuf[ERRMAX];
+ 	Fsrpc *r;
+ 	int n;
+-	char *dbfile, *srv, *file;
++	char *dbfile, *srv, *file, *nsfile;
+ 	AuthInfo *ai;
+ 	ulong initial;
+ 
+ 	dbfile = "/tmp/exportdb";
+ 	srv = nil;
+ 	srvfd = -1;
++	nsfile = nil;
+ 
+ 	ai = nil;
+ 	ARGBEGIN{
