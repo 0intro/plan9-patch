@@ -4,7 +4,7 @@
 int
 parseether(uchar *to, char *from)
 {
-	char nip[4];
+	char nip[3];
 	char *p;
 	int i;
 
@@ -13,9 +13,13 @@ parseether(uchar *to, char *from)
 		if(*p == 0)
 			return -1;
 		nip[0] = *p++;
+		if (nip[0] >= 'A' && nip[0] <= 'F')
+			nip[0] |= ' ';
 		if(*p == 0)
 			return -1;
 		nip[1] = *p++;
+		if (nip[1] >= 'A' && nip[1] <= 'F')
+			nip[1] |= ' ';
 		nip[2] = 0;
 		to[i] = strtoul(nip, 0, 16);
 		if(*p == ':')
