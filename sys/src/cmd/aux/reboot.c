@@ -64,7 +64,7 @@ main(int argc, char **argv)
 
 	notify(ding);
 	if(argc > 1)
-		strcpy(file, argv[1]);
+		strncpy(file, sizeof(file), argv[1]);
 	else{
 		p = readenv("cputype", buf, sizeof(buf));
 		if(p == 0)

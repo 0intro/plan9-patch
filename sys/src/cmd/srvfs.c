@@ -78,7 +78,7 @@ main(int argc, char **argv)
 		fprint(2, "not OK (%d): %s\n", n, buf);
 		exits("OK");
 	}
-	if(argv[0][0] == '/')
+	if(argv[0] != nil && argv[0][0] == '/')
 		strcpy(buf, argv[0]);
 	else
 		sprint(buf, "/srv/%s", argv[0]);

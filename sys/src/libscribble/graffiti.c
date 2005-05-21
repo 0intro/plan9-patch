@@ -187,13 +187,11 @@ graffiti_load_recognizers(struct graffiti *pg)
 	/* ...then figure out where the classifiers are... */
 	if ( (homedir = (char*)getenv("home")) == nil ) {
 		if(0)fprint(2, "no homedir, using = %s\n", REC_DEFAULT_USER_DIR);
-		strcpy(pg->cldir, REC_DEFAULT_USER_DIR);
+		strncpy(pg->cldir, REC_DEFAULT_USER_DIR, sizeof(pg->cldir));
 		usingDefault = true;
 	} else {
 		if(0)fprint(2, "homedir = %s\n", homedir);
-		strcpy(pg->cldir, homedir);
-		strcat(pg->cldir, "/"); 
-		strcat(pg->cldir, CLASSIFIER_DIR); 
+		snprint(pg->cldir, sizeof(pg->cldir), "%s/%s", homedir, CLASSIFIER_DIR);
 		usingDefault = false;
 	}
 

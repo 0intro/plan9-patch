@@ -445,7 +445,7 @@ main (int argc, char **argv)
 	comment_arg = (char *) malloc((size_t) MAX_COM_LENGTH);
 	if (comment_arg == NULL)
 	  ERREXIT("Insufficient memory");
-	strcpy(comment_arg, argv[argn]+1);
+	strncpy(comment_arg, sizeof(comment_arg), argv[argn]+1);
 	for (;;) {
 	  comment_length = strlen(comment_arg);
 	  if (comment_length > 0 && comment_arg[comment_length-1] == '"') {

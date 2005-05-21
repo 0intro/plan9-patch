@@ -116,8 +116,7 @@ nextfile(void)
 			fprint(2, "split: file %szz not split\n",stem);
 		canopen = 0;
 	} else {
-		strcpy(name, stem);
-		strcat(name, suff);
+		snprint(name, sizeof(name), "%s%s", stem, suff);
 		if(++suff[1] > 'z') 
 			suff[1] = 'a', ++suff[0];
 		openf();
@@ -131,7 +130,7 @@ matchfile(Resub *match)
 	if(match[1].sp) {
 		int len = match[1].ep - match[1].sp;
 		strncpy(name, match[1].sp, len);
-		strcpy(name+len, suffix);
+		strncpy(name+len, suffix, sizeof(name) - len);
 		openf();
 		return 1;
 	} 
