@@ -14,7 +14,7 @@ main(int argc, char *argv[])
 	dest *dp;
 	Reprog *p;
 	Resub match[10];
-	char file[MAXPATHLEN];
+	char file[MAXPATHLEN + 1];
 	Biobuf *fp;
 	char *rcvr, *cp;
 	Mlock *l;
@@ -48,7 +48,7 @@ main(int argc, char *argv[])
 	}
 
 	dp = d_new(s_copy(argv[0]));
-	strcpy(file, argv[1]);
+	strecpy(file, file + sizeof(file), argv[1]);
 	cp = findbody(s_to_c(mp->body));
 	for(i = 2; i < argc; i += 2){
 		p = regcomp(argv[i]);

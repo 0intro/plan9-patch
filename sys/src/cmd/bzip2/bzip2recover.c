@@ -290,7 +290,7 @@ Int32 main ( Int32 argc, Char** argv )
       exit(1);
    }
 
-   strcpy ( inFileName, argv[1] );
+   strecpy ( inFileName, inFileName + sizeof(inFileName), argv[1] );
 
    inFile = fopen ( inFileName, "rb" );
    if (inFile == NULL) {

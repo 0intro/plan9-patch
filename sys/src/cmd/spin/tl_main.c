@@ -66,7 +66,7 @@ tl_main(int argc, char *argv[])
 					||  argv[1][i] == '\n')
 						argv[1][i] = ' ';
 				}
-				strcpy(uform, argv[1]);
+				strecpy(uform, uform + sizeof(uform), argv[1]);
 				hasuform = strlen(uform);
 				break;
 		case 'v':	tl_verbose++;

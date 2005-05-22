@@ -81,7 +81,7 @@ main(int argc, char *argv[])
 	}
 
 child:
-	strcpy(ofile, *argv);
+	strecpy(ofile, ofile + sizeof(ofile), *argv);
 	if(p = strrchr(ofile, '/')) {
 		include[0] = ofile;
 		*p++ = 0;
@@ -103,9 +103,7 @@ child:
 		if(p)
 			*p = thechar;
 	} else {
-		strcpy(incfile, "/");
-		strcat(incfile, thestring);
-		strcat(incfile, "/include");
+		snprint(incfile, sizeof(incfile), "/%s/include", thestring);
 	}
 	include[ninclude++] = incfile;
 	if(p = getenv("INCLUDE"))

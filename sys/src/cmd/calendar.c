@@ -77,7 +77,7 @@ main(int argc, char *argv[])
 			snprint(buf, sizeof(buf),
 				"/usr/%s/lib/calendar", getuser());
 		else
-			strcpy(buf, argv[i]);
+			strecpy(buf, buf + sizeof(buf), argv[i]);
 		fd = open(buf, OREAD);
 		if(fd<0 || Binit(&in, fd, OREAD)<0){
 			fprint(2, "calendar: can't open %s: %r\n", buf);

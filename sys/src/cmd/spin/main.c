@@ -317,14 +317,14 @@ main(int argc, char *argv[])
 	if (argc > 1)
 	{	char cmd[128], out2[64];
 #ifdef PC
-		strcpy(out1, "_tmp1_");
-		strcpy(out2, "_tmp2_");
+		strncpy(out1, "_tmp1_", sizeof(out1));
+		strncpy(out2, "_tmp2_", sizeof(out2));
 #else
 		/* extern char *tmpnam(char *);  in stdio.h */
 		if (add_ltl || nvr_file)
 		{	/* must remain in current dir */
-			strcpy(out1, "_tmp1_");
-			strcpy(out2, "_tmp2_");
+			strncpy(out1, "_tmp1_", sizeof(out1));
+			strncpy(out2, "_tmp2_", sizeof(out2));
 		} else
 		{	(void) tmpnam(out1);
 			(void) tmpnam(out2);
@@ -367,9 +367,9 @@ main(int argc, char *argv[])
 
 		if (strncmp(argv[1], "progress", 8) == 0
 		||  strncmp(argv[1], "accept", 6) == 0)
-			sprintf(cmd, "_%s", argv[1]);
+			snprintf(cmd, sizeof(cmd), "_%s", argv[1]);
 		else
-			strcpy(cmd, argv[1]);
+			strncpy(cmd, argv[1], sizeof(cmd));
 		oFname = Fname = lookup(cmd);
 		if (oFname->name[0] == '\"')
 		{	int i = strlen(oFname->name);
