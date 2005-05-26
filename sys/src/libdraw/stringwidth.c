@@ -12,6 +12,7 @@ _stringnwidth(Font *f, char *s, Rune *r, int len)
 	Rune rune, **rptr;
 	char *subfontname, **sptr;
 	Font *def;
+	Subfont *sf;
 
 	if(s == nil){
 		s = "";
@@ -43,13 +44,14 @@ _stringnwidth(Font *f, char *s, Rune *r, int len)
 				return twid;
 			}
 			if(subfontname){
-				if(_getsubfont(f->display, subfontname) == 0){
+				if((sf=_getsubfont(f->display, subfontname)) == 0){
 					def = f->display->defaultfont;
 					if(def && f!=def)
 						f = def;
 					else
 						break;
-				}
+				} else
+					installsubfont(subfontname, sf);
 			}
 		}
 		agefont(f);
