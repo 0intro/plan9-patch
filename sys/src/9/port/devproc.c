@@ -678,7 +678,7 @@ procread(Chan *c, void *va, long n, vlong off)
 	Mntwalk *mw;
 	Segment *sg, *s;
 	char *a = va, *sps;
-	int i, j, rsize, pid;
+	int i, j, rsize, pid, nlen;
 	char statbuf[NSEG*32], *srv, flag[10];
 	ulong offset = off;
 
@@ -836,9 +836,12 @@ procread(Chan *c, void *va, long n, vlong off)
 		if(sps == 0)
 			sps = statename[p->state];
 		memset(statbuf, ' ', sizeof statbuf);
-		memmove(statbuf+0*KNAMELEN, p->text, strlen(p->text));
-		memmove(statbuf+1*KNAMELEN, p->user, strlen(p->user));
-		memmove(statbuf+2*KNAMELEN, sps, strlen(sps));
+		if((nlen=strlen(p->text)) > 27) nlen = 27;
+		memmove(statbuf+0*KNAMELEN, p->text, nlen);
+		if((nlen=strlen(p->user)) > 27) nlen = 27;
+		memmove(statbuf+1*KNAMELEN, p->user, nlen);
+		if((nlen=strlen(sps)) > 27) nlen = 27;
+		memmove(statbuf+2*KNAMELEN, sps, nlen);
 		j = 2*KNAMELEN + 12;
 
 		for(i = 0; i < 6; i++) {
