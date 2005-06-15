@@ -1,0 +1,11 @@
+--- sys/src/9/pc/ether589.c	Mon Sep 29 00:24:17 2008
++++ sys/src/9/pc/ether589.c	Fri Sep 26 02:39:36 2008
+@@ -140,7 +140,7 @@
+ 		if((slot = pcmspecial(type, ether)) >= 0)
+ 			break;
+ 	}
+-	ether->type = type;	/* must be set before calling configASIC */
++	ether->type = type;
+ 	if(slot < 0){
+ 		iofree(port);
+ 		return -1;
