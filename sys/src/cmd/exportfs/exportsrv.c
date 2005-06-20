@@ -20,412 +20,6 @@ ulong messagesize;
 int readonly;
 
 void
-Xversion(Fsrpc *t)
-{
-	Fcall rhdr;
-
-	if(t->work.msize > messagesize)
-		t->work.msize = messagesize;
-	messagesize = t->work.msize;
-	if(strncmp(t->work.version, "9P2000", 6) != 0){
-		reply(&t->work, &rhdr, Eversion);
-		return;
-	}
-	rhdr.version = "9P2000";
-	rhdr.msize = t->work.msize;
-	reply(&t->work, &rhdr, 0);
-	t->busy = 0;
-}
-
-void
-Xauth(Fsrpc *t)
-{
-	Fcall rhdr;
-
-	reply(&t->work, &rhdr, "exportfs: authentication not required");
-	t->busy = 0;
-}
-
-void
-Xflush(Fsrpc *t)
-{
-	Fsrpc *w, *e;
-	Fcall rhdr;
-
-	e = &Workq[Nr_workbufs];
-
-	for(w = Workq; w < e; w++) {
-		if(w->work.tag == t->work.oldtag) {
-			DEBUG(DFD, "\tQ busy %d pid %d can %d\n", w->busy, w->pid, w->canint);
-			if(w->busy && w->pid) {
-				w->flushtag = t->work.tag;
-				DEBUG(DFD, "\tset flushtag %d\n", t->work.tag);
-				if(w->canint)
-					postnote(PNPROC, w->pid, "flush");
-				t->busy = 0;
-				return;
-			}
-		}
-	}
-
-	reply(&t->work, &rhdr, 0);
-	DEBUG(DFD, "\tflush reply\n");
-	t->busy = 0;
-}
-
-void
-Xattach(Fsrpc *t)
-{
-	int i, nfd;
-	Fcall rhdr;
-	Fid *f;
-	char buf[128];
-
-	f = newfid(t->work.fid);
-	if(f == 0) {
-		reply(&t->work, &rhdr, Ebadfid);
-		t->busy = 0;
-		return;
-	}
-
-	if(srvfd >= 0){
-		if(psmpt == 0){
-		Nomount:
-			reply(&t->work, &rhdr, Enopsmt);
-			t->busy = 0;
-			freefid(t->work.fid);
-			return;
-		}
-		for(i=0; i<Npsmpt; i++)
-			if(psmap[i] == 0)
-				break;
-		if(i >= Npsmpt)
-			goto Nomount;
-		sprint(buf, "%d", i);
-		f->f = file(psmpt, buf);
-		if(f->f == nil)
-			goto Nomount;
-		sprint(buf, "/mnt/exportfs/%d", i);
-		nfd = dup(srvfd, -1);
-		if(amount(nfd, buf, MREPL|MCREATE, t->work.aname) < 0){
-			errstr(buf, sizeof buf);
-			reply(&t->work, &rhdr, buf);
-			t->busy = 0;
-			freefid(t->work.fid);
-			close(nfd);
-			return;
-		}
-		psmap[i] = 1;
-		f->mid = i;
-	}else{
-		f->f = root;
-		f->f->ref++;
-	}
-
-	rhdr.qid = f->f->qid;
-	reply(&t->work, &rhdr, 0);
-	t->busy = 0;
-}
-
-Fid*
-clonefid(Fid *f, int new)
-{
-	Fid *n;
-
-	n = newfid(new);
-	if(n == 0) {
-		n = getfid(new);
-		if(n == 0)
-			fatal("inconsistent fids");
-		if(n->fid >= 0)
-			close(n->fid);
-		freefid(new);
-		n = newfid(new);
-		if(n == 0)
-			fatal("inconsistent fids2");
-	}
-	n->f = f->f;
-	n->f->ref++;
-	return n;
-}
-
-void
-Xwalk(Fsrpc *t)
-{
-	char err[ERRMAX], *e;
-	Fcall rhdr;
-	Fid *f, *nf;
-	File *wf;
-	int i;
-
-	f = getfid(t->work.fid);
-	if(f == 0) {
-		reply(&t->work, &rhdr, Ebadfid);
-		t->busy = 0;
-		return;
-	}
-
-	nf = nil;
-	if(t->work.newfid != t->work.fid){
-		nf = clonefid(f, t->work.newfid);
-		f = nf;
-	}
-
-	rhdr.nwqid = 0;
-	e = nil;
-	for(i=0; i<t->work.nwname; i++){
-		if(i == MAXWELEM){
-			e = "Too many path elements";
-			break;
-		}
-
-		if(strcmp(t->work.wname[i], "..") == 0) {
-			if(f->f->parent == nil) {
-				e = Exmnt;
-				break;
-			}
-			wf = f->f->parent;
-			wf->ref++;
-			goto Accept;
-		}
-	
-		wf = file(f->f, t->work.wname[i]);
-		if(wf == 0){
-			errstr(err, sizeof err);
-			e = err;
-			break;
-		}
-    Accept:
-		freefile(f->f);
-		rhdr.wqid[rhdr.nwqid++] = wf->qid;
-		f->f = wf;
-		continue;
-	}
-
-	if(nf!=nil && (e!=nil || rhdr.nwqid!=t->work.nwname))
-		freefid(t->work.newfid);
-	if(rhdr.nwqid > 0)
-		e = nil;
-	reply(&t->work, &rhdr, e);
-	t->busy = 0;
-}
-
-void
-Xclunk(Fsrpc *t)
-{
-	Fcall rhdr;
-	Fid *f;
-
-	f = getfid(t->work.fid);
-	if(f == 0) {
-		reply(&t->work, &rhdr, Ebadfid);
-		t->busy = 0;
-		return;
-	}
-
-	if(f->fid >= 0)
-		close(f->fid);
-
-	freefid(t->work.fid);
-	reply(&t->work, &rhdr, 0);
-	t->busy = 0;
-}
-
-void
-Xstat(Fsrpc *t)
-{
-	char err[ERRMAX], *path;
-	Fcall rhdr;
-	Fid *f;
-	Dir *d;
-	int s;
-	uchar *statbuf;
-
-	f = getfid(t->work.fid);
-	if(f == 0) {
-		reply(&t->work, &rhdr, Ebadfid);
-		t->busy = 0;
-		return;
-	}
-	if(f->fid >= 0)
-		d = dirfstat(f->fid);
-	else {
-		path = makepath(f->f, "");
-		d = dirstat(path);
-		free(path);
-	}
-
-	if(d == nil) {
-		errstr(err, sizeof err);
-		reply(&t->work, &rhdr, err);
-		t->busy = 0;
-		return;
-	}
-
-	d->qid.path = f->f->qidt->uniqpath;
-	s = sizeD2M(d);
-	statbuf = emallocz(s);
-	s = convD2M(d, statbuf, s);
-	free(d);
-	rhdr.nstat = s;
-	rhdr.stat = statbuf;
-	reply(&t->work, &rhdr, 0);
-	free(statbuf);
-	t->busy = 0;
-}
-
-static int
-getiounit(int fd)
-{
-	int n;
-
-	n = iounit(fd);
-	if(n > messagesize-IOHDRSZ)
-		n = messagesize-IOHDRSZ;
-	return n;
-}
-
-void
-Xcreate(Fsrpc *t)
-{
-	char err[ERRMAX], *path;
-	Fcall rhdr;
-	Fid *f;
-	File *nf;
-
-	if(readonly) {
-		reply(&t->work, &rhdr, Ereadonly);
-		t->busy = 0;
-		return;
-	}
-	f = getfid(t->work.fid);
-	if(f == 0) {
-		reply(&t->work, &rhdr, Ebadfid);
-		t->busy = 0;
-		return;
-	}
-	
-
-	path = makepath(f->f, t->work.name);
-	f->fid = create(path, t->work.mode, t->work.perm);
-	free(path);
-	if(f->fid < 0) {
-		errstr(err, sizeof err);
-		reply(&t->work, &rhdr, err);
-		t->busy = 0;
-		return;
-	}
-
-	nf = file(f->f, t->work.name);
-	if(nf == 0) {
-		errstr(err, sizeof err);
-		reply(&t->work, &rhdr, err);
-		t->busy = 0;
-		return;
-	}
-
-	f->mode = t->work.mode;
-	freefile(f->f);
-	f->f = nf;
-	rhdr.qid = f->f->qid;
-	rhdr.iounit = getiounit(f->fid);
-	reply(&t->work, &rhdr, 0);
-	t->busy = 0;
-}
-
-void
-Xremove(Fsrpc *t)
-{
-	char err[ERRMAX], *path;
-	Fcall rhdr;
-	Fid *f;
-
-	if(readonly) {
-		reply(&t->work, &rhdr, Ereadonly);
-		t->busy = 0;
-		return;
-	}
-	f = getfid(t->work.fid);
-	if(f == 0) {
-		reply(&t->work, &rhdr, Ebadfid);
-		t->busy = 0;
-		return;
-	}
-
-	path = makepath(f->f, "");
-	DEBUG(DFD, "\tremove: %s\n", path);
-	if(remove(path) < 0) {
-		free(path);
-		errstr(err, sizeof err);
-		reply(&t->work, &rhdr, err);
-		t->busy = 0;
-		return;
-	}
-	free(path);
-
-	f->f->inval = 1;
-	if(f->fid >= 0)
-		close(f->fid);
-	freefid(t->work.fid);
-
-	reply(&t->work, &rhdr, 0);
-	t->busy = 0;
-}
-
-void
-Xwstat(Fsrpc *t)
-{
-	char err[ERRMAX], *path;
-	Fcall rhdr;
-	Fid *f;
-	int s;
-	char *strings;
-	Dir d;
-
-	if(readonly) {
-		reply(&t->work, &rhdr, Ereadonly);
-		t->busy = 0;
-		return;
-	}
-	f = getfid(t->work.fid);
-	if(f == 0) {
-		reply(&t->work, &rhdr, Ebadfid);
-		t->busy = 0;
-		return;
-	}
-	strings = emallocz(t->work.nstat);	/* ample */
-	if(convM2D(t->work.stat, t->work.nstat, &d, strings) < 0){
-		rerrstr(err, sizeof err);
-		reply(&t->work, &rhdr, err);
-		t->busy = 0;
-		free(strings);
-		return;
-	}
-
-	if(f->fid >= 0)
-		s = dirfwstat(f->fid, &d);
-	else {
-		path = makepath(f->f, "");
-		s = dirwstat(path, &d);
-		free(path);
-	}
-	if(s < 0) {
-		rerrstr(err, sizeof err);
-		reply(&t->work, &rhdr, err);
-	}
-	else {
-		/* wstat may really be rename */
-		if(strcmp(d.name, f->f->name)!=0 && strcmp(d.name, "")!=0){
-			free(f->f->name);
-			f->f->name = estrdup(d.name);
-		}
-		reply(&t->work, &rhdr, 0);
-	}
-	free(strings);
-	t->busy = 0;
-}
-
-void
 slave(Fsrpc *f)
 {
 	Proc *p;
@@ -435,6 +29,9 @@ slave(Fsrpc *f)
 
 	if(readonly){
 		switch(f->work.type){
+		case Tcreate:
+		case Tremove:
+		case Twstat:
 		case Twrite:
 			reply(&f->work, &rhdr, Ereadonly);
 			f->busy = 0;
@@ -510,6 +107,42 @@ blockingslave(void)
 			goto flushme;
 
 		switch(p->work.type) {
+		case Tversion:
+			slaveversion(p);
+			break;
+
+		case Tauth:
+			slaveauth(p);
+			break;
+
+		case Tattach:
+			slaveattach(p);
+			break;
+
+		case Twalk:
+			slavewalk(p);
+			break;
+
+		case Tcreate:
+			slavecreate(p);
+			break;
+
+		case Tclunk:
+			slaveclunk(p);
+			break;
+
+		case Tremove:
+			slaveremove(p);
+			break;
+
+		case Tstat:
+			slavestat(p);
+			break;
+
+		case Twstat:
+			slavewstat(p);
+			break;
+
 		case Tread:
 			slaveread(p);
 			break;
@@ -534,6 +167,396 @@ flushme:
 		p->busy = 0;
 		m->busy = 0;
 	}
+}
+
+void
+slaveversion(Fsrpc *t)
+{
+	Fcall rhdr;
+
+	if(t->work.msize > messagesize)
+		t->work.msize = messagesize;
+	messagesize = t->work.msize;
+	if(strncmp(t->work.version, "9P2000", 6) != 0){
+		reply(&t->work, &rhdr, Eversion);
+		return;
+	}
+	rhdr.version = "9P2000";
+	rhdr.msize = t->work.msize;
+	reply(&t->work, &rhdr, 0);
+	t->busy = 0;
+}
+
+void
+slaveauth(Fsrpc *t)
+{
+	Fcall rhdr;
+
+	reply(&t->work, &rhdr, "exportfs: authentication not required");
+	t->busy = 0;
+}
+
+void
+slaveflush(Fsrpc *t)
+{
+	Fsrpc *w, *e;
+	Fcall rhdr;
+
+	e = &Workq[Nr_workbufs];
+
+	for(w = Workq; w < e; w++) {
+		if(w->work.tag == t->work.oldtag) {
+			DEBUG(DFD, "\tQ busy %d pid %d can %d\n", w->busy, w->pid, w->canint);
+			if(w->busy && w->pid) {
+				w->flushtag = t->work.tag;
+				DEBUG(DFD, "\tset flushtag %d\n", t->work.tag);
+				if(w->canint)
+					postnote(PNPROC, w->pid, "flush");
+				t->busy = 0;
+				return;
+			}
+		}
+	}
+
+	reply(&t->work, &rhdr, 0);
+	DEBUG(DFD, "\tflush reply\n");
+	t->busy = 0;
+}
+
+void
+slaveattach(Fsrpc *t)
+{
+	int i, nfd;
+	Fcall rhdr;
+	Fid *f;
+	char buf[128];
+
+	f = newfid(t->work.fid);
+	if(f == 0) {
+		reply(&t->work, &rhdr, Ebadfid);
+		t->busy = 0;
+		return;
+	}
+
+	if(srvfd >= 0){
+		if(psmpt == 0){
+		Nomount:
+			reply(&t->work, &rhdr, Enopsmt);
+			t->busy = 0;
+			freefid(t->work.fid);
+			return;
+		}
+		for(i=0; i<Npsmpt; i++)
+			if(psmap[i] == 0)
+				break;
+		if(i >= Npsmpt)
+			goto Nomount;
+		sprint(buf, "%d", i);
+		f->f = file(psmpt, buf);
+		if(f->f == nil)
+			goto Nomount;
+		sprint(buf, "/mnt/exportfs/%d", i);
+		nfd = dup(srvfd, -1);
+		if(amount(nfd, buf, MREPL|MCREATE, t->work.aname) < 0){
+			errstr(buf, sizeof buf);
+			reply(&t->work, &rhdr, buf);
+			t->busy = 0;
+			freefid(t->work.fid);
+			close(nfd);
+			return;
+		}
+		psmap[i] = 1;
+		f->mid = i;
+	}else{
+		f->f = root;
+		f->f->ref++;
+	}
+
+	rhdr.qid = f->f->qid;
+	reply(&t->work, &rhdr, 0);
+	t->busy = 0;
+}
+
+Fid*
+clonefid(Fid *f, int new)
+{
+	Fid *n;
+
+	n = newfid(new);
+	if(n == 0) {
+		n = getfid(new);
+		if(n == 0)
+			fatal("inconsistent fids");
+		if(n->fid >= 0)
+			close(n->fid);
+		freefid(new);
+		n = newfid(new);
+		if(n == 0)
+			fatal("inconsistent fids2");
+	}
+	n->f = f->f;
+	n->f->ref++;
+	return n;
+}
+
+void
+slavewalk(Fsrpc *t)
+{
+	char err[ERRMAX], *e;
+	Fcall rhdr;
+	Fid *f, *nf;
+	File *wf;
+	int i;
+
+	f = getfid(t->work.fid);
+	if(f == 0) {
+		reply(&t->work, &rhdr, Ebadfid);
+		t->busy = 0;
+		return;
+	}
+
+	nf = nil;
+	if(t->work.newfid != t->work.fid){
+		nf = clonefid(f, t->work.newfid);
+		f = nf;
+	}
+
+	rhdr.nwqid = 0;
+	e = nil;
+	for(i=0; i<t->work.nwname; i++){
+		if(i == MAXWELEM){
+			e = "Too many path elements";
+			break;
+		}
+
+		if(strcmp(t->work.wname[i], "..") == 0) {
+			if(f->f->parent == nil) {
+				e = Exmnt;
+				break;
+			}
+			wf = f->f->parent;
+			wf->ref++;
+			goto Accept;
+		}
+	
+		wf = file(f->f, t->work.wname[i]);
+		if(wf == 0){
+			errstr(err, sizeof err);
+			e = err;
+			break;
+		}
+    Accept:
+		freefile(f->f);
+		rhdr.wqid[rhdr.nwqid++] = wf->qid;
+		f->f = wf;
+		continue;
+	}
+
+	if(nf!=nil && (e!=nil || rhdr.nwqid!=t->work.nwname))
+		freefid(t->work.newfid);
+	if(rhdr.nwqid > 0)
+		e = nil;
+	reply(&t->work, &rhdr, e);
+	t->busy = 0;
+}
+
+void
+slaveclunk(Fsrpc *t)
+{
+	Fcall rhdr;
+	Fid *f;
+
+	f = getfid(t->work.fid);
+	if(f == 0) {
+		reply(&t->work, &rhdr, Ebadfid);
+		t->busy = 0;
+		return;
+	}
+
+	if(f->fid >= 0)
+		close(f->fid);
+
+	freefid(t->work.fid);
+	reply(&t->work, &rhdr, 0);
+	t->busy = 0;
+}
+
+void
+slavestat(Fsrpc *t)
+{
+	char err[ERRMAX], *path;
+	Fcall rhdr;
+	Fid *f;
+	Dir *d;
+	int s;
+	uchar *statbuf;
+
+	f = getfid(t->work.fid);
+	if(f == 0) {
+		reply(&t->work, &rhdr, Ebadfid);
+		t->busy = 0;
+		return;
+	}
+	if(f->fid >= 0)
+		d = dirfstat(f->fid);
+	else {
+		path = makepath(f->f, "");
+		d = dirstat(path);
+		free(path);
+	}
+
+	if(d == nil) {
+		errstr(err, sizeof err);
+		reply(&t->work, &rhdr, err);
+		t->busy = 0;
+		return;
+	}
+
+	d->qid.path = f->f->qidt->uniqpath;
+	s = sizeD2M(d);
+	statbuf = emallocz(s);
+	s = convD2M(d, statbuf, s);
+	free(d);
+	rhdr.nstat = s;
+	rhdr.stat = statbuf;
+	reply(&t->work, &rhdr, 0);
+	free(statbuf);
+	t->busy = 0;
+}
+
+static int
+getiounit(int fd)
+{
+	int n;
+
+	n = iounit(fd);
+	if(n > messagesize-IOHDRSZ)
+		n = messagesize-IOHDRSZ;
+	return n;
+}
+
+void
+slavecreate(Fsrpc *t)
+{
+	char err[ERRMAX], *path;
+	Fcall rhdr;
+	Fid *f;
+	File *nf;
+
+	f = getfid(t->work.fid);
+	if(f == 0) {
+		reply(&t->work, &rhdr, Ebadfid);
+		t->busy = 0;
+		return;
+	}
+	
+	path = makepath(f->f, t->work.name);
+	f->fid = create(path, t->work.mode, t->work.perm);
+	free(path);
+	if(f->fid < 0) {
+		errstr(err, sizeof err);
+		reply(&t->work, &rhdr, err);
+		t->busy = 0;
+		return;
+	}
+
+	nf = file(f->f, t->work.name);
+	if(nf == 0) {
+		errstr(err, sizeof err);
+		reply(&t->work, &rhdr, err);
+		t->busy = 0;
+		return;
+	}
+
+	f->mode = t->work.mode;
+	freefile(f->f);
+	f->f = nf;
+	rhdr.qid = f->f->qid;
+	rhdr.iounit = getiounit(f->fid);
+	reply(&t->work, &rhdr, 0);
+	t->busy = 0;
+}
+
+void
+slaveremove(Fsrpc *t)
+{
+	char err[ERRMAX], *path;
+	Fcall rhdr;
+	Fid *f;
+
+	f = getfid(t->work.fid);
+	if(f == 0) {
+		reply(&t->work, &rhdr, Ebadfid);
+		t->busy = 0;
+		return;
+	}
+
+	path = makepath(f->f, "");
+	DEBUG(DFD, "\tremove: %s\n", path);
+	if(remove(path) < 0) {
+		free(path);
+		errstr(err, sizeof err);
+		reply(&t->work, &rhdr, err);
+		t->busy = 0;
+		return;
+	}
+	free(path);
+
+	f->f->inval = 1;
+	if(f->fid >= 0)
+		close(f->fid);
+	freefid(t->work.fid);
+
+	reply(&t->work, &rhdr, 0);
+	t->busy = 0;
+}
+
+void
+slavewstat(Fsrpc *t)
+{
+	char err[ERRMAX], *path;
+	Fcall rhdr;
+	Fid *f;
+	int s;
+	char *strings;
+	Dir d;
+
+	f = getfid(t->work.fid);
+	if(f == 0) {
+		reply(&t->work, &rhdr, Ebadfid);
+		t->busy = 0;
+		return;
+	}
+	strings = emallocz(t->work.nstat);	/* ample */
+	if(convM2D(t->work.stat, t->work.nstat, &d, strings) < 0){
+		rerrstr(err, sizeof err);
+		reply(&t->work, &rhdr, err);
+		t->busy = 0;
+		free(strings);
+		return;
+	}
+
+	if(f->fid >= 0)
+		s = dirfwstat(f->fid, &d);
+	else {
+		path = makepath(f->f, "");
+		s = dirwstat(path, &d);
+		free(path);
+	}
+	if(s < 0) {
+		rerrstr(err, sizeof err);
+		reply(&t->work, &rhdr, err);
+	}
+	else {
+		/* wstat may really be rename */
+		if(strcmp(d.name, f->f->name)!=0 && strcmp(d.name, "")!=0){
+			free(f->f->name);
+			f->f->name = estrdup(d.name);
+		}
+		reply(&t->work, &rhdr, 0);
+	}
+	free(strings);
+	t->busy = 0;
 }
 
 int

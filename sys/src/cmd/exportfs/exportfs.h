@@ -103,17 +103,17 @@ Extern int	srvfd;
 Extern char*	patternfile;
 
 /* File system protocol service procedures */
-void Xattach(Fsrpc*);
-void Xauth(Fsrpc*);
-void Xclunk(Fsrpc*); 
-void Xcreate(Fsrpc*);
-void Xflush(Fsrpc*); 
-void Xnop(Fsrpc*);
-void Xremove(Fsrpc*);
-void Xstat(Fsrpc*);
-void Xversion(Fsrpc*);
-void Xwalk(Fsrpc*);
-void Xwstat(Fsrpc*);
+void slaveattach(Fsrpc*);
+void slaveauth(Fsrpc*);
+void slaveclunk(Fsrpc*); 
+void slavecreate(Fsrpc*);
+void slaveflush(Fsrpc*); 
+void slavenop(Fsrpc*);
+void slaveremove(Fsrpc*);
+void slavestat(Fsrpc*);
+void slaveversion(Fsrpc*);
+void slavewalk(Fsrpc*);
+void slavewstat(Fsrpc*);
 void slave(Fsrpc*);
 
 void	reply(Fcall*, Fcall*, char*);

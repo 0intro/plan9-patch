@@ -20,19 +20,19 @@ enum {
 
 void (*fcalls[])(Fsrpc*) =
 {
-	[Tversion]	Xversion,
-	[Tauth]	Xauth,
-	[Tflush]	Xflush,
-	[Tattach]	Xattach,
-	[Twalk]		Xwalk,
+	[Tversion]	slave,
+	[Tauth]		slave,
+	[Tflush]	slave,
+	[Tattach]	slave,
+	[Twalk]		slave,
 	[Topen]		slave,
-	[Tcreate]	Xcreate,
-	[Tclunk]	Xclunk,
+	[Tcreate]	slave,
+	[Tclunk]	slave,
 	[Tread]		slave,
 	[Twrite]	slave,
-	[Tremove]	Xremove,
-	[Tstat]		Xstat,
-	[Twstat]	Xwstat,
+	[Tremove]	slave,
+	[Tstat]		slave,
+	[Twstat]	slave,
 };
 
 /* accounting and debugging counters */
@@ -59,33 +59,33 @@ int	filter(int, char *);
 void
 usage(void)
 {
-	fprint(2, "usage:	%s [-adnsR] [-f dbgfile] [-m msize] [-r root] [-S srvfile] [-e 'crypt hash'] [-A announce-string] [-B address]\n", argv0);
+	fprint(2, "usage:	%s [-ads] [-f dbgfile] [-m msize] [-r root] [-S srvfile] [-e 'crypt hash'] [-A announce-string]\n", argv0);
+	fprint(2, "	%s -B address\n", argv0);
 	fatal("usage");
 }
 
 void
 main(int argc, char **argv)
 {
-	char buf[ERRMAX], ebuf[ERRMAX], *srvfdfile;
+	char buf[ERRMAX], ebuf[ERRMAX], isauth;
 	Fsrpc *r;
-	int doauth, n, fd;
-	char *dbfile, *srv, *na, *nsfile, *keyspec;
+	int n, fd, i;
+	char *dbfile, *srv, *file, *na, *nsfile, *keyspec;
 	AuthInfo *ai;
 	ulong initial;
 
 	dbfile = "/tmp/exportdb";
 	srv = nil;
 	srvfd = -1;
-	srvfdfile = nil;
 	na = nil;
 	nsfile = nil;
 	keyspec = "";
-	doauth = 0;
+	isauth = 'n';
 
 	ai = nil;
 	ARGBEGIN{
 	case 'a':
-		doauth = 1;
+		isauth = 'y';
 		break;
 
 	case 'k':
@@ -93,15 +93,19 @@ main(int argc, char **argv)
 		break;
 
 	case 'e':
-		ealgs = EARGF(usage());
+		ealgs = ARGF();
+		if(ealgs == nil)
+			usage();
 		if(*ealgs == 0 || strcmp(ealgs, "clear") == 0)
 			ealgs = nil;
 		break;
 
 	case 'S':
-		if(srvfdfile)
+		if(srvfd != -1)
 			usage();
-		srvfdfile = EARGF(usage());
+		file = EARGF(usage());
+		if((srvfd = open(file, ORDWR)) < 0)
+			sysfatal("open '%s': %r", file);
 		break;
 
 	case 'd':
@@ -157,7 +161,7 @@ main(int argc, char **argv)
 	}ARGEND
 	USED(argc, argv);
 
-	if(doauth){
+	if(isauth == 'y'){
 		/*
 		 * We use p9any so we don't have to visit this code again, with the
 		 * cost that this code is incompatible with the old world, which
@@ -172,11 +176,6 @@ main(int argc, char **argv)
 		if(auth_chuid(ai, nsfile) < 0)
 			fatal("auth_chuid: %r");
 		putenv("service", "exportfs");
-	}
-
-	if(srvfdfile){
-		if((srvfd = open(srvfdfile, ORDWR)) < 0)
-			sysfatal("open '%s': %r", srvfdfile);
 	}
 
 	if(na){
@@ -219,8 +218,8 @@ main(int argc, char **argv)
 	}
 
 	Workq = emallocz(sizeof(Fsrpc)*Nr_workbufs);
-//	for(i=0; i<Nr_workbufs; i++)
-//		Workq[i].buf = emallocz(messagesize);
+	for(i=0; i<Nr_workbufs; i++)
+		Workq[i].buf = emallocz(messagesize);
 	fhash = emallocz(sizeof(Fid*)*FHASHSIZE);
 
 	fmtinstall('F', fcallfmt);
@@ -361,7 +360,7 @@ main(int argc, char **argv)
 		r = getsbuf();
 		if(r == 0)
 			fatal("Out of service buffers");
-			
+
 		n = localread9pmsg(netfd, r->buf, messagesize, &initial);
 		if(n <= 0)
 			fatal(nil);
@@ -523,7 +522,7 @@ getsbuf(void)
 	static int ap;
 	int look, rounds;
 	Fsrpc *wb;
-	int small_instead_of_fast = 1;
+	int small_instead_of_fast = 0;
 
 	if(small_instead_of_fast)
 		ap = 0;	/* so we always start looking at the beginning and reuse buffers */
