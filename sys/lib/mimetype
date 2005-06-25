@@ -162,3 +162,4 @@
 -		application	x-gunzip	-		p # type for .tar.gz
 -		message		delivery-status	-		y # mail bounces
 -		application	pgp-signature	-		y
+-		application	pgp-encrypted	-		y
