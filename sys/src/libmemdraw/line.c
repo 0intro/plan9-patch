@@ -315,12 +315,6 @@ arrowend(Point tip, Point *pp, int end, int sin, int cos, int radius)
 void
 _memimageline(Memimage *dst, Point p0, Point p1, int end0, int end1, int radius, Memimage *src, Point sp, Rectangle clipr, int op)
 {
-	/*
-	 * BUG: We should really really pick off purely horizontal and purely
-	 * vertical lines and handle them separately with calls to memimagedraw
-	 * on rectangles.
-	 */
-
 	int hor;
 	int sin, cos, dx, dy, t;
 	Rectangle oclipr, r;
@@ -369,6 +363,7 @@ _memimageline(Memimage *dst, Point p0, Point p1, int end0, int end1, int radius,
 		}
 		oclipr = dst->clipr;
 		dst->clipr = clipr;
+		sp = addpt(r.min, d);
 		memimagedraw(dst, r, src, sp, memopaque, sp, op);
 		dst->clipr = oclipr;
 		return;
