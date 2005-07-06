@@ -47,6 +47,36 @@ Try to fill complete rows using 4-square or 5-square tiles.
 Move tiles left or right by moving the mouse.
 Rotate tiles with buttons 1 and 3.
 Drop tiles for more points with button 2 or the space bar.
+Move the mouse out of or back into the play area to
+suspend or resume the game.
+Keys
+.LR a
+and 
+.LR j
+move left,
+.LR s
+and 
+.LR k
+rotate left,
+.LR d
+and 
+.LR l
+rotate right,
+.LR f
+and 
+.LR ;
+move right.
+.LR z ,
+.LR p
+and
+.LR Esc
+toggle suspend/resume.
+.LR q ,
+.LR Del
+and
+.LR control-D
+quit.
+
 .TP
 .B juggle
 Display the juggling
@@ -136,7 +166,7 @@ again will deselect that digit.  Clicking on an empty square will then
 affix the square with the selected digit or, if no digit is selected
 empty the square.
 .IP
-The left mouse button presents a menu with the following options:
+The right mouse button presents a menu with the following options:
 .RS \w'\fLfireworksXX'u
 .TP \w'\fLOffsetXX'u
 .B New
@@ -182,6 +212,12 @@ key quits sudoku
 
 .SH FILES
 .TP
+.B /sys/games/lib/[45]scores
+score files of
+.I 4s
+and
+.I 5s
+.TP
 .B /sys/games/lib/mahjongg/*
 image sprites, levels and backgrounds used by
 .I mahjongg
@@ -195,3 +231,11 @@ images and boards used by
 .I sudoku
 .SH SOURCE
 .B /sys/src/games
+
+.SH BUGS
+In 4s and 5s mouse warping (when the game is resumed,
+and when a new tile appears) does not happen when
+the mouse cursor is outside the game window.
+Those who prefer to use the keyboard without the mouse
+cursor blocking the view (or being warped all the time)
+may consider this a feature.
