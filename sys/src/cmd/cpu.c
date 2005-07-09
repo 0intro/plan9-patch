@@ -38,6 +38,9 @@ char	*srvname = "ncpu";
 char	*exportfs = "/bin/exportfs";
 char	*ealgs = "rc4_256 sha1";
 
+
+int exportfspid;
+
 /* message size for exportfs; may be larger so we can do big graphics in CPU window */
 int	msgsize = Maxfdata+IOHDRSZ;
 
@@ -70,7 +73,7 @@ int setam(char*);
 void
 usage(void)
 {
-	fprint(2, "usage: cpu [-h system] [-a authmethod] [-e 'crypt hash'] [-k keypattern] [-p patternfile] [-c cmd args ...]\n");
+	fprint(2, "usage: cpu [-h system] [-a authmethod] [-e 'crypt hash'] [-k keypattern] [-P patternfile] [-c cmd args ...]\n");
 	exits("usage");
 }
 int fdd;
@@ -266,6 +269,7 @@ void
 remoteside(int old)
 {
 	char user[MaxStr], home[MaxStr], buf[MaxStr], xdir[MaxStr], cmd[MaxStr];
+	char profile[MaxStr];
 	int i, n, fd, badchdir, gotcmd;
 
 	rfork(RFENVG);
@@ -287,9 +291,11 @@ remoteside(int old)
 		fatal(1, "srvauth");
 
 	/* Set environment values for the user */
+	snprint(user,sizeof(user), "%s", getuser());
 	putenv("user", user);
-	sprint(home, "/usr/%s", user);
+	snprint(home, sizeof(home),"/usr/%s", user);
 	putenv("home", home);
+	syslog(0,"cpu", "%s login", user);
 
 	/* Now collect invoking cpu's current directory or possibly a command */
 	gotcmd = 0;
@@ -311,6 +317,8 @@ remoteside(int old)
 		badchdir = 1;
 		chdir(home);
 	}
+
+	putenv("xdir",xdir);
 
 	/* Start the gnot serving its namespace */
 	writestr(fd, "FS", "FS", 0);
@@ -346,6 +354,18 @@ remoteside(int old)
 
 	if(badchdir)
 		print("cpu: failed to chdir to '%s'\n", xdir);
+
+	/* 	don't mind memory leak here */
+	if(dirstat(home) == nil){
+		snprint(home,sizeof(home),"/usr/none");	
+		putenv("home", home);
+	}
+
+	snprint(profile,sizeof(profile),"%s/lib/profile",home);
+	fd = open(profile,OREAD);
+	if(fd < 0)
+		bind("/usr/none/", home, MREPL);
+	close(fd);
 
 	if(gotcmd)
 		execl("/bin/rc", "rc", "-lc", cmd, 0);
@@ -687,12 +707,22 @@ rmtnoteproc(void)
 	}
 
 	/* original proc waits for shell proc to die and kills note proc */
+
+	fprint(2, "waiting rc to finish\n");
 	for(;;){
 		n = waitpid();
 		if(n < 0 || n == pid)
 			break;
 	}
+
+	fd = open("/mnt/term/dev/cpunote",OWRITE);
+	if(fd < 0)
+		fprint(2, "/mnt/term/dev/cpunote not open: %r\n");
+	else
+		write(fd,"finished",8);
+
 	postnote(PNPROC, notepid, "kill");
+
 	_exits(0);
 }
 
@@ -711,7 +741,7 @@ struct {
 } fstab[] =
 {
 	[Qdir]		{ ".",		{Qdir, 0, QTDIR},	DMDIR|0555	},
-	[Qcpunote]	{ "cpunote",	{Qcpunote, 0},		0444		},
+	[Qcpunote]	{ "cpunote",	{Qcpunote, 0},		0664		},
 };
 
 typedef struct Note Note;
@@ -995,10 +1025,6 @@ nofids:
 				f.nwqid = i;
 			break;
 		case Topen:
-			if(f.mode != OREAD){
-				f.type = Rerror;
-				f.ename = Eperm;
-			}
 			f.qid = fstab[fid->file].qid;
 			break;
 		case Tcreate:
@@ -1011,6 +1037,8 @@ nofids:
 			doreply = 0;
 			break;
 		case Twrite:
+			if(fid->file == Qcpunote)
+				goto err;
 			f.type = Rerror;
 			f.ename = Eperm;
 			break;
@@ -1039,6 +1067,14 @@ err:
 	if(dbg)
 		fprint(2, "notefs exiting: %r\n");
 	close(fd);
+
+	snprint((char*)buf,sizeof buf,"/proc/%d/notepg", exportfspid);
+	fd = open((char*)buf,OWRITE);
+	/* fd < 0 in regular case */
+	if(fd > 0){
+		write(fd,"kill", 4);
+		close(fd);
+	}
 }
 
 char 	notebuf[ERRMAX];
@@ -1062,7 +1098,6 @@ catcher(void*, char *text)
 void
 lclnoteproc(int netfd)
 {
-	int exportfspid;
 	Waitmsg *w;
 	Note *np;
 	int pfd[2];
