@@ -71,7 +71,7 @@ main(int argc, char *argv[])
 		namespace = ARGF();
 		break;
 	default:
-		error("usage: listen [-d servdir] [-t trustdir] [proto]");
+		error("usage: listen [-q] [-n namespace] [-d servdir] [-t trustdir] [proto [name]]");
 	}ARGEND;
 
 	if(!servdir && !trustdir)
@@ -89,7 +89,7 @@ main(int argc, char *argv[])
 	case 0:
 		break;
 	default:
-		error("usage: listen [-d servdir] [-t trustdir] [proto]");
+		error("usage: listen [-q] [-n namespace] [-d servdir] [-t trustdir] [proto [name]]");
 	}
 
 	syslog(0, listenlog, "started");
