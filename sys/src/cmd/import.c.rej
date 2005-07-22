@@ -1,0 +1,11 @@
+--- sys/src/cmd/import.c	Mon Jul 25 00:38:58 2005
++++ sys/src/cmd/import.c	Mon Jul 25 00:38:56 2005
+@@ -201,7 +201,7 @@
+ 	alarm(0);
+ 
+ 	if(backwards && argc > 1){
+-		execv(argv[1], &argv[1]);
++		exec(argv[1], &argv[1]);
+ 		sysfatal("exec: %r");
+ 	}
+ 	exits(0);
