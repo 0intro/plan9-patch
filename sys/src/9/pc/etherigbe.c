@@ -38,6 +38,7 @@ enum {
 	i82547gi   	= (0x1075<<16)|0x8086,
 	i82541gi   	= (0x1076<<16)|0x8086,
 	i82546gb   	= (0x1079<<16)|0x8086,
+	i82541pi	= (0x107c<<16)|0x8086,
 	i82546eb	= (0x1010<<16)|0x8086,
 };
 
@@ -828,6 +829,7 @@ igbelproc(void* arg)
 		case i82540eplp:
 		case i82547gi:
 		case i82541gi:
+		case i82541pi:
 			break;
 		}
 
@@ -877,6 +879,7 @@ igbetxinit(Ctlr* ctlr)
 	case i82540em:
 	case i82540eplp:
 	case i82541gi:
+	case i82541pi:
 	case i82546gb:
 	case i82546eb:
 	case i82547gi:
@@ -916,6 +919,7 @@ igbetxinit(Ctlr* ctlr)
 	case i82546gb:
 	case i82546eb:
 	case i82541gi:
+	case i82541pi:
 		r = csr32r(ctlr, Txdctl);
 		r &= ~WthreshMASK;
 		r |= Gran|(4<<WthreshSHIFT);
@@ -1044,6 +1048,7 @@ igberxinit(Ctlr* ctlr)
 	case i82540em:
 	case i82540eplp:
 	case i82541gi:
+	case i82541pi:
 	case i82546gb:
 	case i82546eb:
 	case i82547gi:
@@ -1438,6 +1443,7 @@ igbemii(Ctlr* ctlr)
 	case i82540eplp:
 	case i82547gi:
 	case i82541gi:
+	case i82541pi:
 	case i82546gb:
 	case i82546eb:
 		ctrl &= ~(Frcdplx|Frcspd);
@@ -1592,6 +1598,7 @@ at93c46r(Ctlr* ctlr)
 	case i82540em:
 	case i82540eplp:
 	case i82541gi:
+	case i82541pi:
 	case i82547gi:
 	case i82546gb:
 	case i82546eb:
@@ -1674,6 +1681,7 @@ igbedetach(Ctlr* ctlr)
 	case i82540em:
 	case i82540eplp:
 	case i82541gi:
+	case i82541pi:
 	case i82547gi:
 	case i82546gb:
 	case i82546eb:
@@ -1843,6 +1851,7 @@ igbepci(void)
 		case i82540eplp:
 		case i82547gi:
 		case i82541gi:
+		case i82541pi:
 		case i82546gb:
 		case i82546eb:
 			break;
