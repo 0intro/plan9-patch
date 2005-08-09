@@ -123,11 +123,13 @@ The default is
 The top-level directory also contains
 numbered directories corresponding to connections, which
 may be used to fetch a single URL.
-To allocated a connection, open the
+To allocate a connection, open the
 .B clone
 file and read a number 
 .I n
-from it.
+from it, then write the string 
+.RB `` url ''
+to it followed by the URL you want to retrieve.
 After opening, the
 .B clone
 file is equivalent to the file
@@ -148,10 +150,9 @@ file.  The per-connection
 .B ctl
 file allows editing the variables for this particular connection.
 .PP
-Each connection also has a URL string variable
+The URL string variable
 .B url
-associated with it.
-This URL may be an absolute URL such as
+associated with a connection may be an absolute URL such as
 .I http://www.lucent.com/index.html
 or a relative URL such as
 .IR ../index.html .
