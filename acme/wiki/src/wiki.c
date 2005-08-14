@@ -343,6 +343,8 @@ acmeevent(Wiki *wiki, Event *e)
 		break;
 
 	case 'E':	/* write to body or tag; can't affect us */
+		break;
+
 	case 'K':	/* type away; we don't care */
 		if(e->c2 == 'I' || e->c2 == 'D')
 			w->dirtied = 1;
@@ -439,6 +441,7 @@ wikithread(void *v)
 			winselect(w->win, w->addr, 1);
 	}
 	wintagwrite(w->win, "Get Put History Diff New", 4+4+8+4+4);
+	winclean(w->win);
 		
 	while(!w->dead && (e = recvp(w->win->cevent)))
 		acmeevent(w, e);
