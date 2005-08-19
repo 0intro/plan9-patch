@@ -357,6 +357,8 @@ tlsServer(int fd, TLSconn *conn)
 	conn->sessionIDlen = tls->sid->len;
 	conn->sessionID = emalloc(conn->sessionIDlen);
 	memcpy(conn->sessionID, tls->sid->data, conn->sessionIDlen);
+	if(conn->sessionKey != nil && conn->sessionType != nil && strcmp(conn->sessionType, "ttls") ==0)
+		tls->sec->prf(conn->sessionKey, conn->sessionKeylen, tls->sec->sec, MasterSecretSize, conn->sessionConst,  tls->sec->crandom, RandomSize, tls->sec->srandom, RandomSize);
 	tlsConnectionFree(tls);
 	return data;
 }
@@ -408,6 +410,8 @@ tlsClient(int fd, TLSconn *conn)
 	conn->sessionIDlen = tls->sid->len;
 	conn->sessionID = emalloc(conn->sessionIDlen);
 	memcpy(conn->sessionID, tls->sid->data, conn->sessionIDlen);
+	if(conn->sessionKey != nil && conn->sessionType != nil && strcmp(conn->sessionType, "ttls") ==0)
+		tls->sec->prf(conn->sessionKey, conn->sessionKeylen, tls->sec->sec, MasterSecretSize, conn->sessionConst,  tls->sec->crandom, RandomSize, tls->sec->srandom, RandomSize);
 	tlsConnectionFree(tls);
 	return data;
 }

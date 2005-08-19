@@ -96,6 +96,10 @@ points to a (caller-allocated) struct
       int certlen, sessionIDlen;
       void (*trace)(char*fmt, ...);
       PEMChain *chain;
+      char *sessionType;
+      uchar *sessionKey;
+      int sessionKeylen;
+      char *sessionConst;
    } TLSconn;
 .EE
 defined in
@@ -115,7 +119,13 @@ is freed and a freshly allocated copy of the remote's certificate
 is returned in
 .IR conn ,
 to be checked by the caller
-according to its needs.  One mechanism is supplied by
+according to its needs.
+A session key of length sessionKeylen will be computed
+in sessionKey (to be allocated by the user)
+using scheme sessionType and string sessionConst,
+if sessionType and sessionKey are non-nil.
+The only known sessionType is "ttls".
+One mechanism to check the remote's certificate is supplied by
 .I initThumbprints
 and
 .I freeThumbprints
