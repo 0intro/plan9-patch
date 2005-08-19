@@ -1131,17 +1131,17 @@ msgRecv(TlsConnection *c, Msg *m)
 		}
 		break;
 	case HCertificateRequest:
-		if(n < 2)
+		if(n < 1)
 			goto Short;
-		nn = get16(p);
-		p += 2;
-		n -= 2;
+		nn = *p;
+		p += 1;
+		n -= 1;
 		if(nn < 1 || nn > n)
 			goto Short;
 		m->u.certificateRequest.types = makebytes(p, nn);
-		nn = get24(p);
-		p += 3;
-		n -= 3;
+		nn = get16(p);
+		p += 2;
+		n -= 2;
 		if(nn == 0 || n != nn)
 			goto Short;
 		/* cas */
