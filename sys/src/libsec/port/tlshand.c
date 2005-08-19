@@ -1143,7 +1143,7 @@ msgRecv(TlsConnection *c, Msg *m)
 		p += 3;
 		n -= 3;
 		if(nn == 0 || n != nn)
-			goto Short;
+			; 	/* ignore parse error (was: goto Short;) */
 		/* cas */
 		i = 0;
 		while(n > 0) {
