@@ -788,20 +788,23 @@ makedir(char *s)
 	f = create(s, OREAD, DMDIR | 0777);
 	if (f >= 0)
 		close(f);
+	if (f < 0)
+		fprint(2, "%s: can't create %s: %r\n", argv0, s);
 	return f;
 }
 
-static void
+static int
 mkpdirs(char *s)
 {
-	int done = 0;
+	int err = 0;
 	char *p = s;
 
-	while (!done && (p = strchr(p + 1, '/')) != nil) {
+	while (!err && (p = strchr(p + 1, '/')) != nil) {
 		*p = '\0';
-		done = (access(s, AEXIST) < 0 && makedir(s) < 0);
+		err = (access(s, AEXIST) < 0 && makedir(s) < 0);
 		*p = '/';
 	}
+	return err;
 }
 
 /* copy a file from the archive into the filesystem */
@@ -854,7 +857,8 @@ extract1(int ar, Hdr *hp, char *fname)
 
 				fd = create(fname, rw, mode);
 				if (fd < 0) {
-					mkpdirs(fname);
+					if (mkpdirs(fname) != 0)
+						break;
 					fd = create(fname, rw, mode);
 				}
 				if (fd < 0 &&
