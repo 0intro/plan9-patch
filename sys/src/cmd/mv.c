@@ -117,20 +117,22 @@ mv(char *from, char *todir, char *toelem)
 		close(fdf);
 		return -1;
 	}
-	if ((stat = copy1(fdf, fdt, fromname, toname)) != -1) {
-		nulldir(&null);
-		null.mtime = dirb->mtime;
-		null.mode = dirb->mode;
-		dirfwstat(fdt, &null);	/* ignore errors; e.g. user none always fails */
-		if (remove(fromname) < 0) {
-			fprint(2, "mv: can't remove %s: %r\n", fromname);
-			close(fdf);
-			close(fdt);
-			return -1;
-		}
+	stat = copy1(fdf, fdt, fromname, toname);
+	if(stat == -1) {
+		close(fdf);
+		close(fdt);
+		return stat;
 	}
+	nulldir(&null);
+	null.mtime = dirb->mtime;
+	null.mode = dirb->mode;
+	dirfwstat(fdt, &null);		/* ignore errors; e.g. user none always fails */
 	close(fdf);
 	close(fdt);
+	if (remove(fromname) < 0) {
+		fprint(2, "mv: can't remove %s: %r\n", fromname);
+		return -1;
+	}
 	return stat;
 }
 
