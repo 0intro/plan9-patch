@@ -52,6 +52,7 @@ void	ebcdic(int cc);
 void	ibm(int cc);
 void	block(int cc);
 void	term(void);
+void	crunch(void);
 void	stats(void);
 
 #define	iskey(s)	((key[0] == '-') && (strcmp(key+1, s) == 0))
@@ -248,7 +249,7 @@ loop:
 			perror("read");
 			if((cflag&NERR) == 0) {
 				flsh();
-				term();
+				crunch();
 			}
 			ibc = 0;
 			for(c=0; c<ibs; c++)
@@ -546,6 +547,14 @@ term(void)
 
 	stats();
 	exits(0);
+}
+
+void
+crunch(void)
+{
+
+	stats();
+	exits("crunch");
 }
 
 void
