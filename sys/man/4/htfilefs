@@ -1,0 +1,72 @@
+.TH HTFILEFS 4
+.SH NAME
+htfilefs \- HTTP file file system
+.SH SYNOPSIS
+.B ip/htfilefs
+[
+.B -9d
+]
+[
+.B -b
+.I count
+]
+[
+.B -x
+.I netstk
+]
+[
+.B -m
+.I mtpt
+]
+[
+.B -s
+.I serv
+]
+.I URI
+.SH DESCRIPTION
+.I Htfilefs
+serves locally the file specified as
+.I URI
+and opens a srv file, as default
+.BR /srv/htfile.
+.PP
+The options
+.B -9
+and
+.B -d
+are for application and 9p debugging,
+.B -b
+tells
+.I Htfilefs
+to cache
+.I count
+blocks,
+.B -x
+specifies the network stack,
+.B -m
+tells
+.I Htfilefs
+where to mount itself on startup and
+.B -s
+specifies a different srv file than the default (htfile).
+.SH EXAMPLE
+For mounting in the current Plan 9 ISO from
+.BR 9grid.de
+as /n/cdrom, do:
+.IP
+.EX
+ip/htfilefs -m tmp http://www.9grid.de/plan9/plan9.iso;
+9660srv;
+mount /srv/9660 /n/cdrom /mnt/plan9.iso;
+.EE
+.SH SOURCE
+.B /sys/src/cmd/ip/htfilefs.c
+.SH BUGS
+.PP
+.I Htfilefs
+never clears old blocks, except when the cache gets full.
+.SH HISTORY
+Htfilefs was written by Christoph Lohmann and it is based on
+the structure of
+.I sshnet(1).
+

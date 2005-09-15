@@ -26,6 +26,7 @@ fgui factotum
 fossil fossil
 fs fs
 ftpfs ftpfs
+htfilefs htfilefs
 import import
 iostats iostats
 keyfs keyfs

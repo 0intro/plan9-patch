@@ -4,6 +4,7 @@ TARG = 	dhcpclient\
 	ftpd\
 	gping\
 	hogports\
+	htfilefs\
 	ipconfig\
 	ping\
 	pppoe\
