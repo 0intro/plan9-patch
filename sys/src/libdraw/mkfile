@@ -21,6 +21,7 @@ OFILES=\
 	egetrect.$O\
 	ellipse.$O\
 	emenuhit.$O\
+	epiemenuhit.$O\
 	event.$O\
 	fmt.$O\
 	font.$O\
@@ -38,6 +39,7 @@ OFILES=\
 	mouse.$O\
 	newwindow.$O\
 	openfont.$O\
+	piemenuhit.$O\
 	poly.$O\
 	loadimage.$O\
 	readcolmap.$O\

@@ -417,6 +417,7 @@ egetrect event
 einit event
 ekbd event
 emenuhit event
+epiemenuhit event
 emouse event
 emoveto event
 eread event
@@ -868,6 +869,7 @@ drawgetrect mouse
 getrect mouse
 initmouse mouse
 menuhit mouse
+piemenuhit mouse
 mouse mouse
 moveto mouse
 readmouse mouse
