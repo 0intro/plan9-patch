@@ -1,0 +1,12 @@
+--- sys/src/ape/lib/ap/plan9/wait.c	Thu Jul 15 04:50:29 2004
++++ sys/src/ape/lib/ap/plan9/wait.c	Thu Jul 15 04:50:29 2004
+@@ -89,7 +89,8 @@
+ 		if (wpid <= 0) {
+ 			waitmsg = w;
+ 			wpid = w->pid;
+-			*status = 0;
++			if(status)
++				*status = 0;
+ 			return wpid;
+ 		}
+ 		if (w->pid == wpid) {
