@@ -27,6 +27,12 @@ PROTOS=\
 	ppp_ipcp\
 	pppoe_sess\
 	pppoe_disc\
+	eapol\
+	eapol_key\
+	rc4keydesc\
+	eap\
+	eap_identity\
+	ttls
 
 POBJS=${PROTOS:%=%.$O}
 
