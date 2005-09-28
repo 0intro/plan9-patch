@@ -10,7 +10,7 @@ char *wikidir;
 void
 usage(void)
 {
-	fprint(2, "usage: wiki2html [-d dir] wikifile\n");
+	fprint(2, "usage: wiki2html [-hoDP ] [-d dir] wikifile\n");
 	exits("usage");
 }
 
@@ -18,6 +18,7 @@ void
 main(int argc, char **argv)
 {
 	int t;
+	int parse;
 	String *h;
 	Whist *doc;
 
@@ -39,11 +40,23 @@ main(int argc, char **argv)
 	case 'D':
 		t = Tdiff;
 		break;
+	case 'P':
+		parse = 1;
 	}ARGEND
 
 	if(argc != 1)
 		usage();
 
+	if(parse) {
+		//doc = getcurrentbyname(argv[0]);
+		doc = getcurrent(atoi(argv[0]));
+		if(doc) {
+			printpage(doc->doc->wtxt);
+			exits("");
+		} else {
+			exits("getbyname...");
+		}
+	}
 	if(t == Thistory || t==Tdiff)
 		doc = gethistory(atoi(argv[0]));
 	else

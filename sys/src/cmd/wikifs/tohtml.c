@@ -180,8 +180,8 @@ mkurl(char *s, int ty)
 String*
 pagehtml(String *s, Wpage *wtxt, int ty)
 {
-	int inlist, inpre, inpara;
-	char *p, tmp[40];
+	int inlist, inpre, inpara, t, tn;
+	char *p, *c, tmp[40];
 	Wpage *w;
 
 	inlist = 0;
@@ -189,49 +189,54 @@ pagehtml(String *s, Wpage *wtxt, int ty)
 	inpara = 0;
 
 	for(w=wtxt; w; w=w->next){
-		switch(w->type){
+		t = w->type;
+		tn = Whr; // This is the end
+		if(w->next)
+			tn = w->next->type;
+
+		if(inlist && !(t == Wbullet || t == Wlink || t == Wman || t == Wplain)){
+			inlist = 0;
+			s = s_append(s, "\n</li>\n</ul>\n");
+		}
+		if(inpre && (t == Wheading || t == Wpara || t == Wbullet || t == Whr || t == Wplain)){
+			inpre = 0;
+			s = s_append(s, "</pre>\n");
+		}
+
+		switch(t){
 		case Wheading:
-			/*
-			if(!inpara){
-				inpara = 1;
-				s = s_append(s, "\n<p>\n");
-			}			
-			*/
-			s = s_appendlist(s, "<br />\n<a name=\"",w->text,"\" /><h3>", w->text, "</h3>\n", nil);
+			// a name='' can't contain spaces
+			p = strdup(w->text);
+			for(c = p; *c != '\0'; c++)
+				if(*c == ' ')
+					*c = '_';
+			s = s_appendlist(s, "\n<a name=\"",p,"\"></a><h3>", w->text, "</h3>\n", nil);
+			free(p);
 			break;
 
 		case Wpara:
-			if(inlist){
-				inlist = 0;
-				s = s_append(s, "\n</ul>\n");
+			if(inpara)	{
+				s = s_append(s, "\n</p>\n");
+				inpara = 0;
 			}
-			if(inpre){
-				inpre = 0;
-				s = s_append(s, "</pre>\n");
-			}
-			if(!inpara){
+			if( w->next && (tn != Wheading && tn != Wbullet && tn != Wpre && tn != Whr)) {
+				s = s_append(s, "\n<p class='para'>\n");
 				inpara = 1;
-				s = s_append(s, "\n<p>\n");
 			}
+
 			break;
 
 		case Wbullet:
-			if(inpre){
-				inpre = 0;
-				s = s_append(s, "</pre>\n");
-			}
-			if(!inlist){
+			if(!inlist) {
 				inlist = 1;
 				s = s_append(s, "\n<ul>\n");
+			} else {
+				s = s_append(s, "\n</li>\n");
 			}
-			if(inpara)
-				inpara = 0;
 			s = s_append(s, "\n<li>\n");
 			break;
 
 		case Wlink:
-			if(inpara)
-				inpara = 0;
 			if(w->url == nil)
 				p = mkurl(w->text, ty);
 			else
@@ -245,9 +250,6 @@ pagehtml(String *s, Wpage *wtxt, int ty)
 			break;
 
 		case Wman:
-			if(inpara)
-				inpara = 0;
-			
 			sprint(tmp, "%d", w->section);
 			s = s_appendlist(s, 
 				"<a href=\"http://plan9.bell-labs.com/magic/man2html/",
@@ -256,12 +258,6 @@ pagehtml(String *s, Wpage *wtxt, int ty)
 			break;
 			
 		case Wpre:
-			if(inpara)
-				inpara = 0;
-			if(inlist){
-				inlist = 0;
-				s = s_append(s, "\n</ul>\n");
-			}
 			if(!inpre){
 				inpre = 1;
 				s = s_append(s, "\n<pre>\n");
@@ -275,35 +271,17 @@ pagehtml(String *s, Wpage *wtxt, int ty)
 			break;
 
 		case Wplain:
-			if(inpre){
-				inpre = 0;
-				s = s_append(s, "</pre>\n");
-			}
-			if(inpara)
-				inpara = 0;
 			s = s_escappend(s, w->text, 0);
 			break;
 		}
 	}
 	if(inlist)
-		s = s_append(s, "\n</ul>\n");
+		s = s_append(s, "\n</li>\n</ul>\n");
 	if(inpre)
 		s = s_append(s, "</pre>\n");
-	if(!inpara)
-		s = s_append(s, "\n<p>\n");
+	if(inpara)
+		s = s_append(s, "\n</p>\n");
 	return s;
-}
-
-static String*
-grey(String *s)
-{
-	return s_append(s, "<font color=#777777>");
-}
-
-static String*
-ungrey(String *s)
-{
-	return s_append(s, "</font>");
 }
 
 static String*
@@ -402,17 +380,30 @@ s_diff(String *s, Whist *h, int i, int j)
 					n2 = atoi(q+1);
 				else
 					n2 = n1;
-				s = grey(s);
+				s = s_append(s,"<span class='old_text'>");
 				s = copythru(s, &pnew, &nline, n1-1);
-				s = ungrey(s);
+				s = s_append(s,"</span><span class='new_text'>");
 				s = copythru(s, &pnew, &nline, n2);
+				s = s_append(s,"</span>");
 				break;
+/* 
+			//This is not what we want...
+			case 'd':
+				n1 = atoi(q+1);
+
+				s = s_append(s,"<del>");
+				s = copythru(s, &pnew, &nline, n1-1);
+				s = s_append(s,"</del>");
+				s = copythru(s, &pnew, &nline, n1);
+				break;
+*/
 			}
 		}
 		close(fdiff);
-		s = grey(s);
+		s = s_append(s,"<span class='old_text'>");
 		s = s_append(s, pnew);
-		s = ungrey(s);
+		s = s_append(s,"</span>");
+
 	}
 	s_free(new);
 	s_free(old);
@@ -429,7 +420,7 @@ diffhtml(String *s, Whist *h)
 	char *atime;
 
 	for(i=h->ndoc-1; i>=0; i--){
-		s = s_append(s, "<hr>\n");
+		s = s_append(s, "<hr \><div class='diff_head'>\n");
 		if(i==h->current)
 			sprint(tmp, "index.html");
 		else
@@ -445,8 +436,8 @@ diffhtml(String *s, Whist *h)
 			s = s_append(s, ", conflicting write");
 		s = s_append(s, "\n");
 		if(h->doc[i].comment)
-			s = s_appendlist(s, "<br><i>", h->doc[i].comment, "</i>\n", nil);
-		s = s_append(s, "<br><hr>");
+			s = s_appendlist(s, "<br \><i>", h->doc[i].comment, "</i>\n", nil);
+		s = s_append(s, "</div><hr />");
 		s = s_diff(s, h, i, i-1);
 	}
 	s = s_append(s, "<hr>");
