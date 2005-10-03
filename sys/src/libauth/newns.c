@@ -19,6 +19,8 @@ static int	nsop(int, char*[], AuthRpc*);
 static int	callexport(char*, char*);
 static int	catch(void*, char*);
 
+int newnsdebug;
+
 static int
 buildns(int newns, char *user, char *file)
 {
@@ -32,6 +34,17 @@ buildns(int newns, char *user, char *file)
 	rpc = nil;
 	/* try for factotum now because later is impossible */
 	afd = open("/mnt/factotum/rpc", ORDWR);
+	if (afd < 0){
+		/* Try mounting it first */
+		afd = open("#s/factotum", ORDWR);
+		if (afd < 0 && newnsdebug)
+			fprint(2, " no #s/factotum\n");
+		if (mount(afd, -1, "/mnt", MREPL, "") < 0 && newnsdebug)
+			fprint(2, " mount factotum /mnt failed\n");
+		afd = open("/mnt/factotum/rpc", ORDWR);
+	}
+	if (afd < 0 && newnsdebug)
+			fprint(2, "can't reach factotum\n");
 	if(afd >= 0){
 		rpc = auth_allocrpc(afd);
 		if(rpc == nil){
@@ -131,13 +144,20 @@ static int
 nsop(int argc, char *argv[], AuthRpc *rpc)
 {
 	char *argv0;
+	char *spec;
 	ulong flags;
 	int fd;
+	int	i;
 	Biobuf *b;
 	int cdroot = 0;
 
 	flags = 0;
 	argv0 = 0;
+	if (newnsdebug){
+		for (i = 0; i < argc; i++)
+			fprint(2, "%s ", argv[i]);
+		fprint(2, "\n");
+	}
 	ARGBEGIN{
 	case 'a':
 		flags |= MAFTER;
@@ -164,19 +184,25 @@ nsop(int argc, char *argv[], AuthRpc *rpc)
 		Bterm(b);
 	} else if(strcmp(argv0, "clear") == 0 && argc == 0)
 		rfork(RFCNAMEG);
-	else if(strcmp(argv0, "bind") == 0 && argc == 2)
-		bind(argv[0], argv[1], flags);
-	else if(strcmp(argv0, "unmount") == 0){
+	else if(strcmp(argv0, "bind") == 0 && argc == 2){
+		if (bind(argv[0], argv[1], flags) < 0 && newnsdebug)
+			fprint(2, "newns: bind: %s %s: %r\n",argv[0], argv[1]);
+	} else if(strcmp(argv0, "unmount") == 0){
 		if(argc == 1)
 			unmount(nil, argv[0]);
 		else if(argc == 2)
 			unmount(argv[0], argv[1]);
 	} else if(strcmp(argv0, "mount") == 0){
 		fd = open(argv[0], ORDWR);
-		if(argc == 2)
-			famount(fd, rpc, argv[1], flags, "");
-		else if(argc == 3)
-			famount(fd, rpc, argv[1], flags, argv[2]);
+		if(argc == 2){
+			if (famount(fd, rpc, argv[1], flags, "") < 0 && newnsdebug)
+				fprint(2, "newns: mount: %s %s: %r\n", argv[0], argv[1]);
+		} else if(argc == 3){
+			spec = unquotestrdup(argv[2]);
+			if (famount(fd, rpc, argv[1], flags, spec) < 0 && newnsdebug)
+				fprint(2, "newns: mount: %s %s %s: %r\n", argv[0], argv[1], argv[2]);
+			free(spec);
+		}
 		close(fd);
 	} else if(strcmp(argv0, "import") == 0){
 		fd = callexport(argv[0], argv[1]);
@@ -227,7 +253,7 @@ splitargs(char *p, char *argv[], char *argbuf, int nargv)
 	char *q;
 	int i, n;
 
-	n = gettokens(p, argv, nargv, " \t'\r");
+	n = gettokens(p, argv, nargv, " \t\r");
 	if(n == nargv)
 		return 0;
 	for(i = 0; i < n; i++){
@@ -269,6 +295,12 @@ expandarg(char *arg, char *buf)
 		if(q && q < arg)
 			arg = q;
 		q = utfrune(p, L'.');
+		if(q && q < arg)
+			arg = q;
+		q = utfrune(p, L'!');
+		if(q && q < arg)
+			arg = q;
+		q = utfrune(p, L'\'');
 		if(q && q < arg)
 			arg = q;
 		q = utfrune(p, L'$');
