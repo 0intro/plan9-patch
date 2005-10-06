@@ -55,6 +55,8 @@ closeclient(Client *c)
 		c->url = nil;
 		free(c->redirect);
 		c->redirect = nil;
+		free(c->authenticate);
+		c->authenticate = nil;
 		c->npostbody = 0;
 		c->havepostbody = 0;
 		c->bodyopened = 0;
@@ -101,6 +103,8 @@ clientbodyopen(Client *c, Req *r)
 				respond(r, e);
 			return;
 		}
+		if (c->authenticate)
+			continue;
 		if(!c->redirect)
 			break;
 		next = c->redirect;
