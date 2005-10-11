@@ -25,7 +25,7 @@ static struct
 	QLock;
 
 	int	raw;		/* true if we shouldn't process input */
-	int	ctl;		/* number of opens to the control file */
+	Ref	ctl;		/* number of opens to the control file */
 	int	x;		/* index into line */
 	char	line[1024];	/* current input line */
 
@@ -648,9 +648,7 @@ consopen(Chan *c, int omode)
 	c = devopen(c, omode, consdir, nelem(consdir), devgen);
 	switch((ulong)c->qid.path){
 	case Qconsctl:
-		qlock(&kbd);
-		kbd.ctl++;
-		qunlock(&kbd);
+		incref(&kbd.ctl);
 		break;
 
 	case Qkprint:
@@ -680,10 +678,8 @@ consclose(Chan *c)
 	/* last close of control file turns off raw */
 	case Qconsctl:
 		if(c->flag&COPEN){
-			qlock(&kbd);
-			if(--kbd.ctl == 0)
+			if(decref(&kbd.ctl) == 0)
 				kbd.raw = 0;
-			qunlock(&kbd);
 		}
 		break;
 
@@ -703,8 +699,8 @@ consread(Chan *c, void *buf, long n, vlong off)
 	ulong l;
 	Mach *mp;
 	char *b, *bp;
-	char tmp[256];		/* must be >= 18*NUMSIZE (Qswap) */
 	char *cbuf = buf;
+	char tmp[256];		/* must be >= 18*NUMSIZE (Qswap) */
 	int ch, i, k, id, eol;
 	vlong offset = off;
 
@@ -721,6 +717,7 @@ consread(Chan *c, void *buf, long n, vlong off)
 			nexterror();
 		}
 		if(kbd.raw) {
+		raw:
 			if(qcanread(lineq))
 				n = qread(lineq, buf, n);
 			else {
@@ -742,22 +739,25 @@ consread(Chan *c, void *buf, long n, vlong off)
 					if(kbd.x)
 						kbd.x--;
 					break;
-				case 0x15:
+				case 0x15:		// ^U
 					kbd.x = 0;
 					break;
+				case 0x00:		// flush on rawon
+				case 0x04:		// ^D
+					eol = 1;
+					break;
 				case '\n':
-				case 0x04:
 					eol = 1;
 				default:
 					kbd.line[kbd.x++] = ch;
 					break;
 				}
-				if(kbd.x == sizeof(kbd.line) || eol){
-					if(ch == 0x04)
-						kbd.x--;
+				if(kbd.x && (kbd.x == sizeof(kbd.line) || eol)){
 					qwrite(lineq, kbd.line, kbd.x);
 					kbd.x = 0;
 				}
+				if (kbd.raw)
+					goto raw;
 			}
 			n = qread(lineq, buf, n);
 		}
@@ -966,18 +966,11 @@ conswrite(Chan *c, void *va, long n, vlong off)
 		buf[n] = 0;
 		for(a = buf; a;){
 			if(strncmp(a, "rawon", 5) == 0){
-				qlock(&kbd);
-				if(kbd.x){
-					qwrite(kbdq, kbd.line, kbd.x);
-					kbd.x = 0;
-				}
 				kbd.raw = 1;
-				qunlock(&kbd);
+				// flush any reader that might be blocked
+				kbdputc(kbdq, 0x00);
 			} else if(strncmp(a, "rawoff", 6) == 0){
-				qlock(&kbd);
 				kbd.raw = 0;
-				kbd.x = 0;
-				qunlock(&kbd);
 			} else if(strncmp(a, "ctlpon", 6) == 0){
 				kbd.ctlpoff = 0;
 			} else if(strncmp(a, "ctlpoff", 7) == 0){
