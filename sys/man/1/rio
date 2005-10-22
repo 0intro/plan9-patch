@@ -50,6 +50,10 @@ rio, label, window, wloc \- window system
 ] [
 .B -hide
 ] [
+.B -scroll
+] [
+.B -noscroll
+] [
 .I cmd
 .I arg ...
 ]
@@ -120,9 +124,13 @@ and placement
 .RB ( minx ,
 .BR miny ,
 .BR maxx ,
-.BR maxy ;
-.BR hide
-causes the window to be created off-screen); and working directory
+.BR maxy );
+The window to be created off-screen
+.RB ( hide ),
+it's scroll mode maybe forced
+.RB ( scroll
+.BR noscroll ),
+and an alternative working directory can be set
 .RB ( cd ).
 the units are pixels with the
 upper left corner of the screen at (0, 0).
