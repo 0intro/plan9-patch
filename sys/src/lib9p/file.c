@@ -85,7 +85,7 @@ int
 removefile(File *f)
 {
 	File *fp;
-	Filelist *fl;
+	Filelist *fl, **flp;
 	
 	fp = f->parent;
 	if(fp == nil){
@@ -118,12 +118,15 @@ removefile(File *f)
 		return -1;
 	}
 
-	for(fl=fp->filelist; fl; fl=fl->link)
-		if(fl->f == f)
+	for(flp=&fp->filelist; fl=*flp; flp=&(*flp)->link)
+		if(fl->f == f){
+			*flp = fl->link;
 			break;
+		}
 	assert(fl != nil && fl->f == f);
 
 	fl->f = nil;
+	free(fl);
 	fp->nchild--;
 	f->parent = nil;
 	wunlock(fp);
@@ -139,7 +142,7 @@ File*
 createfile(File *fp, char *name, char *uid, ulong perm, void *aux)
 {
 	File *f;
-	Filelist *fl, *freel;
+	Filelist *fl, *freel, *fle;
 	Tree *t;
 
 	if((fp->qid.type&QTDIR) == 0){
@@ -148,6 +151,7 @@ createfile(File *fp, char *name, char *uid, ulong perm, void *aux)
 	}
 
 	freel = nil;
+	fle = nil;
 	wlock(fp);
 	for(fl=fp->filelist; fl; fl=fl->link){
 		if(fl->f == nil)
@@ -157,12 +161,18 @@ createfile(File *fp, char *name, char *uid, ulong perm, void *aux)
 			werrstr("file already exists");
 			return nil;
 		}
+		fle = fl;
 	}
 
 	if(freel == nil){
 		freel = emalloc9p(sizeof *freel);
-		freel->link = fp->filelist;
-		fp->filelist = freel;
+		if (fle == nil){
+			freel->link = fp->filelist;
+			fp->filelist = freel;
+		} else {
+			freel->link = nil;
+			fle->link = freel;
+		}
 	}
 
 	f = allocfile();
@@ -209,6 +219,11 @@ walkfile1(File *dir, char *elem)
 	rlock(dir);
 	if(strcmp(elem, "..") == 0){
 		fp = dir->parent;
+		if (fp == nil){
+			werrstr("walk on a deleted file");
+			runlock(dir);
+			return nil;
+		}
 		incref(fp);
 		runlock(dir);
 		closefile(dir);
