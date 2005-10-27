@@ -71,6 +71,7 @@ Mouseinfo	mouse;
 Cursorinfo	cursor;
 int		mouseshifted;
 Cursor		curs;
+int		mousekeys;
 
 void	Cursortocursor(Cursor*);
 int	mousechanged(void*);
@@ -561,7 +562,7 @@ mousetrack(int dx, int dy, int b, int msec)
 
 	lastb = mouse.buttons;
 	mouse.xy = Pt(x, y);
-	mouse.buttons = b;
+	mouse.buttons = b|kbdbuttons;
 	mouse.redraw = 1;
 	mouse.counter++;
 	mouse.msec = msec;

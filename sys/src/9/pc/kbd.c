@@ -22,10 +22,11 @@ enum {
 	Cmd=		0x64,		/* command port (write only) */
 
 	Spec=		0xF800,		/* Unicode private space */
+	Kmouse=		0xF900,		/* Mouse keys */
 
 	PF=		Spec|0x20,	/* num pad function key */
 	View=		Spec|0x00,	/* view (shift window up) */
-	KF=		0xF000,		/* function key (begin Unicode private space) */
+	KF=		0xF000,	/* function key (begin Unicode private space) */
 	Shift=		Spec|0x60,
 	Break=		Spec|0x61,
 	Ctrl=		Spec|0x62,
@@ -61,11 +62,11 @@ Rune kbtab[Nscan] =
 [0x00]	No,	0x1b,	'1',	'2',	'3',	'4',	'5',	'6',
 [0x08]	'7',	'8',	'9',	'0',	'-',	'=',	'\b',	'\t',
 [0x10]	'q',	'w',	'e',	'r',	't',	'y',	'u',	'i',
-[0x18]	'o',	'p',	'[',	']',	'\n',	Ctrl,	'a',	's',
+[0x18]	'o',	'p',	'[',	']',	'\n',	Kmouse|1,	'a',	's',
 [0x20]	'd',	'f',	'g',	'h',	'j',	'k',	'l',	';',
 [0x28]	'\'',	'`',	Shift,	'\\',	'z',	'x',	'c',	'v',
 [0x30]	'b',	'n',	'm',	',',	'.',	'/',	Shift,	'*',
-[0x38]	Latin,	' ',	Ctrl,	KF|1,	KF|2,	KF|3,	KF|4,	KF|5,
+[0x38]	Kmouse|4,	' ',	Ctrl,	Kmouse|1,	Kmouse|2,	Kmouse|4,	KF|4,	KF|5,
 [0x40]	KF|6,	KF|7,	KF|8,	KF|9,	KF|10,	Num,	Scroll,	'7',
 [0x48]	'8',	'9',	'-',	'4',	'5',	'6',	'+',	'1',
 [0x50]	'2',	'3',	'0',	'.',	No,	No,	No,	KF|11,
@@ -81,11 +82,11 @@ Rune kbtabshift[Nscan] =
 [0x00]	No,	0x1b,	'!',	'@',	'#',	'$',	'%',	'^',
 [0x08]	'&',	'*',	'(',	')',	'_',	'+',	'\b',	'\t',
 [0x10]	'Q',	'W',	'E',	'R',	'T',	'Y',	'U',	'I',
-[0x18]	'O',	'P',	'{',	'}',	'\n',	Ctrl,	'A',	'S',
+[0x18]	'O',	'P',	'{',	'}',	'\n',	Kmouse|1,	'A',	'S',
 [0x20]	'D',	'F',	'G',	'H',	'J',	'K',	'L',	':',
 [0x28]	'"',	'~',	Shift,	'|',	'Z',	'X',	'C',	'V',
 [0x30]	'B',	'N',	'M',	'<',	'>',	'?',	Shift,	'*',
-[0x38]	Latin,	' ',	Ctrl,	KF|1,	KF|2,	KF|3,	KF|4,	KF|5,
+[0x38]	No,	' ',	Ctrl,	Kmouse|1,	Kmouse|2,	Kmouse|4,	KF|4,	KF|5,
 [0x40]	KF|6,	KF|7,	KF|8,	KF|9,	KF|10,	Num,	Scroll,	'7',
 [0x48]	'8',	'9',	'-',	'4',	'5',	'6',	'+',	'1',
 [0x50]	'2',	'3',	'0',	'.',	No,	No,	No,	KF|11,
@@ -101,7 +102,7 @@ Rune kbtabesc1[Nscan] =
 [0x00]	No,	No,	No,	No,	No,	No,	No,	No,
 [0x08]	No,	No,	No,	No,	No,	No,	No,	No,
 [0x10]	No,	No,	No,	No,	No,	No,	No,	No,
-[0x18]	No,	No,	No,	No,	'\n',	Ctrl,	No,	No,
+[0x18]	No,	No,	No,	No,	'\n',	Kmouse|1,	No,	No,
 [0x20]	No,	No,	No,	No,	No,	No,	No,	No,
 [0x28]	No,	No,	Shift,	No,	No,	No,	No,	No,
 [0x30]	No,	No,	No,	No,	No,	'/',	No,	Print,
@@ -109,7 +110,7 @@ Rune kbtabesc1[Nscan] =
 [0x40]	No,	No,	No,	No,	No,	No,	Break,	Home,
 [0x48]	Up,	Pgup,	No,	Left,	No,	Right,	No,	End,
 [0x50]	Down,	Pgdown,	Ins,	Del,	No,	No,	No,	No,
-[0x58]	No,	No,	No,	No,	No,	No,	No,	No,
+[0x58]	No,	No,	No,	Kmouse|2,	No,	Latin,	No,	No,
 [0x60]	No,	No,	No,	No,	No,	No,	No,	No,
 [0x68]	No,	No,	No,	No,	No,	No,	No,	No,
 [0x70]	No,	No,	No,	No,	No,	No,	No,	No,
@@ -121,7 +122,7 @@ Rune kbtabaltgr[Nscan] =
 [0x00]	No,	No,	No,	No,	No,	No,	No,	No,
 [0x08]	No,	No,	No,	No,	No,	No,	No,	No,
 [0x10]	No,	No,	No,	No,	No,	No,	No,	No,
-[0x18]	No,	No,	No,	No,	'\n',	Ctrl,	No,	No,
+[0x18]	No,	No,	No,	No,	'\n',	Kmouse|1,	No,	No,
 [0x20]	No,	No,	No,	No,	No,	No,	No,	No,
 [0x28]	No,	No,	Shift,	No,	No,	No,	No,	No,
 [0x30]	No,	No,	No,	No,	No,	'/',	No,	Print,
@@ -141,7 +142,7 @@ Rune kbtabctrl[] =
 [0x00]	No,	'', 	'', 	'', 	'', 	'', 	'', 	'', 
 [0x08]	'', 	'', 	'', 	'', 	'', 	'', 	'\b',	'\t',
 [0x10]	'', 	'', 	'', 	'', 	'', 	'', 	'', 	'\t',
-[0x18]	'', 	'', 	'', 	'', 	'\n',	Ctrl,	'', 	'', 
+[0x18]	'', 	'', 	'', 	'', 	'\n',	Kmouse|1,	'', 	'', 
 [0x20]	'', 	'', 	'', 	'\b',	'\n',	'', 	'', 	'', 
 [0x28]	'', 	No, 	Shift,	'', 	'', 	'', 	'', 	'', 
 [0x30]	'', 	'', 	'', 	'', 	'', 	'', 	Shift,	'\n',
@@ -168,6 +169,7 @@ enum
 };
 
 int mouseshifted;
+extern int mousekeys;	// devmouse.c
 
 static Lock i8042lock;
 static uchar ccc;
@@ -265,7 +267,7 @@ i8042auxcmd(int cmd)
 	iunlock(&i8042lock);
 
 	if(c != 0xFA){
-		print("i8042: %2.2ux returned to the %2.2ux command\n", c, cmd);
+		//print("i8042: %2.2ux returned to the %2.2ux command\n", c, cmd);
 		return -1;
 	}
 	return 0;
@@ -289,53 +291,31 @@ i8042auxcmds(uchar *cmd, int ncmd)
 	return i;
 }
 
-/*
- *  keyboard interrupt
- */
-static void
-i8042intr(Ureg*, void*)
+typedef struct Scanstate Scanstate;
+struct Scanstate {
+	int esc1, esc2;
+	int latin, lalt, alt, altgr, caps, ctl, num, shift, start;
+	int collecting, nk;
+	Rune kc[5];
+};
+
+static Scanstate sq;
+
+void
+kbdputsc(int c)
 {
-	int s, c, i;
-	static int esc1, esc2;
-	static int alt, altgr, caps, ctl, num, shift;
-	static int collecting, nk;
-	static Rune kc[5];
 	int keyup;
-
-	/*
-	 *  get status
-	 */
-	lock(&i8042lock);
-	s = inb(Status);
-	if(!(s&Inready)){
-		unlock(&i8042lock);
-		return;
-	}
-
-	/*
-	 *  get the character
-	 */
-	c = inb(Data);
-	unlock(&i8042lock);
-
-	/*
-	 *  if it's the aux port...
-	 */
-	if(s & Minready){
-		if(auxputc != nil)
-			auxputc(c, shift);
-		return;
-	}
+	int i;
 
 	/*
 	 *  e0's is the first of a 2 character sequence, e1 the first
 	 *  of a 3 character sequence (on the safari)
 	 */
 	if(c == 0xe0){
-		esc1 = 1;
+		sq.esc1 = 1;
 		return;
 	} else if(c == 0xe1){
-		esc2 = 2;
+		sq.esc2 = 2;
 		return;
 	}
 
@@ -348,22 +328,22 @@ i8042intr(Ureg*, void*)
 		return;
 	}
 
-	if(esc1){
+	if(sq.esc1){
 		c = kbtabesc1[c];
-		esc1 = 0;
-	} else if(esc2){
-		esc2--;
+		sq.esc1 = 0;
+	} else if(sq.esc2){
+		sq.esc2--;
 		return;
-	} else if(shift)
+	} else if(sq.shift)
 		c = kbtabshift[c];
-	else if(altgr)
+	else if(sq.altgr)
 		c = kbtabaltgr[c];
-	else if(ctl)
+	else if(sq.ctl)
 		c = kbtabctrl[c];
 	else
 		c = kbtab[c];
 
-	if(caps && c<='z' && c>='a')
+	if(sq.caps && c<='z' && c>='a')
 		c += 'A' - 'a';
 
 	/*
@@ -372,18 +352,23 @@ i8042intr(Ureg*, void*)
 	if(keyup){
 		switch(c){
 		case Latin:
-			alt = 0;
+		latinup:
+			sq.latin = 0;
 			break;
 		case Shift:
-			shift = 0;
+			sq.shift = 0;
 			mouseshifted = 0;
 			break;
 		case Ctrl:
-			ctl = 0;
+			sq.ctl = 0;
 			break;
 		case Altgr:
-			altgr = 0;
+			sq.altgr = 0;
 			break;
+		}
+		if ((c&Kmouse) == Kmouse){
+			mousekeys &= ~ (c&0xff);
+			mousetrack(0,0,0, TK2MS(MACHP(0)->ticks));
 		}
 		return;
 	}
@@ -392,39 +377,39 @@ i8042intr(Ureg*, void*)
  	 *  normal character
 	 */
 	if(!(c & (Spec|KF))){
-		if(ctl)
-			if(alt && c == Del)
+		if(sq.ctl)
+			if(sq.alt && c == Del)
 				exit(0);
-		if(!collecting){
+		if(!sq.collecting){
 			kbdputc(kbdq, c);
 			return;
 		}
-		kc[nk++] = c;
-		c = latin1(kc, nk);
+		sq.kc[sq.nk++] = c;
+		c = latin1(sq.kc, sq.nk);
 		if(c < -1)	/* need more keystrokes */
 			return;
 		if(c != -1)	/* valid sequence */
 			kbdputc(kbdq, c);
 		else	/* dump characters */
-			for(i=0; i<nk; i++)
-				kbdputc(kbdq, kc[i]);
-		nk = 0;
-		collecting = 0;
+			for(i=0; i<sq.nk; i++)
+				kbdputc(kbdq, sq.kc[i]);
+		sq.nk = 0;
+		sq.collecting = 0;
 		return;
 	} else {
 		switch(c){
 		case Caps:
-			caps ^= 1;
+			sq.caps ^= 1;
 			return;
 		case Num:
-			num ^= 1;
+			sq.num ^= 1;
 			return;
 		case Shift:
-			shift = 1;
+			sq.shift = 1;
 			mouseshifted = 1;
 			return;
 		case Latin:
-			alt = 1;
+			sq.latin = 1;
 			/*
 			 * VMware uses Ctl-Alt as the key combination
 			 * to make the VM give up keyboard and mouse focus.
@@ -435,21 +420,62 @@ i8042intr(Ureg*, void*)
 			 * As a clumsy hack around this, we look for ctl-alt
 			 * and don't treat it as the start of a compose sequence.
 			 */
-			if(!ctl){
-				collecting = 1;
-				nk = 0;
+			if (!sq.ctl){
+				sq.collecting = 1;
+				sq.nk = 0;
 			}
 			return;
 		case Ctrl:
-			ctl = 1;
+			sq.ctl = 1;
 			return;
 		case Altgr:
-			altgr = 1;
-			collecting = 0;
+			sq.altgr = 1;
+			sq.collecting = 0;
+			return;
+		}
+		if ((c&Kmouse) == Kmouse){
+			mousekeys |=  (c&0xff);
+			mousetrack(0,0,0, TK2MS(MACHP(0)->ticks));
 			return;
 		}
 	}
 	kbdputc(kbdq, c);
+}
+
+/*
+ *  keyboard interrupt
+ */
+static void
+i8042intr(Ureg*, void*)
+{
+	int s, c;
+
+	/*
+	 *  get status
+	 */
+	lock(&i8042lock);
+	s = inb(Status);
+	if(!(s&Inready)){
+		unlock(&i8042lock);
+		return;
+	}
+
+	/*
+	 *  get the scan code for the character
+	 */
+	c = inb(Data);
+	unlock(&i8042lock);
+
+	/*
+	 *  if it's the aux port...
+	 */
+	if(s & Minready){
+		if(auxputc != nil)
+			auxputc(c, sq.shift);
+		return;
+	}
+
+	kbdputsc(c);
 }
 
 void
