@@ -136,6 +136,9 @@ loadinfo(Message *m, char *dir)
 	m->disposition = line(p, &p);
 	m->filename = line(p, &p);
 	m->digest = line(p, &p);
+	line(p, &p);
+	line(p, &p);
+	m->rfc822date = line(p, &p);
 	free(data);
 	return 1;
 }
@@ -264,6 +267,34 @@ stripdate(char *as)
 }
 
 char*
+rfc822date(char *as)
+{
+	int n;
+	char *s, *fld[10];
+
+	as = estrdup(as);
+	s = estrdup(as);
+	n = tokenize(s, fld, 10);
+	if(n > 5){
+		sprint(as, "%.3s ", fld[0]);	/* day */
+		/* some dates have 19 Apr, some Apr 19 */
+		if(strlen(fld[1])<4 && isnumeric(fld[1]))
+			sprint(as+strlen(as), "%.3s %.3s ", fld[1], fld[2]);	/* day, month */
+		else
+			sprint(as+strlen(as), "%.3s %.3s ", fld[2], fld[1]);	/* month, day */
+		/* do we use time or year?  depends on whether year matches this one */
+		if(thisyear(fld[3])){
+			if(strchr(fld[4], ':') != nil)
+				sprint(as+strlen(as), "%.5s ", fld[4]);	/* time */
+		}else
+			sprint(as+strlen(as), "%.4s ", fld[3]);	/* year */
+		sprint(as+strlen(as), "%.5s", fld[5]);	/* timezone */
+	}
+	free(s);
+	return as;
+}
+
+char*
 readfile(char *dir, char *name, int *np)
 {
 	char *file, *data;
@@ -324,7 +355,7 @@ info(Message *m, int ind, int ogf)
 
 	i = estrdup("");
 	i = eappend(i, "\t", p);
-	i = egrow(i, "\t", stripdate(m->date));
+	i = egrow(i, "\t", rfc822date(m->rfc822date));
 	if(ind == 0){
 		if(strcmp(m->type, "text")!=0 && strncmp(m->type, "text/", 5)!=0 && 
 		   strncmp(m->type, "multipart/", 10)!=0)
@@ -525,6 +556,7 @@ mesgfreeparts(Message *m)
 	free(m->disposition);
 	free(m->filename);
 	free(m->digest);
+	free(m->rfc822date);
 }
 
 void
@@ -533,7 +565,7 @@ mesgdel(Message *mbox, Message *m)
 	Message *n, *next;
 
 	if(m->opened)
-		error("internal error: deleted message still open in mesgdel");
+		error("Mail: internal error: deleted message still open in mesgdel\n");
 	/* delete subparts */
 	for(n=m->head; n!=nil; n=next){
 		next = n->next;
