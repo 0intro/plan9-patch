@@ -887,6 +887,40 @@ drag(Window *w, Rectangle *rp)
 	return ni;
 }
 
+Point
+warppoint(Rectangle r,Point mp,int which)
+{
+
+	switch(which){
+	case 0:	/* top left */
+		mp = Pt(r.min.x, r.min.y);
+		break;
+	case 2:	/* top right */
+		mp = Pt(r.max.x,r.min.y);
+		break;
+	case 6:	/* bottom left */
+		mp = Pt(r.min.x, r.max.y);
+		break;
+	case 8:	/* bottom right */
+		mp = Pt(r.max.x, r.max.y);
+		break;
+	case 1:	/* top edge */
+		mp = Pt(mp.x,r.min.y);
+		break;
+	case 5:	/* right edge */
+		mp = Pt(r.max.x, mp.y);
+		break;
+	case 7:	/* bottom edge */
+		mp = Pt(mp.x, r.max.y);
+		break;
+	case 3:		/* left edge */
+		mp = Pt(r.min.x, mp.y);
+		break;
+	}
+
+	return mp;
+}
+
 Rectangle
 whichrect(Rectangle r, Point p, int which)
 {
@@ -928,8 +962,12 @@ bandsize(Window *w)
 	int which, but;
 
 	p = mouse->xy;
-	startp = p;
+	
 	which = whichcorner(w, p);
+	p = warppoint(w->screenr,p,which);
+	wmovemouse(w,p);
+	startp = p;
+	readmouse(mousectl);
 	r = whichrect(w->screenr, p, which);
 	drawborder(r, 1);
 	or = r;
