@@ -81,6 +81,8 @@ catch(void *a, char *msg)
 	USED(a);
 	if(strstr(msg, "alarm"))
 		noted(NCONT);
+	else if(strstr(msg, "die"))
+		exits(0);
 	else
 		noted(NDFLT);
 }
@@ -177,7 +179,7 @@ rcvr(int fd, int msglen, int interval, int nmsg, int senderpid)
 	ip = (Icmp*)buf;
 	sum = 0;
 
-	while(!done || first != nil){
+	while((!done || first != nil) && nmsg > lostmsgs+rcvdmsgs){
 		alarm((nmsg-lostmsgs-rcvdmsgs)*interval+5000);
 		n = read(fd, buf, sizeof(buf));
 		alarm(0);
@@ -213,7 +215,8 @@ rcvr(int fd, int msglen, int interval, int nmsg, int senderpid)
 
 	if(lostmsgs)
 		print("%d out of %d messages lost\n", lostmsgs, lostmsgs+rcvdmsgs);
-	postnote(PNPROC, senderpid, "die");
+	else
+		postnote(PNPROC, senderpid, "die");
 }
 
 void
