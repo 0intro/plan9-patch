@@ -11,6 +11,13 @@ readbuf,
 readstr,
 respond,
 threadpostmountsrv,
+netsrv,
+threadnetsrv,
+authattach,
+authread,
+authwrite,
+authopen,
+destroyauthfid,
 srv \- 9P file service
 .SH SYNOPSIS
 .ft L
@@ -52,6 +59,9 @@ typedef struct Srv {
 	int		outfd;
 	int		srvfd;
 	int		nopipe;
+
+	char*		keyspec;
+	char*		addr;
 } Srv;
 .fi
 .PP
@@ -61,6 +71,8 @@ typedef struct Srv {
 int	srv(Srv *s)
 void	postmountsrv(Srv *s, char *name, char *mtpt, int flag)
 void	threadpostmountsrv(Srv *s, char *name, char *mtpt, int flag)
+int	threadnetsrv(Srv* srv, char* addr)
+int	netsrv(Srv* srv, char* addr)
 int	postfd(char *srvname, int fd)
 void	respond(Req *r, char *error)
 void	readstr(Req *r, char *src)
@@ -69,6 +81,17 @@ typedef int Dirgen(int n, Dir *dir, void *aux)
 void		dirread9p(Req *r, Dirgen *gen, void *aux)
 void	walkandclone(Req *r, char *(*walk1)(Fid *old, char *name, void *v),
           char *(*clone)(Fid *old, Fid *new, void *v), void *v)
+.fi
+.PP
+.nf
+.ft L
+.ta \w'\fLvoid* 'u
+void	authsrv(Req* r);
+int	authattach(Req* r);
+void	authread(Req* r);
+void	authwrite(Req* r);
+void	authopen(Req* r);
+void	destroyauthfid(Fid* fid);
 .fi
 .PP
 .nf
@@ -217,6 +240,29 @@ this process, the entire process is terminated by calling
 .I sysfatal
 (see
 .IR perror (2)).
+.PP
+.I Netsrv
+and
+.I threadnetsrv
+are wrappers (using processes created with
+.IR rfork (2)
+and the thread library respectively) that start a listener process to accept
+network calls at
+.I addr
+from remote clients. Both calles return the pid for that process. The listener
+creates one more process per client connection, to run
+.I srv
+for the client. The
+.I Srv
+structure used for each client is a copy of the one supplied to
+.I netsrv
+( or
+.IR threadnetsrv ).
+The
+.I addr
+field of
+.I Srv
+is set to the network address for the client on each server.
 .SS Service functions
 The functions in a 
 .B Srv
@@ -335,6 +381,25 @@ is the program name variable as set by
 .I ARGBEGIN
 (see
 .IR arg (2)).
+The helper function
+.I authsrv
+may be used as the
+.I auth
+routine to authenticate clients using
+.IR factotum (4).
+In this case,
+.IR authattach ,
+.IR authread ,
+.IR authwrite ,
+.IR authopen ,
+and
+.IR destroyauthfile
+should be used to handle fids for authentication files
+(those with the
+.B QTAUTH
+bit set in their
+.B qid.type
+field).
 .TP
 .I Attach
 The

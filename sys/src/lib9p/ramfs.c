@@ -1,163 +1,237 @@
 #include <u.h>
 #include <libc.h>
-#include <auth.h>
 #include <fcall.h>
+#include <auth.h>
 #include <thread.h>
 #include <9p.h>
 
-static char Ebad[] = "something bad happened";
-static char Enomem[] = "no memory";
-
 typedef struct Ramfile	Ramfile;
+
 struct Ramfile {
-	char *data;
-	int ndata;
+	char*	data;
+	int	ndata;
 };
 
-void
-fsread(Req *r)
+
+static char	Ebad[] = "something bad happened";
+static char	Enomem[] = "no memory";
+
+static void
+fsattach(Req* r)
 {
-	Ramfile *rf;
-	vlong offset;
-	long count;
+	if (r->srv->auth != nil && authattach(r) < 0)
+		return;
+	respond(r, nil);
+}
 
-	rf = r->fid->file->aux;
-	offset = r->ifcall.offset;
-	count = r->ifcall.count;
+static void
+fsopen(Req* r)
+{
+	Ramfile*rf;
+	File*	file;
 
-//print("read %ld %lld\n", *count, offset);
-	if(offset >= rf->ndata){
-		r->ofcall.count = 0;
-		respond(r, nil);
+	if (r->fid->qid.type&QTAUTH){
+		authopen(r);
 		return;
 	}
+	file = r->fid->file;
+	if (r->ifcall.mode&OTRUNC){
+		rf = file->aux;
+		if(rf){
+			rf->ndata = 0;
+			file->length = 0;
+		}
+	}
+	respond(r, nil);
+}
 
-	if(offset+count >= rf->ndata)
-		count = rf->ndata - offset;
+static void
+fscreate(Req* r)
+{
+	File *file;
+	char* name;
+	char* uid;
+	int mode;
+	Ramfile *rf;
+	File* f;
 
-	memmove(r->ofcall.data, rf->data+offset, count);
+	file = r->fid->file;
+	name = r->ifcall.name;
+	uid = r->fid->uid;
+	mode = r->fid->file->mode & 0x777 & r->ifcall.perm;
+	mode |= (r->ifcall.perm & ~0x777);
+	if(f = createfile(file, name, uid, mode, 0)){
+		rf = emalloc9p(sizeof *rf);
+		f->aux = rf;
+		closefile(r->fid->file);
+		r->fid->file = f;
+		r->ofcall.qid = f->qid;
+		respond(r, nil);
+	} else
+		responderrstr();
+}
+
+static void
+fsread(Req* r)
+{
+	File* file;
+	long count;
+	vlong offset;
+	Ramfile*rf;
+
+	if (r->fid->qid.type&QTAUTH){
+		authread(r);
+		return;
+	}
+	file = r->fid->file;
+	rf = file->aux;
+	offset = r->ifcall.offset;
+	count = r->ifcall.count;
+	if (offset >= rf->ndata){
+		count = 0;
+	} else {
+		if(offset+count >= rf->ndata)
+			count = rf->ndata - offset;
+		memmove(r->ofcall.data, rf->data+offset, count);
+	}
 	r->ofcall.count = count;
 	respond(r, nil);
 }
 
-void
-fswrite(Req *r)
+static void
+fswrite(Req* r)
 {
-	void *v;
-	Ramfile *rf;
-	vlong offset;
+	File* file;
 	long count;
+	vlong offset;
+	Ramfile*rf;
+	void*	v;
 
-	rf = r->fid->file->aux;
+	if (r->fid->qid.type&QTAUTH){
+		authwrite(r);
+		return;
+	}
+	file = r->fid->file;
+	rf = file->aux;
 	offset = r->ifcall.offset;
 	count = r->ifcall.count;
-
 	if(offset+count >= rf->ndata){
 		v = realloc(rf->data, offset+count);
 		if(v == nil){
 			respond(r, Enomem);
 			return;
+		} else {
+			rf->data = v;
+			rf->ndata = offset+count;
+			file->length = rf->ndata;
 		}
-		rf->data = v;
-		rf->ndata = offset+count;
-		r->fid->file->length = rf->ndata;
 	}
-	memmove(rf->data+offset, r->ifcall.data, count);
-	r->ofcall.count = count;
+	if (r->ofcall.count = count)
+		memmove(rf->data+offset, r->ifcall.data, count);
 	respond(r, nil);
 }
 
-void
-fscreate(Req *r)
+static void
+fswstat(Req* r)
 {
-	Ramfile *rf;
-	File *f;
-
-	if(f = createfile(r->fid->file, r->ifcall.name, r->fid->uid, r->ifcall.perm, nil)){
-		rf = emalloc9p(sizeof *rf);
-		f->aux = rf;
-		r->fid->file = f;
-		r->ofcall.qid = f->qid;
-		respond(r, nil);
-		return;
+	if (r->d.name && r->d.name[0] && strcmp(r->fid->file->name, r->d.name)){
+		free(r->fid->file->name);
+		r->fid->file->name = estrdup9p(r->d.name);
 	}
-	respond(r, Ebad);
-}
-
-void
-fsopen(Req *r)
-{
-	Ramfile *rf;
-
-	rf = r->fid->file->aux;
-
-	if(rf && (r->ifcall.mode&OTRUNC)){
-		rf->ndata = 0;
-		r->fid->file->length = 0;
+	if (r->d.uid && r->d.uid[0]){
+		free(r->fid->file->uid);
+		r->fid->file->uid = estrdup9p(r->d.uid);
 	}
-
+	if (r->d.gid && r->d.gid[0]){
+		free(r->fid->file->gid);
+		r->fid->file->gid = estrdup9p(r->d.gid);
+	}
+	if (~(ulong)r->d.mode)
+		r->fid->file->mode = r->d.mode;
 	respond(r, nil);
 }
 
-void
-fsdestroyfile(File *f)
+static Srv sfs=
+{
+	.auth	=	authsrv,
+	.attach	=	fsattach,
+	.open	=	fsopen,
+	.create	=	fscreate,
+	.read	=	fsread,
+	.wstat	=	fswstat,
+	.write	=	fswrite,
+	.destroyfid = 	destroyauthfid,
+};
+
+static void
+freefile(File *f)
 {
 	Ramfile *rf;
 
-//fprint(2, "clunk\n");
 	rf = f->aux;
 	if(rf){
+		f->aux = nil;
 		free(rf->data);
 		free(rf);
 	}
 }
 
-Srv fs = {
-	.open=	fsopen,
-	.read=	fsread,
-	.write=	fswrite,
-	.create=	fscreate,
-};
-
 void
 usage(void)
 {
-	fprint(2, "usage: ramfs [-D] [-s srvname] [-m mtpt]\n");
+	fprint(2, "usage: %s [-aD] [-s srv] [-m mnt] [-n addr]\n", argv0);
 	exits("usage");
 }
 
+/* Example not using the thread library:
+ * 	E , x/threadmain/c/main
+ *	E , x/threadnetsrv/c/netsrv
+ *	E , x/threadpostmountsrv/c/postmountsrv
+ */
+
 void
-main(int argc, char **argv)
+threadmain(int argc, char **argv)
 {
-	char *srvname = nil;
-	char *mtpt = nil;
-	Qid q;
+	char*	mnt;
+	char*	srv;
+	char*	addr;
+	int	pid;
 
-	fs.tree = alloctree(nil, nil, DMDIR|0777, fsdestroyfile);
-	q = fs.tree->root->qid;
-
+	srv = nil;
+	mnt = nil;
+	addr = nil;
 	ARGBEGIN{
+	case 'a':
+		sfs.auth = nil;
+		break;
 	case 'D':
 		chatty9p++;
 		break;
 	case 's':
-		srvname = EARGF(usage());
+		srv = EARGF(usage());
 		break;
 	case 'm':
-		mtpt = EARGF(usage());
+		mnt = EARGF(usage());
+		break;
+	case 'n':
+		addr = EARGF(usage());
 		break;
 	default:
 		usage();
 	}ARGEND;
 
-	if(argc)
+	if(argc!= 0)
 		usage();
-
-	if(chatty9p)
-		fprint(2, "ramsrv.nopipe %d srvname %s mtpt %s\n", fs.nopipe, srvname, mtpt);
-	if(srvname == nil && mtpt == nil)
-		sysfatal("you should at least specify a -s or -m option");
-
-	postmountsrv(&fs, srvname, mtpt, MREPL|MCREATE);
-	exits(0);
+	if (srv == nil && mnt == nil && addr == nil)
+		mnt = "/tmp";
+	if (!chatty9p)
+		rfork(RFNOTEG);
+	sfs.tree =  alloctree(nil, nil, DMDIR|0755, freefile);
+	if (addr != nil){
+		pid = threadnetsrv(&sfs, addr);
+		if (chatty9p)
+			fprint(2, "proc %d listening\n", pid);
+	}
+	if (srv != nil || mnt != nil)
+		threadpostmountsrv(&sfs, srv, mnt, MREPL|MCREATE);
 }

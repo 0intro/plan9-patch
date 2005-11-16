@@ -246,6 +246,7 @@ sflush(Srv *srv, Req *r)
 	else
 		respond(r, nil);
 }
+
 static int
 rflush(Req *r, char *error)
 {
@@ -463,7 +464,7 @@ sread(Srv *srv, Req *r)
 		respond(r, Eunknownfid);
 		return;
 	}
-	if(r->ifcall.count < 0){
+	if(r->ifcall.count == ~0){
 		respond(r, Ebotch);
 		return;
 	}
@@ -509,7 +510,7 @@ swrite(Srv *srv, Req *r)
 		respond(r, Eunknownfid);
 		return;
 	}
-	if(r->ifcall.count < 0){
+	if(r->ifcall.count == ~0){
 		respond(r, Ebotch);
 		return;
 	}
@@ -592,6 +593,7 @@ sstat(Srv *srv, Req *r)
 		return;
 	}
 	if(r->fid->file){
+		rlock(r->fid->file);
 		r->d = r->fid->file->Dir;
 		if(r->d.name)
 			r->d.name = estrdup9p(r->d.name);
@@ -601,6 +603,7 @@ sstat(Srv *srv, Req *r)
 			r->d.gid = estrdup9p(r->d.gid);
 		if(r->d.muid)
 			r->d.muid = estrdup9p(r->d.muid);
+		runlock(r->fid->file);
 	}
 	if(srv->stat)	
 		srv->stat(r);	
@@ -668,9 +671,15 @@ swstat(Srv *srv, Req *r)
 		respond(r, "wstat -- attempt to change muid");
 		return;
 	}
-	if((ulong)~r->d.mode && ((r->d.mode&DMDIR)>>24) != (r->fid->qid.type&QTDIR)){
-		respond(r, "wstat -- attempt to change DMDIR bit");
-		return;
+	if((ulong)~r->d.mode){
+		if (((r->d.mode&DMDIR)>>24) != (r->fid->qid.type&QTDIR)){
+			respond(r, "wstat -- attempt to change DMDIR bit");
+			return;
+		}
+		if (r->fid->file && strcmp(r->fid->file->uid, r->fid->uid) != 0){
+			respond(r, "wstat -- not owner");
+			return;
+		}
 	}
 	srv->wstat(r);
 }
@@ -704,6 +713,8 @@ srv(Srv *srv)
 			respond(r, r->error);
 			continue;	
 		}
+		if (srv->slock)
+			qlock(srv->slock);
 		switch(r->ifcall.type){
 		default:
 			respond(r, "unknown message");
@@ -722,6 +733,8 @@ srv(Srv *srv)
 		case Tstat:	sstat(srv, r);	break;
 		case Twstat:	swstat(srv, r);	break;
 		}
+		if (srv->slock)
+			qunlock(srv->slock);
 	}
 
 	free(srv->rbuf);
@@ -739,11 +752,20 @@ srv(Srv *srv)
 }
 
 void
+responderrstr(Req* r)
+{
+	char errbuf[ERRMAX];
+
+	seprint(errbuf, errbuf+sizeof(errbuf), "%r");
+	respond(r, errbuf);
+}
+
+void
 respond(Req *r, char *error)
 {
 	int i, m, n;
-	char errbuf[ERRMAX];
 	Srv *srv;
+	char errbuf[ERRMAX];
 
 	srv = r->srv;
 	assert(srv != nil);
@@ -806,7 +828,8 @@ if(chatty9p)
 	for(i=0; i<r->nflush; i++)
 		respond(r->flush[i], nil);
 	free(r->flush);
-
+	r->flush = nil;
+	r->nflush= 0;
 	if(r->pool)
 		closereq(r);
 	else

@@ -208,6 +208,11 @@ struct Srv {
 	QLock	rlock;
 	uchar*	wbuf;
 	QLock	wlock;
+
+	QLock*	slock;		/* to lock service calls */
+	char*	keyspec;
+	long	authqgen;
+	char*	addr;
 };
 
 void		srv(Srv*);
@@ -215,6 +220,7 @@ void		postmountsrv(Srv*, char*, char*, int);
 int 		postfd(char*, int);
 int		chatty9p;
 void		respond(Req*, char*);
+void		responderrstr(Req*);
 void		threadpostmountsrv(Srv*, char*, char*, int);
 
 /*
@@ -230,7 +236,16 @@ enum {
 	OMASK = 3
 };
 
-void readstr(Req*, char*);
-void readbuf(Req*, void*, long);
+void	readstr(Req*, char*);
+void	readbuf(Req*, void*, long);
 void	walkandclone(Req*, char*(*walk1)(Fid*,char*,void*), char*(*clone)(Fid*,Fid*,void*), void*);
 
+void	destroyauthfid(Fid* fid);
+int	authattach(Req* r);
+void	authread(Req* r);
+void	authsrv(Req* r);
+void	authwrite(Req* r);
+void	authopen(Req* r);
+
+int	threadnetsrv(Srv* srv, char* addr);
+int	netsrv(Srv* srv, char* addr);
