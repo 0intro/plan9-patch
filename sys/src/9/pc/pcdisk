@@ -35,6 +35,7 @@ dev
 link
 	devpccard
 	devi82365
+	realmode
 	apm		apmjump
 	ether2000	ether8390
 	ether2114x	pci
@@ -60,7 +61,6 @@ link
 	usbuhci
 
 misc
-	realmode
 	archmp		mp apic
 
 	sdata		pci sdscsi
