@@ -893,8 +893,10 @@ ulong
 paddr(void *v)
 {
 	ulong va;
-	
+
 	va = (ulong)v;
+	if (va == 0)
+		return 0;
 	if(va < KZERO)
 		panic("paddr: va=%#.8lux", va);
 	return va-KZERO;
