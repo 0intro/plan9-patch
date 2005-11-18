@@ -5,6 +5,19 @@
 static char attrbuf[4096];
 
 int
+plumbcreate(char* name)
+{
+	char* n;
+	char	buf[128];
+
+	n = strrchr(name, '/');
+	if (n)
+		name = n+1;
+	seprint(buf, buf+128, "/mnt/plumb/%s", name);
+	return create(buf, ORDWR, 0660);
+}
+
+int
 plumbopen(char *name, int omode)
 {
 	int fd, f;
@@ -21,6 +34,11 @@ plumbopen(char *name, int omode)
 	fd = open(buf, omode);
 	if(fd >= 0)
 		return fd;
+	/* try creating the port first */
+	fd = plumbcreate(name);
+	if (fd >= 0)
+		return fd;
+	return -1;
 	/* try mounting service */
 	s = getenv("plumbsrv");
 	if(s == nil)
