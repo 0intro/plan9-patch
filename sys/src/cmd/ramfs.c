@@ -796,8 +796,6 @@ io(void)
 				exits("");
 			error("mount read");
 		}
-		if(n < 0)
-			error("mount read");
 		if(n == 0)
 			continue;
 		if(convM2S(mdata, n, &thdr) == 0)
