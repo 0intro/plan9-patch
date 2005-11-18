@@ -308,11 +308,9 @@ alloctree(char *uid, char *gid, ulong mode, void (*destroy)(File*))
 
 	t = emalloc9p(sizeof *t);
 	f = allocfile();
-	f->name = estrdup9p("/");
-	if(uid == nil){
-		if(uid = getuser())
-			uid = estrdup9p(uid);
-	}
+	f->name = estrdup9p("dev");
+	if(uid == nil)
+		uid = getuser();
 	if(uid == nil)
 		uid = estrdup9p("none");
 	else
