@@ -61,6 +61,9 @@ Only valid when
 .I file
 is a directory.
 .TP
+.B -A
+Do not try to authenticate.
+.TP
 .B -B
 Run in ``backwards'' mode, described below.
 .TP
