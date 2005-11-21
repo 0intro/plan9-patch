@@ -11,8 +11,12 @@ plumbopen(char *name, int omode)
 	char *s;
 	char buf[128];
 
-	if(name[0] == '/')
-		return open(name, omode);
+	if(name[0] == '/'){
+		fd = open(name, omode);
+		if (fd < 0)
+			fd = create(name, omode, 0600);
+		return fd;
+	}
 	snprint(buf, sizeof buf, "/mnt/plumb/%s", name);
 	fd = open(buf, omode);
 	if(fd >= 0)
@@ -21,6 +25,11 @@ plumbopen(char *name, int omode)
 	fd = open(buf, omode);
 	if(fd >= 0)
 		return fd;
+	snprint(buf, sizeof buf, "/mnt/plumb/%s", name);
+	fd = create(buf, omode, 0600);
+	if (fd >= 0)
+		return fd;
+
 	/* try mounting service */
 	s = getenv("plumbsrv");
 	if(s == nil)
