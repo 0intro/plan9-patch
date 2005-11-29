@@ -27,11 +27,15 @@ _authdial(char *net, char *authdom)
 {
 	int fd;
 	int vanilla;
+	int r;
 
 	vanilla = net==nil || strcmp(net, "/net")==0;
 
-	if(!vanilla || bindnetcs()>=0)
-		return authdial(net, authdom);
+	if(!vanilla || bindnetcs()>=0){
+		r = authdial(net, authdom);
+		if(r >= 0)
+			return r;
+	}
 
 	/* use the auth sever passed to us as an arg */
 	if(authaddr == nil)
