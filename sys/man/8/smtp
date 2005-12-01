@@ -65,7 +65,8 @@ this session.  See RFC3207 for details.
 if the server supports the ESMTP extension to use TLS encryption, turn it
 on.  If the server also supports the PLAIN (user + password) authentication,
 authenticate to the server using a password from
-.IR factotum (4).  See RFC's 3207 and 2554.
+.IR factotum (4).
+See RFCs 3207 and 2554.
 .TP
 .B -u
 specify a user name to be used in authentication.  The default name is
