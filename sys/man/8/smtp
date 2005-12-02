@@ -54,7 +54,7 @@ turn on debugging to standard error.
 .TP
 .B -a
 authenticate ourself to the server if the server
-supports PLAIN authentication and allows us to first
+supports PLAIN or LOGIN authentication and allows us to first
 start up an encrypted TLS connection
 .TP
 .B -s
@@ -63,9 +63,10 @@ this session.  See RFC3207 for details.
 .TP
 .B -a
 if the server supports the ESMTP extension to use TLS encryption, turn it
-on.  If the server also supports the PLAIN (user + password) authentication,
-authenticate to the server using a password from
-.IR factotum (4).  See RFC's 3207 and 2554.
+on.  If the server also supports the PLAIN or LOGIN authentication,
+authenticate to using a usename and password from
+.IR factotum (4). 
+See RFC\'s 3207 and 2554.
 .TP
 .B -u
 specify a user name to be used in authentication.  The default name is
