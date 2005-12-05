@@ -4,7 +4,11 @@ vt \- emulate a VT-100 or VT-220 terminal
 .SH SYNOPSIS
 .B vt
 [
-.B -2sa
+.B -2sawx
+]
+[
+.B -f
+.I font
 ]
 .SH DESCRIPTION
 .I Vt
@@ -12,16 +16,27 @@ replaces a rio window with a fresh instance of the shell
 .IR rc (1)
 running within an emulation of a DEC VT-100 terminal.
 The
-.B -2
-and
+.BR -2 ,
 .B -a
+and
+.B -x
 options configure
 .I vt
-to emulate a VT-220 and Ansi terminal respectively.
+to emulate a VT-220, Ansi or XTerm terminal respectively.
 The
 .B -s
-options forces a saner color scheme, i.e, black text on white
+option forces a saner color scheme, i.e, black text on white
 background.
+The
+.B -w
+option helps window resize events propagate to programs
+like
+.IR ssh (1)
+when running under
+.I vt .
+The
+.B -f
+option sets the font.
 .PP
 The right button has a menu with the following entries to provide
 the sort of character processing expected by non-Plan 9 systems:
@@ -105,5 +120,7 @@ as rich an emulation as its equivalent in other environments.
 .PP
 Use care in setting raw and newline modes when connecting to Unix systems
 via
-.IR con .
+.IR con (1)
+or
+.IR ssh (1).
 It may also be necessary to set the emulator into raw mode.
