@@ -166,7 +166,8 @@ alternating italic and Roman.
 .I t
 is literal.
 .ti0
-\&\fL.LP\fR	yes		Same as \fL.PP\fP.
+\&\fL.LP\fR	yes		Begin left-adjusted paragraph.
+Set prevailing indent to default.
 .ti0
 \&\fL.LR\fR \fIt\fR	no		Join 2
 words of
@@ -176,7 +177,7 @@ alternating literal and Roman.
 \&\fL.PD\fR \fId\fR	no	\fId\fR=\fL.4v\fP	Interparagraph distance is
 .IR d .
 .ti0
-\&\fL.PP\fR	yes		Begin paragraph.
+\&\fL.PP\fR	yes		Begin (potentially, but not currently, indented) paragraph.
 Set prevailing indent to default.
 .ti0
 \&\fL.RE\fR	yes		End of relative indent.
