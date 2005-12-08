@@ -20,10 +20,8 @@ acme, win, awd \- interactive text windows
 ]
 [
 .B -l
-.I file
-|
-.I file
-\&... ]
+.I loadfile
+]
 .LP
 .B win
 [

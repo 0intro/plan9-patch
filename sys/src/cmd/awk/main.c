@@ -57,7 +57,7 @@ int main(int argc, char *argv[])
 
 	cmdname = argv[0];
 	if (argc == 1) {
-		fprintf(stderr, "Usage: %s [-f programfile | 'program'] [-Ffieldsep] [-v var=value] [files]\n", cmdname);
+		fprintf(stderr, "Usage: %s [-safe] [-d] [-F fs] [-v var=value] [-mr n] [-mf n] [-f prog] [file ...]\n", cmdname);
 		exit(1);
 	}
 	signal(SIGFPE, fpecatch);

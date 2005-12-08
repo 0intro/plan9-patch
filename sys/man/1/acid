@@ -1,16 +1,21 @@
+acid [-l module] [-m machine] [-qrw] [-k] [pid] [file]
+
 .TH ACID 1
 .SH NAME
 acid, truss, trump \- debugger
 .SH SYNOPSIS
 .B acid
 [
-.BI -l " libfile
+.BI -l " module
 ]
 [
-.B -wq
-] [
-.B -m
-.I machine
+.BI -m " machine
+]
+[
+.B -qrw
+]
+[
+.B -k
 ] [
 .I pid
 ]
@@ -49,10 +54,13 @@ Options are
 .B -w
 Allow the textfile to be modified.
 .TP
+.B -r
+Debug the kernel state of a textfile.
+.TP
 .B -q
 Print variable renamings at startup.
 .TP
-.BI -l " library
+.BI -l " module
 Load from 
 .I library
 at startup; see below.

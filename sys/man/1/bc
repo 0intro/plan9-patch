@@ -4,13 +4,7 @@ bc \- arbitrary-precision arithmetic language
 .SH SYNOPSIS
 .B bc
 [
-.B -c
-]
-[
-.B -l
-]
-[
-.B -s
+.B -dcls
 ]
 [
 .I file ...
@@ -32,6 +26,9 @@ argument suppresses the automatic display
 of calculation results; all output is via the
 .B print
 command.
+The
+.B -d
+argument enables debugging.
 .PP
 The following syntax for 
 .I bc
