@@ -7,10 +7,14 @@ ascii, unicode \- interpret ASCII, Unicode characters
 .B -8
 ]
 [
-.BI -oxdb n
+.B -dox
 ]
 [
-.B -nct
+.B -cnt
+]
+[
+.B -b
+.I n
 ]
 [
 .I text

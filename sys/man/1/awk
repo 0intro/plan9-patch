@@ -4,23 +4,30 @@ awk \- pattern-directed scanning and processing language
 .SH SYNOPSIS
 .B awk
 [
-.BI -F fs
+.BI -safe
 ]
 [
-.BI -v
-.I var=value
-]
-[
-.BI -mr n
-]
-[
-.BI -mf n
+.BI -d
 ]
 [
 .B -f
 .I prog
+]
 [
-.I prog
+.BI -F
+.I fs
+]
+[
+.BI -mf
+.I n
+]
+[
+.BI -mr
+.I n
+]
+[
+.BI -v
+.I var=value
 ]
 [
 .I file ...
@@ -66,6 +73,9 @@ options may be present.
 .IR fs
 option defines the input field separator to be the regular expression
 .IR fs .
+The
+.B \-safe
+option specifies to not set the ENVIRON variable.
 .PP
 An input line is normally made up of fields separated by white space,
 or by regular expression

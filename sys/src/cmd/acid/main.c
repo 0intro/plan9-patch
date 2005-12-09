@@ -22,7 +22,7 @@ void	die(void);
 void
 usage(void)
 {
-	fprint(2, "usage: acid [-l module] [-m machine] [-qrw] [-k] [pid] [file]\n");
+	fprint(2, "usage: acid [-kqw] [-l module] [-m machine] [pid] [textfile]\n");
 	exits("usage");
 }
 

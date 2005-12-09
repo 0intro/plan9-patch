@@ -4,14 +4,15 @@ acid, truss, trump \- debugger
 .SH SYNOPSIS
 .B acid
 [
-.BI -l " libfile
+.B -kqw
 ]
 [
-.B -wq
-] [
-.B -m
-.I machine
-] [
+.BI -l " module
+]
+[
+.BI -m " machine
+]
+[
 .I pid
 ]
 [
@@ -52,9 +53,9 @@ Allow the textfile to be modified.
 .B -q
 Print variable renamings at startup.
 .TP
-.BI -l " library
+.BI -l " module
 Load from 
-.I library
+.I module
 at startup; see below.
 .TP
 .BI -m " machine
@@ -77,7 +78,7 @@ Debug the kernel state for the process, rather than the user state.
 .PP
 At startup,
 .I acid
-obtains standard function definitions from the library file
+obtains standard function definitions from the module file
 .BR /sys/lib/acid/port ,
 architecture-dependent functions from
 .BR /sys/lib/acid/$objtype ,
@@ -313,10 +314,10 @@ Make the given process current.
 Escape to the shell,
 .IR rc (1),
 to execute the command string.
-.SS Libraries
+.SS Modules
 There are a number of
 .I acid
-`libraries' that provide higher-level debugging facilities.  Two notable
+`modules' that provide higher-level debugging facilities.  Two notable
 examples are
 .I truss
 and
