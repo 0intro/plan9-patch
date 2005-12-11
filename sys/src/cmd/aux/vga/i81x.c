@@ -314,6 +314,7 @@ load(Vga* vga, Ctlr* ctlr)
 	int i;
 	ulong *rp;
 	I81x *i81x;
+	char *p;
 
 	i81x = vga->private;
 
@@ -337,6 +338,20 @@ load(Vga* vga, Ctlr* ctlr)
 		*rp++ = i81x->lcd[i];
 	/* set cursor, graphic mode */
 	rp = (ulong*)(i81x->mmio+0x70008);
+	*rp = i81x->pixconf | (1<<8);
+
+	p = (char *)(i81x->mmio+0x3c6);		/* DACMASK */
+	*p = 0xff;
+	p = (char *)(i81x->mmio+0x3c8);		/* DACWX */
+	*p = 0x04;
+	p = (char *)(i81x->mmio+0x3c9);		/* DACDATA */
+	*p = 0xff;
+	*p = 0xff;
+	*p = 0xff;
+	*p = 0x00;
+	*p = 0x00;
+	*p = 0x00;
+
 	*rp = i81x->pixconf;
 
 	ctlr->flag |= Fload;
