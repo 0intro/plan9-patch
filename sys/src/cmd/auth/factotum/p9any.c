@@ -147,6 +147,7 @@ p9anyread(Fsstate *fss, void *a, uint *n)
 	Keyinfo ki;
 	String *negstr;
 	State *s;
+	char *dom;
 
 	s = fss->ps;
 	switch(fss->phase){
@@ -154,6 +155,7 @@ p9anyread(Fsstate *fss, void *a, uint *n)
 		return phaseerror(fss, "read");
 
 	case SHaveProtos:
+		dom = _strfindattr(fss->attr, "dom");
 		m = 0;
 		negstr = s_new();
 		mkkeyinfo(&ki, fss, nil);
@@ -161,7 +163,10 @@ p9anyread(Fsstate *fss, void *a, uint *n)
 		ki.noconf = 1;
 		ki.user = nil;
 		for(i=0; i<nelem(negotiable); i++){
-			anew = setattr(_copyattr(fss->attr), "proto=%q dom?", negotiable[i]->name);
+			if(dom)
+				anew = setattr(_copyattr(fss->attr), "proto=%q", negotiable[i]->name);
+			else
+				anew = setattr(_copyattr(fss->attr), "proto=%q dom?", negotiable[i]->name);
 			ki.attr = anew;
 			for(ki.skip=0; findkey(&k, &ki, nil)==RpcOk; ki.skip++){
 				if(m++)
