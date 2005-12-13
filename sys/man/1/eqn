@@ -30,7 +30,8 @@ reads from the standard input.
 .I Eqn
 prepares output for the typesetter 
 named in the
-.BI -T dest
+.B -T
+.I dest
 option (default
 .BR -Tutf ;
 see
@@ -59,7 +60,8 @@ Delimiters may be set to characters
 and
 .I y
 with the option
-.BI -d xy
+.B -d 
+.I xy
 or (more commonly) with
 .B delim
 .I xy
@@ -212,7 +214,9 @@ Sizes and fonts can be changed with prefix operators
 .B size 
 .IR n ,
 .B size
-.BI ± n \f1,
+.B ±
+.I n
+.
 .BR fat ,
 .BR roman ,
 .BR italic ,
@@ -227,14 +231,19 @@ and
 .B gfont
 .IR n ,
 or by the command-line arguments
-.BI -s n
+.B -s
+.I n
 and
-.BI -f n\f1.
+.B -f
+.I n
+.
 .PP
 Normally subscripts and superscripts are reduced by
 3 point sizes from the previous size;
 this may be changed by the command-line argument
-.BI -p n\f1.
+.B -p
+.I n
+.
 .PP
 Successive display arguments can be lined up.
 Place

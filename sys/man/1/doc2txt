@@ -24,15 +24,13 @@ doc2txt, xls2txt olefs, mswordstrings msexceltable \- extract printable strings 
 .br
 .B aux/msexceltable
 [
-.B -n
-] [
-.B -t
-] [
-.B -a
-] [
-.BI -d delim
+.B -aDnt
 ]
-.I /mnt/doc/Workbook
+[
+.B -d
+.I delim
+]
+.I file.xls
 .SH DESCRIPTION
 .I Doc2txt
 is a shell script that uses 
@@ -70,6 +68,9 @@ Attempt conversion of non-tabular sheets in the workbook. (charts).
 .TP
 -d \fIdelim\fR
 Sets the interfield delimiter to the string \fIdelim\fR, by default a single space.
+.TP
+-D
+Enables debugging output.
 .SH SOURCE
 .B /sys/src/cmd/aux/mswordstrings.c
 .br

@@ -7,6 +7,7 @@ extern	vlong	k(vlong);
 extern	void	err(char*);
 extern	int	warn(char*);
 extern	int	seen(Dir*);
+extern	void	usage(void);
 
 int	aflag;
 int	fflag;
@@ -61,6 +62,8 @@ main(int argc, char *argv[])
 				blocksize *= 1024;
 		}
 		break;
+	default:
+		usage();
 	} ARGEND
 	if(argc==0)
 		print(fmt, du(".", dirstat(".")), ".");
@@ -68,6 +71,13 @@ main(int argc, char *argv[])
 		for(i=0; i<argc; i++)
 			print(fmt, du(argv[i], dirstat(argv[i])), argv[i]);
 	exits(0);
+}
+
+void
+usage(void)
+{
+	print("usage: du [ -afnqstu ] [ -b size ] [ file ... ]\n");
+	exits("usage");
 }
 
 vlong
