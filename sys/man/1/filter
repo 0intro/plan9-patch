@@ -14,9 +14,14 @@ filter, list, deliver, token, vf \-  filtering mail
 .I "regexp file
 ]*
 .PP
-.B upas/list add|check
+.B upas/list
+[
+.B -d
+]
+.I add|check
 .I patterns
-.I addrfile ...
+.I addressfile
+[ \&... ]
 .PP
 .B upas/deliver 
 .I recipient
@@ -30,6 +35,13 @@ filter, list, deliver, token, vf \-  filtering mail
 ]
 .PP
 .B upas/vf
+[
+.B -r
+]
+[
+.B -s
+.I savefile
+}
 .SH DESCRIPTION
 .PP
 A user may filter all incoming mail by creating
@@ -85,6 +97,10 @@ to check each address contained in the
 .IR addressfile s
 against a list of patterns in
 .IR patternfile .
+The
+.B -d
+option enables debugging output.
+.PP
 Patterns come in four forms:
 .TP
 .B ~\fIregular-expression\fP
@@ -134,7 +150,7 @@ to add a pattern to
 .I patternfile
 for each address in the
 .IR addrssfile 's
-that doesh't already match a pattern.
+that doesn't already match a pattern.
 .PP
 .IR Token ,
 with only one argument, prints to standard output a unique token
@@ -169,7 +185,12 @@ bound by your profile onto
 .PP
 .I Vf
 takes a mail message as standard input, searches for executable
-MIME attachments, wraps them in a warning message, and appends
+MIME attachments, wraps them in a warning message, saves them in
+.I savefile,
+when the
+.B -s
+option is specified,
+and appends
 .B .suspect
 to any related filenames.
 .B /sys/lib/mimetype
@@ -184,6 +205,11 @@ If the script
 exists and is executable, each attachment
 is passed, as a mail message, to the script
 for further examination.
+Giving the
+.B -r
+option will force
+.I Vf
+to reject to scan the mail message.
 .SH FILES
 .TF /mail/box/*/dead.letter
 .TP

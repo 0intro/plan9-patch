@@ -13,6 +13,7 @@ typedef struct Hdef Hdef;
 typedef struct Hline Hline;
 typedef struct Part Part;
 
+static void usage(void);
 static int	badfile(char *name);
 static int	badtype(char *type);
 static void	ctype(Part*, Hdef*, char*);
@@ -126,8 +127,10 @@ main(int argc, char **argv)
 	case 's':
 		savefile = ARGF();
 		if(savefile == nil)
-			exits("usage");
+			usage();
 		break;
+	default:
+		usage();
 	}ARGEND;
 
 	Binit(&in, 0, OREAD);
@@ -143,6 +146,13 @@ main(int argc, char **argv)
 	part(nil);
 
 	exits(0);
+}
+
+static void
+usage(void)
+{
+	fprint(2, "usage: %s [-r] [-s savefile]\n", argv0);
+	exits("usage");
 }
 
 void
