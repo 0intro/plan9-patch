@@ -1,0 +1,5 @@
+#!/bin/rc
+# pgp as a filter instead of some whacked-out DOS program.
+# also add options to produce textual output.
+echo				# prevent confusion with headers
+exec /bin/pgp -fat $*
