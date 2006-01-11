@@ -22,6 +22,8 @@ mahjongg, sokoban, sudoku \- time wasters
 [
 .B -c
 ] [
+.B -f
+] [
 .B -b
 .I background
 ] [
@@ -107,8 +109,10 @@ and layout
 .RB (-l)
 images;
 .RB -c
-selects a true-color buffer image, use with
-drawterm or in case selecting a tile obscures it completely.
+selects a true-color buffer image, for use with
+drawterm or in case selecting a tile obscures it completely;
+.RB -f
+causes mahjongg to indicate non-blocked tiles on mouse-over.
 The 
 .LR N
 key will generate a new level, 
