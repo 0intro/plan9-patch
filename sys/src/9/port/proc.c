@@ -1474,7 +1474,7 @@ killbig(void)
 			if(s != 0)
 				l += s->top - s->base;
 		}
-		if(l > max && strcmp(p->text, "kfs") != 0){
+		if(l > max && (p->procmode&0222 && !strcmp(eve, p->user))) {
 			kp = p;
 			max = l;
 		}
@@ -1487,7 +1487,7 @@ killbig(void)
 			qunlock(&s->lk);
 		}
 	}
-	print("%lud: %s killed because no swap configured\n", kp->pid, kp->text);
+	print("%lud: %s killed by killbig()\n", kp->pid, kp->text);
 }
 
 /*
