@@ -22,9 +22,11 @@ Device
 is accessed through
 .BI eia n
 (the data file),
-.BI eia n ctl
+.BI eia n
+.I ctl
 (the control file), and
-.BI eia n status
+.BI eia n
+.I status
 (the read-only status file).
 Reads of the data file will block until at least one byte is available.
 The
@@ -32,34 +34,33 @@ control file
 configures the port.
 It accepts the following commands:
 .TP
-.BI b n
+.B b n
 Set the baud rate to
 .IR n .
 .TP
-.BI d n
+.B c n
+Do hangup on DCD if
+.I n
+is non-zero; else clear it.
+.TP
+.B d n
 Set DTR if
 .I n
 is non-zero;
 else clear it.
 .TP
-.BI k n
-Send a break lasting
+.B e n
+Do hangup on DSR if
 .I n
-milliseconds.
+is non-zero; else clear it.
 .TP
-.BI r n
-Set RTS if
-.I n
-is non-zero;
-else clear it.
+.B f
+Flush output queue.
 .TP
-.BI m n
-Obey modem CTS signal if
-.I n
-is non-zero;
-else clear it.
+.B h
+Hangup input and output queue.
 .TP
-.BI i n
+.B i n
 Enable/disable the FIFOs.
 If
 .I n
@@ -75,7 +76,26 @@ value of
 .I n
 causes the maximum-supported trigger level to be set.
 .TP
-.BI p c
+.B k n
+Send a break lasting
+.I n
+milliseconds.
+.TP
+.B l n
+Set number of bits per byte to
+.IR n .
+Legal values are 5, 6, 7, or 8.
+.TP
+.B m n
+Obey modem CTS signal if
+.I n
+is non-zero;
+else clear it.
+.TP
+.B n
+Turn off blocking on read.
+.TP
+.B p c
 Set parity to odd if
 .I c
 is
@@ -86,17 +106,22 @@ is
 .BR e ;
 else set no parity.
 .TP
-.BI s n
+.B q n
+Set queue limit to
+.IR n .
+.TP
+.B r n
+Set RTS if
+.I n
+is non-zero;
+else clear it.
+.TP
+.B s n
 Set number of stop bits to
 .IR n .
 Legal values are 1 or 2.
 .TP
-.BI l n
-Set number of bits per byte to
-.IR n .
-Legal values are 5, 6, 7, or 8.
-.TP
-.BI w n
+.B w n
 Set the uart clock timer to
 n times 100us.
 .IP
