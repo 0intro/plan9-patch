@@ -206,9 +206,12 @@ or the destination domain is specified in
 .SS Blocked Addresses
 When
 .B /mail/lib/blocked
-exists and is readable,
+exists and is readable, and if
+.IR ratfs (4)
+is running,
 .I smtpd
-reads a list of banned addresses from it.
+looks for banned addresses in
+.B /mail/ratify.
 Messages received from these addresses are
 rejected with a 5\fIxx\fP-series SMTP error code.
 There is no option
@@ -303,4 +306,5 @@ command line arguments applicable
 to exposed systems.
 .SH "SEE ALSO"
 .IR mail (1),
+.IR ratfs (4),
 .IR scanmail (8)
