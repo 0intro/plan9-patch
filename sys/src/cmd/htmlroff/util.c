@@ -78,7 +78,7 @@ warn(char *fmt, ...)
 {
 	va_list arg;
 	
-	fprint(2, "%L: ");
+	fprint(2, "%s: %L: ", argv0);
 	va_start(arg, fmt);
 	vfprint(2, fmt, arg);
 	va_end(arg);
