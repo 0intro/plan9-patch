@@ -1,0 +1,8 @@
+--- sys/src/9/pc/usbehci.h	Fri Jul 24 12:20:13 2009
++++ sys/src/9/pc/usbehci.h	Fri Jul 24 12:20:10 2009
+@@ -144,4 +144,4 @@
+ };
+ 
+ extern Ecapio *ehcidebugcapio;
+-extern int ehcidebugport;
++extern int ehcidebugport;
