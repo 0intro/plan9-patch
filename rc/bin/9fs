@@ -19,9 +19,17 @@ case other
 	mount -C /srv/boot /n/other other
 case juke
 	srv -q il!jukefs && mount /srv/il!jukefs /n/njuke && bind -c /n/njuke/juke /n/juke
+case anonsources
+	srv -q tcp!sources.cs.bell-labs.com anonsources &&
+		mount -n /srv/anonsources /n/sources
+case anonsourcesdump
+	9fs anonsources
+	mount /srv/anonsources /n/sourcesdump main/archive
+case anonsourcessnap
+	9fs anonsources
+	mount /srv/anonsources /n/sourcessnap main/snapshot
 case sources
-	srv -q tcp!sources.cs.bell-labs.com sources /n/sources &&
-		mount -n /srv/sources /n/sources
+	srv -q tcp!sources.cs.bell-labs.com sources /n/sources
 case sourcesdump
 	9fs sources
 	mount /srv/sources /n/sourcesdump main/archive

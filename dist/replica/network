@@ -5,7 +5,8 @@ serverroot=/n/dist
 serverlog=$s/plan9.log
 serverproto=$s/plan9.proto
 fn servermount {
-	srv tcp!sources.cs.bell-labs.com sources /n/sources
+	srv tcp!sources.cs.bell-labs.com anonsources
+	mount -n /srv/anonsources /n/sources
 	bind /n/sources/plan9 /n/dist
 }
 fn serverupdate { status='' }
