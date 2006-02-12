@@ -1,0 +1,4 @@
+#!/bin/rc
+# Some programs(auto*hell) use printf when
+# they should use echo(1)
+echo -n $1
