@@ -1,6 +1,7 @@
 #!/bin/rc
-# This program enqueues the file to be printed and starts the daemon, when necessary.
-# Make changes to /sys/src/cmd/lp/lp.rc.  Changes made directly to /rc/bin/lp will be lost.
+# lp - enqueues the file to be printed and starts the daemon, when necessary.
+# Make changes to /sys/src/cmd/lp/lp.rc;
+# changes made directly to /rc/bin/lp will be lost.
 
 rfork en	# so that environment and name space are not polluted
 # 
@@ -52,7 +53,6 @@ USAGE='usage:	lp [-d printer] [-p process] [options] [files]
 		-y<n>		y page offset in inches
 '
 
-# umask 000	# this doesn't work in plan 9
 if (~ $#sysname 0)
 	THIS_HOST=plan9
 if not {
@@ -138,6 +138,8 @@ if (~ $LPDEST */*) {	# handles MHCC destinations like mh/lino
 	LPLOC=`{echo $LPDEST|sed 's/^(.*)\/(.*)/\1/'}
 	LPDEST=`{echo $LPDEST|sed 's/^(.*)\/(.*)/\2/'}
 }
+
+# parse devices
 LPDLINE=`{grep '^'$LPDEST'[ 	]' $LPLIB/devices}
 if (! ~ $status '') {
 	echo 'device '$LPDEST' is not in '$LPLIB'/devices' >[1=2]
@@ -154,6 +156,11 @@ STAT=$LPDLINE(9)
 KILL=$LPDLINE(10)
 DAEMON=$LPDLINE(11)
 SCHED=$LPDLINE(12)
+
+# supply defaults
+if (~ $#SCHED 0 || ~ $SCHED '')
+	SCHED=generic			# was FIFO
+
 if (~ $KILLFLAG 1)
 	switch ($KILL) {
 	case -;	echo kill option not available on $LPDEST >[1=2]
@@ -189,7 +196,9 @@ if (~ $RESET '') {
 if not {
 	echo restarting daemon for printer $LPDEST >[1=2]
 	UNLOCK $LPSPOOL/$LPDEST
-	sleep 5
+	# this *may* be to give rm of the queue dir a chance,
+	# but that won't work anyway, due to presence of .seqno file.
+#	sleep 5
 }
 
 # run daemon
