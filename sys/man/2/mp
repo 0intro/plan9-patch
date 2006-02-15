@@ -479,13 +479,13 @@ computes the multiplicative inverse of
 .IR m .
 .PP
 .I Mpsignif
-returns the bit offset of the left most 1 bit in
+returns one more than the bit offset of the left most 1 bit in
 .IR b .
 .I Mplowbits0
 returns the bit offset of the right most 1 bit.
 For example, for 0x14,
 .I mpsignif
-would return 4 and
+would return 5 and
 .I mplowbits0
 would return 2.
 .PP
