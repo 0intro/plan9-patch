@@ -81,7 +81,7 @@ enum {	/* cmdsts */
 
 enum {				/* Variants */
 	Nat83815	= (0x0020<<16)|0x100B,
-	Sis900 = (0x0630<<16)|0x1039,	/* untested */
+	Sis900 = (0x0900<<16)|0x1039,	/* untested */
 };
 
 typedef struct Ctlr Ctlr;
@@ -301,6 +301,7 @@ promiscuous(void* arg, int on)
 	Ctlr *ctlr;
 	ulong w;
 
+	debug("promiscuous: %s\n", on ? "on" : "of");
 	ctlr = ((Ether*)arg)->ctlr;
 	ilock(&ctlr->lock);
 	w = csr32r(ctlr, Rrfcr);
@@ -971,6 +972,12 @@ reset(Ether* ether)
 	ctlr->ntdr = Ntde;
 	pcisetbme(ctlr->pcidev);
 	ctlrinit(ether);
+
+	/*
+	  * The sis 900 only works in promiscuous mode.
+	  */
+	if(ctlr->id == Sis900)
+		promiscuous(ether, 1);
 
 	/*
 	 * Linkage to the generic ethernet driver.
