@@ -11,6 +11,7 @@ TARG=\
 	cron\
 	debug\
 	guard.srv\
+	iam\
 	keyfs\
 	login\
 	netkey\
