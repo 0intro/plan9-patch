@@ -1,0 +1,10 @@
+--- sys/src/boot/pc/ether82557.c	Wed Oct 27 05:36:00 2004
++++ sys/src/boot/pc/ether82557.c	Wed Oct 27 05:35:59 2004
+@@ -555,6 +555,7 @@
+ 		case 0x1229:		/* Intel 8255[789] */
+ 		case 0x1031:		/* Intel 82562EM */
+ 		case 0x2449:		/* Intel 82562ET */
++		case 0x1039:		/* Intel 82801BD PRO/100 VE */
+ 			break;
+ 		}
+ 
