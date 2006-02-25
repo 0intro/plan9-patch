@@ -1,6 +1,6 @@
 .TH GRAPHICS 2
 .SH NAME
-Display, Point, Rectangle, Cursor, initdraw, geninitdraw, drawerror, initdisplay, closedisplay, getdefont, getwindow, gengetwindow, flushimage, bufimage, lockdisplay, unlockdisplay, cursorswitch, cursorset, openfont, buildfont, freefont, Pfmt, Rfmt, strtochan, chantostr, chantodepth \- interactive graphics
+Display, Point, Rectangle, Cursor, initdraw, geninitdraw, drawerror, initdisplay, closedisplay, getdefont, getwindow, gengetwindow, flushimage, bufimage, lockdisplay, unlockdisplay, cursorset, openfont, buildfont, freefont, Pfmt, Rfmt, strtochan, chantostr, chantodepth \- interactive graphics
 .SH SYNOPSIS
 .nf
 .PP
@@ -60,9 +60,6 @@ int	gengetwindow(Display *d, char *winname,
 .br
 .B
 	   Image **ip, Screen **sp, int ref)
-.PP
-.B
-void	cursorswitch(Cursor *curs)
 .PP
 .B
 void	cursorset(Point p)
