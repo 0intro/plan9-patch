@@ -282,15 +282,21 @@ main(void)
 		panic("i'm too big\n");
 
 	readlsconf();
-	for(tp = types; tp->type != Tnil; tp++){
-		//if(tp->type == Tether)
-		//	continue;
-		if((mp = probe(tp->type, Fini, Dany)) && (mp->flag & Fini)){
+	/* first pass of probing, just non-ethers */
+	for(tp = types; tp->type != Tnil; tp++)
+		if(tp->type != Tether &&
+		    (mp = probe(tp->type, Fini, Dany)) && (mp->flag & Fini)){
 			print("using %s!%s!%s\n", mp->name, mp->part, mp->ini);
 			iniread = !dotini(mp->inifs);
 			break;
 		}
-	}
+	if(iniread)
+		/* now that we've read plan9.ini, probe ethers */
+		for(tp = types; tp->type != Tnil; tp++)
+			if(tp->type == Tether) {
+				probe(tp->type, Fini, Dany);
+				break;
+			}
 	apminit();
 
 	if((p = getconf("console")) != nil)
