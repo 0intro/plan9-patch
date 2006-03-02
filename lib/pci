@@ -1039,6 +1039,8 @@ exit 0
 	1746	STG 1746X 
 	2774	STE10/100A PCI 10/100 Ethernet Controller
 	3520	MPEG-II Video Decoder
+104B	Mylex/Buslogic
+	1040	BT958 SCSI Host Adaptor
 104C	Texas Instruments
 	014e	4610,4515,4610fm divice
 	0500	TNETE100A/110A/211 ThunderLAN 100 Mbit LAN Controller
