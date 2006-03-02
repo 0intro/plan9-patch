@@ -5,6 +5,9 @@
 #include <html.h>
 #include "impl.h"
 
+extern Rune win2unicode[];
+extern Rune koi2unicode[];
+
 typedef struct TokenSource TokenSource;
 struct TokenSource
 {
@@ -451,7 +454,7 @@ newtokensource(uchar* data, int edata, int chset, int mtype)
 	TokenSource*	ans;
 
 	assert(chset == US_Ascii || chset == ISO_8859_1 ||
-			chset == UTF_8 || chset == Unicode);
+			chset == UTF_8 || chset == Unicode || chset == WIN_1251 || chset == KOI8);
 	ans = (TokenSource*)emalloc(sizeof(TokenSource));
 	ans->i = 0;
 	ans->data = data;
@@ -1176,6 +1179,16 @@ getchar(TokenSource* ts)
 	buf = ts->data;
 	c = buf[ts->i];
 	switch(ts->chset) {
+	case WIN_1251:
+		if (c>0x80)
+			c=win2unicode[c-0x80];
+		ts->i++;
+		break;
+	case KOI8:
+		if (c>0x80)
+			c=koi2unicode[c-0x80];
+		ts->i++;
+		break;
 	case ISO_8859_1:
 		if(c >= Winstart && c <= Winend)
 			c = winchars[c - Winstart];

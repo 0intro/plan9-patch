@@ -64,6 +64,8 @@ enum
 	ISO_8859_1,
 	UTF_8,
 	Unicode,
+	WIN_1251,
+	KOI8,
 	NCHARSETS
 };
 
@@ -167,6 +169,7 @@ struct Item
 	Item*	next;		// successor in list of items
 	int		width;	// width in pixels (0 for floating items)
 	int		height;	// height in pixels
+	Rectangle r;
 	int		ascent;	// ascent (from top to baseline) in pixels
 	int		anchorid;	// if nonzero, which anchor we're in
 	int		state;	// flags and values (see below)
@@ -227,7 +230,6 @@ struct Iformfield
 {
 	Item;				// (with tag ==Iformfieldtag)
 	Formfield*	formfield;
-	void*	aux;
 };
 
 
@@ -344,6 +346,7 @@ struct Formfield
 	Item*		image;	// image item, for Fimage fields
 	int			ctlid;		// identifies control for this field in layout
 	SEvent*		events;	// same as genattr->events of containing item
+	void*		aux;
 };
 
 enum {
@@ -457,6 +460,7 @@ struct Tablecell
 	int			row;			// row of upper left corner
 	int			col;			// col of upper left corner
 	Point			pos;			// nw corner of cell contents, in cell
+	Rectangle		r;
 };
 
 // Anchor is for info about hyperlinks that go somewhere
