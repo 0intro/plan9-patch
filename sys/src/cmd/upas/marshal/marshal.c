@@ -10,7 +10,7 @@ struct Attach {
 	Attach	*next;
 	char	*path;
 	char	*type;
-	int	inline;
+	int		_inline;
 	Ctype	*ctype;
 };
 
@@ -679,7 +679,7 @@ attachment(Attach *a, Biobuf *out)
 	if(strcmp(a->type, "text/plain") != 0)
 		Bprint(out, "Content-Type: %s\n", a->type);
 
-	if(a->inline){
+	if(a->_inline){
 		Bprint(out, "Content-Disposition: inline\n");
 	} else {
 		p = strrchr(a->path, '/');
@@ -806,7 +806,7 @@ printinreplyto(Biobuf *out, char *dir)
 }
 
 Attach*
-mkattach(char *file, char *type, int inline)
+mkattach(char *file, char *type, int _inline)
 {
 	Ctype *c;
 	Attach *a;
@@ -824,7 +824,7 @@ mkattach(char *file, char *type, int inline)
 	a->path = file;
 	a->next = nil;
 	a->type = type;
-	a->inline = inline;
+	a->_inline = _inline;
 	a->ctype = nil;
 	if(type != nil){
 		for(c = ctype; ; c++)
