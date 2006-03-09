@@ -171,10 +171,13 @@ Xpipefd(void)
 	}
 }
 
+extern int dochdir(char *);
+
 void
 Xsubshell(void)
 {
 	int pid;
+	char owd[512];
 	switch(pid = fork()){
 	case -1:
 		Xerror("try again");
@@ -184,7 +187,9 @@ Xsubshell(void)
 		runq->ret = 0;
 		break;
 	default:
+		getwd(owd, sizeof owd);
 		Waitfor(pid, 1);
+		dochdir(owd);
 		runq->pc = runq->code[runq->pc].i;
 		break;
 	}
