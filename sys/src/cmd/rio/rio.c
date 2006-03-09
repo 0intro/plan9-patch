@@ -517,7 +517,7 @@ mousethread(void*)
 					scrolling = mouse->buttons;
 				else
 					scrolling = mouse->buttons && ptinrect(xy, winput->scrollr);
-				/* topped will be zero if window has been bottomed */
+				/* topped will be zero or less if window has been bottomed */
 				if(sending == FALSE && !scrolling && winborder(winput, mouse->xy) && winput->topped>0){
 					moving = TRUE;
 				}else if(inside && (scrolling || winput->mouseopen || (mouse->buttons&1)))
@@ -566,7 +566,7 @@ mousethread(void*)
 				cornercursor(w, mouse->xy, 0);
 			/* we're not sending the event, but if button is down maybe we should */
 			if(mouse->buttons){
-				/* w->topped will be zero if window has been bottomed */
+				/* w->topped will be zero or less if window has been bottomed */
 				if(w==nil || (w==winput && w->topped>0)){
 					if(mouse->buttons & 1){
 						;
@@ -999,12 +999,12 @@ bandsize(Window *w)
 }
 
 Window*
-pointto(int wait)
+pointto(int wait, Cursor *cursor)
 {
 	Window *w;
 
 	menuing = TRUE;
-	riosetcursor(&sightcursor, 1);
+	riosetcursor(cursor, 1);
 	while(mouse->buttons == 0)
 		readmouse(mousectl);
 	if(mouse->buttons == 4)
@@ -1018,6 +1018,8 @@ pointto(int wait)
 				w = nil;
 			}
 			readmouse(mousectl);
+			if(w != nil && wpointto(mouse->xy) != w)
+				w = nil;
 		}
 	cornercursor(input, mouse->xy, 0);
 	moveto(mousectl, mouse->xy);	/* force cursor update; ugly */
@@ -1030,7 +1032,7 @@ delete(void)
 {
 	Window *w;
 
-	w = pointto(TRUE);
+	w = pointto(TRUE, &deletecursor);
 	if(w)
 		wsendctlmesg(w, Deleted, ZR, nil);
 }
@@ -1041,7 +1043,7 @@ resize(void)
 	Window *w;
 	Image *i;
 
-	w = pointto(TRUE);
+	w = pointto(TRUE, &sightcursor);
 	if(w == nil)
 		return;
 	i = sweep();
@@ -1056,7 +1058,7 @@ move(void)
 	Image *i;
 	Rectangle r;
 
-	w = pointto(FALSE);
+	w = pointto(FALSE, &sightcursor);
 	if(w == nil)
 		return;
 	i = drag(w, &r);
@@ -1105,7 +1107,7 @@ hide(void)
 {
 	Window *w;
 
-	w = pointto(TRUE);
+	w = pointto(TRUE, &sightcursor);
 	if(w == nil)
 		return;
 	whide(w);

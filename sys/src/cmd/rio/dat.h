@@ -310,6 +310,7 @@ Screen	*wscreen;
 Cursor	boxcursor;
 Cursor	crosscursor;
 Cursor	sightcursor;
+Cursor	deletecursor;
 Cursor	whitearrow;
 Cursor	query;
 Cursor	*corners[9];
