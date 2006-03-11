@@ -147,18 +147,11 @@ file.
 When read, it returns the value of the address that would next be read
 or written through the
 .B data
-file, in the format
-.BI # m ,# n
-where
-.I m
-and
-.I n
-are character (not byte) offsets.  If
-.I m
-and
-.I n
-are identical, the format is just
-.BI # m\f1.
+file, in the form of two 11-digit decimal numbers,
+each with leading blanks and a trailing blank.
+These are character (not byte) offsets.
+The address covers the range from just before the character at the first offset
+to just before the character at the last offset.
 Thus a regular expression may be evaluated by writing it to
 .B addr
 and reading it back.
