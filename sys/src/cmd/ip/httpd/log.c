@@ -87,7 +87,10 @@ writelog(HConnect *c, char *fmt, ...)
 			objectsize = va_arg(arg, vlong); /* wrote in sendfd.c */
 			va_end(arg);
 		}
-		bufp = seprint(buf, bufe, "%s - -", p->remotesys);
+		if (p)
+			bufp = seprint(buf, bufe, "%s - -", p->remotesys);
+		else
+			bufp = seprint(buf, bufe, "- - -");
 		bufp = seprint(bufp, bufe, " [%.2d/%s/%d:%.2d:%.2d:%.2d +0000]", tm->mday, monname[tm->mon], tm->year+1900, tm->hour, tm->min, tm->sec);
 		if(c->req.uri == nil || c->req.uri[0] == 0){
 			bufp = seprint(bufp, bufe, " \"%.*s\"",
