@@ -1,22 +1,22 @@
 
 /*
  * Matrox G200, G400 and G450.
- * see /sys/src/cmd/aux/vga/mga4xx.c
+ * Written by Philippe Anel <xigh@free.fr>
  */
 
-#include 	"u.h"
-#include 	"../port/lib.h"
-#include 	"mem.h"
-#include 	"dat.h"
-#include 	"fns.h"
-#include 	"io.h"
-#include 	"../port/error.h"
+#include "u.h"
+#include "../port/lib.h"
+#include "mem.h"
+#include "dat.h"
+#include "fns.h"
+#include "io.h"
+#include "../port/error.h"
 
-#define	Image	IMAGE
-#include 	<draw.h>
-#include 	<memdraw.h>
-#include 	<cursor.h>
-#include	"screen.h"
+#define	Image IMAGE
+#include <draw.h>
+#include <memdraw.h>
+#include <cursor.h>
+#include "screen.h"
 
 enum {
 	MATROX			= 0x102B,
@@ -29,20 +29,20 @@ enum {
 	YDST			= 0x1c90,
 	YLEN			= 0x1c5c,
  	DWGCTL			= 0x1c00,
- 		DWG_TRAP		= 0x04,
- 		DWG_BITBLT		= 0x08,
- 		DWG_ILOAD		= 0x09,
- 		DWG_LINEAR		= 0x0080,
- 		DWG_SOLID		= 0x0800,
- 		DWG_ARZERO		= 0x1000,
- 		DWG_SGNZERO	= 0x2000,
- 		DWG_SHIFTZERO	= 0x4000,
-		DWG_REPLACE		= 0x000C0000,
- 		DWG_REPLACE2	= (DWG_REPLACE | 0x40),
- 		DWG_XOR		= 0x00060010,
- 		DWG_BFCOL		= 0x04000000,
- 		DWG_BMONOWF	= 0x08000000,
-		DWG_TRANSC		= 0x40000000,
+ 		DWG_TRAP			= 0x04,
+ 		DWG_BITBLT			= 0x08,
+ 		DWG_ILOAD			= 0x09,
+ 		DWG_LINEAR			= 0x0080,
+ 		DWG_SOLID			= 0x0800,
+ 		DWG_ARZERO			= 0x1000,
+ 		DWG_SGNZERO			= 0x2000,
+ 		DWG_SHIFTZERO		= 0x4000,
+		DWG_REPLACE			= 0x000C0000,
+ 		DWG_REPLACE2		= (DWG_REPLACE | 0x40),
+ 		DWG_XOR				= 0x00060010,
+ 		DWG_BFCOL			= 0x04000000,
+ 		DWG_BMONOWF			= 0x08000000,
+		DWG_TRANSC			= 0x40000000,
  	SRCORG			= 0x2cb4,
 	PITCH			= 0x1c8c,
 	DSTORG			= 0x2cb8,
@@ -62,10 +62,10 @@ enum {
 	AR4				= 0x1C70,
 	AR5				= 0x1C74,
 	SGN				= 0x1C58,
-		SGN_SCANLEFT = 		1,
-		SGN_SCANRIGHT = 		0,
-		SGN_SDY_POSITIVE = 	0,
-		SGN_SDY_NEGATIVE = 	4,
+		SGN_SCANLEFT		= 1,
+		SGN_SCANRIGHT		= 0,
+		SGN_SDY_POSITIVE	= 0,
+		SGN_SDY_NEGATIVE	= 4,
 
 	GO				= 0x0100,
  	FIFOSTATUS		= 0x1E10,
@@ -74,7 +74,7 @@ enum {
 	CRTCEXTIDX		= 0x1FDE,		/* CRTC Extension Index */
 	CRTCEXTDATA		= 0x1FDF,		/* CRTC Extension Data */
 
-	FILL_OPERAND		= 0x800c7804,
+	FILL_OPERAND	= 0x800c7804,
 };
 
 static Pcidev*
@@ -83,7 +83,7 @@ mgapcimatch(void)
 	Pcidev*	p;
 	
 	p = pcimatch(nil, MATROX, MGA4xx);
-	if (p == nil)
+	if(p == nil)
 		p = pcimatch(nil, MATROX, MGA200);
 	return p;
 }
@@ -117,12 +117,12 @@ crtcextset(VGAscr* scr, int index, uchar set, uchar clr)
 static void
 mga4xxenable(VGAscr* scr)
 {
-	Pcidev *	pci;
-	int 		size;
-	int 		i, n, k;
+	Pcidev * pci;
+	int size;
+	int i, n, k;
 	uchar *	p;
-	uchar	x[16];
-	uchar	crtcext3;
+	uchar x[16];
+	uchar crtcext3;
 
 	if(scr->mmio)
 		return;
@@ -153,7 +153,7 @@ mga4xxenable(VGAscr* scr)
 
 		p = scr->vaddr;
 		n = (size / MB) / 2;
-		for (i = 0; i < n; i++) {
+		for(i = 0; i < n; i++){
 			k = (2*i+1)*MB;
 			p[k] = 0;
 			p[k] = i+1;
@@ -169,7 +169,7 @@ mga4xxenable(VGAscr* scr)
 	}
 }
 
-enum {
+enum{
 	Index		= 0x00,		/* Index */
 	Data			= 0x0A,		/* Data */
 
@@ -184,9 +184,9 @@ enum {
 };
 
 static void
-dac4xxdisable(VGAscr* scr)
+dac4xxdisable(VGAscr * scr)
 {
-	uchar * 	dac4xx;
+	uchar * dac4xx;
 	
 	if(scr->mmio == 0)
 		return;
@@ -198,11 +198,11 @@ dac4xxdisable(VGAscr* scr)
 }
 
 static void
-dac4xxload(VGAscr* scr, Cursor* curs)
+dac4xxload(VGAscr * scr, Cursor * curs)
 {
-	int 		y;
+	int y;
 	uchar *	p;
-	uchar * 	dac4xx;
+	uchar * dac4xx;
 
 	if(scr->mmio == 0)
 		return;
@@ -216,8 +216,8 @@ dac4xxload(VGAscr* scr, Cursor* curs)
 		*p++ = 0; *p++ = 0; *p++ = 0;
 		*p++ = 0; *p++ = 0; *p++ = 0;
 		if(y <16){
-			*p++ = curs->set[1+y*2]|curs->clr[1+2*y];
-			*p++ = curs->set[y*2]|curs->clr[2*y];
+			*p++ = curs->set[1+y*2];
+			*p++ = curs->set[y*2];
 		} else{
 			*p++ = 0; *p++ = 0;
 		}
@@ -225,8 +225,8 @@ dac4xxload(VGAscr* scr, Cursor* curs)
 		*p++ = 0; *p++ = 0; *p++ = 0;
 		*p++ = 0; *p++ = 0; *p++ = 0;
 		if(y <16){
-			*p++ = curs->set[1+y*2];
-			*p++ = curs->set[y*2];
+			*p++ = curs->set[1+y*2]|curs->clr[1+2*y];
+			*p++ = curs->set[y*2]|curs->clr[2*y];
 		} else{
 			*p++ = 0; *p++ = 0;
 		}
@@ -239,9 +239,9 @@ dac4xxload(VGAscr* scr, Cursor* curs)
 }
 
 static int
-dac4xxmove(VGAscr* scr, Point p)
+dac4xxmove(VGAscr * scr, Point p)
 {
-	int 		x, y;
+	int x, y;
 	uchar *	dac4xx;
 
 	if(scr->mmio == 0)
@@ -262,10 +262,10 @@ dac4xxmove(VGAscr* scr, Point p)
 }
 
 static void
-dac4xxenable(VGAscr* scr)
+dac4xxenable(VGAscr * scr)
 {
-	uchar *	dac4xx;
-	ulong	storage;
+	uchar * dac4xx;
+	ulong storage;
 	
 	if(scr->mmio == 0)
 		return;
@@ -319,11 +319,11 @@ dac4xxenable(VGAscr* scr)
 }
 
 static void
-mga4xxblank(VGAscr* scr, int blank)
+mga4xxblank(VGAscr * scr, int blank)
 {
-	char * 	cp;
-	uchar * 	mga;
-	uchar 	seq1, crtcext1;
+	char * cp;
+	uchar * mga;
+	uchar seq1, crtcext1;
 	
 	/* blank = 0 -> turn screen on */
 	/* blank = 1 -> turn screen off */
@@ -332,21 +332,20 @@ mga4xxblank(VGAscr* scr, int blank)
 		return;
 	mga = (uchar*)scr->mmio;	
 
-	if (blank == 0) {
+	if(blank == 0){
 		seq1 = 0x00;
 		crtcext1 = 0x00;
 	} else {
 		seq1 = 0x20;
 		crtcext1 = 0x10;			/* Default value ... : standby */
 		cp = getconf("*dpms");
-		if (cp) {
-			if (cistrcmp(cp, "standby") == 0) {
+		if(cp){
+			if(cistrcmp(cp, "standby") == 0)
 				crtcext1 = 0x10;
-			} else if (cistrcmp(cp, "suspend") == 0) {
+			else if(cistrcmp(cp, "suspend") == 0)
 				crtcext1 = 0x20;
-			} else if (cistrcmp(cp, "off") == 0) {
+			else if(cistrcmp(cp, "off") == 0)
 				crtcext1 = 0x30;
-			}
 		}
 	}
 
@@ -375,14 +374,23 @@ mgaread32(uchar * mga, ulong reg)
 }
 
 static int
-mga4xxfill(VGAscr* scr, Rectangle r, ulong color)
+mga4xxfill(VGAscr * scr, Rectangle r, ulong color)
 {
-	uchar * 		mga;
- 
-	/* Constant Shaded Trapezoids / Rectangle Fills */
+	uchar * mga;
+
 	if(scr->mmio == 0)
 		return 0;
 	mga = (uchar*)scr->mmio;
+
+	/* Should I use clipr(2) ? */
+	if(r.min.x<0)
+		r.min.x = 0;
+	if(r.max.x>Dx(scr->gscreen->r))
+		r.max.x = Dx(scr->gscreen->r);
+	if(r.min.y<0)
+		r.min.y = 0;
+	if(r.max.y>Dy(scr->gscreen->r))
+		r.max.y = Dy(scr->gscreen->r);
 
 	mgawrite32(mga, DWGCTL, 0);
 	mgawrite32(mga, FCOL, color);
@@ -392,20 +400,20 @@ mga4xxfill(VGAscr* scr, Rectangle r, ulong color)
 	mgawrite32(mga, YLEN, Dy(r));
 	mgawrite32(mga, DWGCTL + GO, FILL_OPERAND);
 
-	while (mgaread32(mga, STATUS) & 0x00010000)
+	while(mgaread32(mga, STATUS) & 0x00010000)
 		;
 	return 1;
 }
 
-#define mga_fifo(n)	do {} while ((mgaread32(mga, FIFOSTATUS) & 0xFF) < (n))
+#define mga_fifo(n)	do {} while((mgaread32(mga, FIFOSTATUS) & 0xFF) < (n))
 
 static int
 mga4xxscroll(VGAscr* scr, Rectangle r_dst, Rectangle r_src)
 {
-	uchar * 	mga;
-	ulong	pitch, y;
- 	ulong 	width, height, start, end, scandir;
-	int 		ydir;
+	uchar * mga;
+	ulong pitch, y;
+ 	ulong width, height, start, end, scandir;
+	int ydir;
  
 	/* Two-operand Bitblts */
 	if(scr->mmio == 0)
@@ -417,63 +425,56 @@ mga4xxscroll(VGAscr* scr, Rectangle r_dst, Rectangle r_src)
 
 	mgawrite32(mga, DWGCTL, 0);
 
- 	scandir 	= 0;
+ 	scandir = 0;
 
-	height 	= abs(Dy(r_src));
-	width 	= abs(Dx(r_src));
+	height = abs(Dy(r_src));
+	width = abs(Dx(r_src));
 
 	assert(height == abs(Dy(r_dst)));
 	assert(width == abs(Dx(r_dst)));
 
-	if ((r_src.min.y == r_dst.min.y) && (r_src.min.x == r_dst.min.x))
-	{
-		if (0) 
-			print("move x,y to x,y !\n");
+	if((r_src.min.y == r_dst.min.y) && (r_src.min.x == r_dst.min.x))
 		return 1;
-	}
 
 	ydir = 1;
-	if (r_dst.min.y > r_src.min.y)
-	{
-		if (0) 
+	if(r_dst.min.y > r_src.min.y){
+		if(0) 
 			print("ydir = -1\n");
 		ydir = -1;
 		scandir |= 4;	// Blit UP
 	}
 
-	if (r_dst.min.x > r_src.min.x)
-	{
-		if (0) 
+	if(r_dst.min.x > r_src.min.x){
+		if(0) 
 			print("xdir = -1\n");
 		scandir |= 1;	// Blit Left
 	}
 
 	mga_fifo(4);
-	if (scandir)
-	{
- 		mgawrite32(mga, DWGCTL, DWG_BITBLT | DWG_SHIFTZERO | 
-			DWG_SGNZERO | DWG_BFCOL | DWG_REPLACE);
-		mgawrite32(mga, SGN, scandir);
-	} else
-	{
-		mgawrite32(mga, DWGCTL, DWG_BITBLT | DWG_SHIFTZERO | 
+	if(scandir){
+ 		mgawrite32(mga, DWGCTL,
+			DWG_SGNZERO |
+			DWG_BITBLT | DWG_SHIFTZERO | 
 			DWG_BFCOL | DWG_REPLACE);
- 	}
+		mgawrite32(mga, SGN, scandir);
+	}
+	else
+		mgawrite32(mga, DWGCTL,
+			DWG_BITBLT | DWG_SHIFTZERO | 
+			DWG_BFCOL | DWG_REPLACE);
+
 	mgawrite32(mga, AR5, ydir * pitch);
 
 	width--;
 	start = end = r_src.min.x + (r_src.min.y * pitch);
-	if ((scandir & 1) == 1)
-	{
+
+	if((scandir & 1) == 1)
 		start += width;
-	} else
-	{
+	else
 		end += width;
-	}
 
 	y = r_dst.min.y;
-	if ((scandir & 4) == 4)
-	{
+	if((scandir & 4) == 4){
 		start += (height - 1) * pitch;
 		end += (height - 1) * pitch;
 		y += (height - 1);
@@ -485,11 +486,8 @@ mga4xxscroll(VGAscr* scr, Rectangle r_dst, Rectangle r_src)
 	mgawrite32(mga, FXBNDRY, ((r_dst.min.x+width)<<16) | r_dst.min.x);
 	mgawrite32(mga, YDSTLEN + GO, (y << 16) | height);
  
-	if (1)
-	{
-		while (mgaread32(mga, STATUS) & 0x00010000)
-			;
-	}
+	while(mgaread32(mga, STATUS) & 0x00010000)
+		;
 
 	return 1;
 }
@@ -497,11 +495,11 @@ mga4xxscroll(VGAscr* scr, Rectangle r_dst, Rectangle r_src)
 static void
 mga4xxdrawinit(VGAscr* scr)
 {
-	uchar * 	mga;
- 	Pcidev*	p;
+	uchar * mga;
+ 	Pcidev * p;
 
 	p = pcimatch(nil, MATROX, MGA4xx);
-	if (p == nil)
+	if(p == nil)
 		return ;
 
 	if(scr->mmio == 0)
@@ -517,7 +515,7 @@ mga4xxdrawinit(VGAscr* scr)
 	mgawrite32(mga, YTOP, 0);
 	mgawrite32(mga, YBOT, 0x01FFFFFF);
 	mgawrite32(mga, PITCH, Dx(scr->gscreen->r) & ((1 << 13) - 1));
-	switch(scr->gscreen->depth) {
+	switch(scr->gscreen->depth){
 	case 8:
 		mgawrite32(mga, MACCESS, 0);
 		break;
@@ -532,9 +530,8 @@ mga4xxdrawinit(VGAscr* scr)
 	scr->blank = mga4xxblank;
 }
 
-VGAdev vgamga4xxdev = {
+VGAdev vgamga4xxdev={
 	"mga4xx",
-
 	mga4xxenable,		/* enable */
 	0,					/* disable */
 	0,					/* page */
@@ -542,7 +539,7 @@ VGAdev vgamga4xxdev = {
 	mga4xxdrawinit,
 };
 
-VGAcur vgamga4xxcur = {
+VGAcur vgamga4xxcur={
 	"mga4xxhwgc",
 	dac4xxenable,
 	dac4xxdisable,
