@@ -483,7 +483,7 @@ qcmd(char *arname, int count, char **files)
 	fd = openar(arname, ORDWR, 1);
 	if (fd < 0) {
 		if(!cflag)
-			fprint(2, "ar: creating %s\n", arname);
+			fprint(1, "ar: creating %s\n", arname);
 		fd = arcreate(arname);
 	}
 	Binit(&bar, fd, OREAD);
