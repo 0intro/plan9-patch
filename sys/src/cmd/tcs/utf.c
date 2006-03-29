@@ -61,6 +61,7 @@ utf_in(int fd, long *notused, struct convert *out)
 		if(n == 0)
 			break;
 	}
+	OUT(out, runes, 0);
 }
 
 void
@@ -112,6 +113,7 @@ isoutf_in(int fd, long *notused, struct convert *out)
 		if(n == 0)
 			break;
 	}
+	OUT(out, runes, 0);
 }
 
 void
