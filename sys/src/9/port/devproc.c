@@ -225,6 +225,7 @@ procgen(Chan *c, char *name, Dirtab *tab, int, int s, Dir *dp)
 			return -1;
 		mkqid(&qid, (s+1)<<QSHIFT, pid, QTDIR);
 		devdir(c, qid, up->genbuf, 0, p->user, DMDIR|0555, dp);
+		dp->mtime = seconds() - TK2MS(MACHP(0)->ticks - p->time[TReal]) / 1000;
 		return 1;
 	}
 	if(c->qid.path == Qtrace){
@@ -264,6 +265,7 @@ procgen(Chan *c, char *name, Dirtab *tab, int, int s, Dir *dp)
 
 	mkqid(&qid, path|tab->qid.path, c->qid.vers, QTFILE);
 	devdir(c, qid, tab->name, len, p->user, perm, dp);
+	dp->mtime = seconds() - TK2MS(MACHP(0)->ticks - p->time[TReal]) / 1000;
 	return 1;
 }
 
