@@ -12,6 +12,7 @@ char	*logfile = "dns";
 char	*dbfile;
 int	debug;
 int	cachedb = 1;
+int	public;			/* do not offer or implement recursive lookups over IP */
 int	testing;
 int traceactivity;
 int	needrefresh;
@@ -31,6 +32,13 @@ static void	getcaller(char*);
 static void	refreshmain(char*);
 
 void
+usage(void)
+{
+	fprint(2, "usage: %s [-rp] [-f ndb-file] [-x netmtpt]\n", argv0);
+	exits("usage");
+}
+
+void
 main(int argc, char *argv[])
 {
 	int len;
@@ -41,7 +49,11 @@ main(int argc, char *argv[])
 	char *err;
 	char *ext = "";
 
+	public = 0;
 	ARGBEGIN{
+	case 'p':
+		public = 1;
+		break;
 	case 'd':
 		debug++;
 		break;
@@ -53,6 +65,9 @@ main(int argc, char *argv[])
 		break;
 	case 'x':
 		ext = ARGF();
+		break;
+	default:
+		usage();
 		break;
 	}ARGEND
 
@@ -234,10 +249,12 @@ dnzone(DNSmsg *reqp, DNSmsg *repp, Request *req)
 
 	memset(repp, 0, sizeof(*repp));
 	repp->id = reqp->id;
-	repp->flags = Fauth | Fresp | Fcanrec | Oquery;
 	repp->qd = reqp->qd;
 	reqp->qd = reqp->qd->next;
 	repp->qd->next = 0;
+	repp->flags = Fauth | Fresp | Oquery;
+	if(!public)
+		repp->flags |= Fcanrec;
 	dp = repp->qd->owner;
 
 	/* send the soa */

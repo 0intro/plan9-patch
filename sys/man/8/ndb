@@ -43,7 +43,7 @@ query, mkhash, mkdb, cs, csquery, dns, dnsquery, ipquery, dnsdebug, mkhosts \- n
 .br
 .B ndb/dns
 [
-.B -rsn
+.B -pnrs
 ] [
 .B -f
 .I dbfile
@@ -59,15 +59,28 @@ query, mkhash, mkdb, cs, csquery, dns, dnsquery, ipquery, dnsdebug, mkhosts \- n
 .br
 .B ndb/dnsdebug
 [
-.B -rx
-]
-[ [
+.B -pr
+] [
+.B -x
+.I netmtpt
+] [
 .BI @ server
 ]
 .I domain-name
 [
 .I type
 ] ]
+.br
+.B ndb/dnstcp
+[
+.B -pr
+] [
+.B -f
+.I dbfile
+] [
+.B -x
+.I netmtpt
+]
 .br
 .B ndb/mkdb
 .SH DESCRIPTION
@@ -188,16 +201,21 @@ supplies the name of the data base file to use,
 default
 .BR /lib/ndb/local .
 .TP
-.B -x
-specifies the mount point of the
-network.
-.TP
-.B -s
-also answer domain requests sent to UDP port 53.
+.B -p
+deny recursive lookups via UDP, use on public access
+interfaces to prevent dns poisoning and distributed denial
+of service attacks.
 .TP
 .B -n
 whenever a zone that we serve changes, send UDP NOTIFY
 messages to any dns slaves for that zone.
+.TP
+.B -s
+also answer domain requests sent to UDP port 53.
+.TP
+.B -x
+specifies the mount point of the
+network.
 .TP
 .B -z
 whenever we receive a UDP NOTIFY message, run
@@ -428,6 +446,12 @@ file.
 The
 .B -r
 option is the same as for
+.IR ndb/dns .
+.PP
+.I Ndb/dnstcp
+serves the same protocol for TCP connections, usually
+started by /rc/bin/service/tcp53.
+It takes a subset of the options of
 .IR ndb/dns .
 .PP
 .I Ndb/mkdb

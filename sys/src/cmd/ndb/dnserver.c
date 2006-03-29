@@ -24,7 +24,9 @@ dnserver(DNSmsg *reqp, DNSmsg *repp, Request *req)
 
 	memset(repp, 0, sizeof(*repp));
 	repp->id = reqp->id;
-	repp->flags = Fresp | Fcanrec | Oquery;
+	repp->flags = Fresp | Oquery;
+	if(!public)
+		repp->flags |= Fcanrec;
 
 	/* move one question from reqp to repp */
 	tp = reqp->qd;
@@ -32,29 +34,42 @@ dnserver(DNSmsg *reqp, DNSmsg *repp, Request *req)
 	tp->next = 0;
 	repp->qd = tp;
 
+	if((reqp->flags & Frecurse) != 0 && !public){
+		syslog(0, logfile, "server: recursive lookup refused");
+		repp->flags = Rrefused | Fresp | Oquery;
+		return;
+	}
+
 	if(!rrsupported(repp->qd->type)){
 		syslog(0, logfile, "server: request %s", rrname(repp->qd->type, tname, sizeof tname));
-		repp->flags = Runimplimented | Fresp | Fcanrec | Oquery;
+		repp->flags = Runimplimented | Fresp | Oquery;
+		if(!public)
+			repp->flags |= Fcanrec;
+
 		return;
 	}
 
 	if(repp->qd->owner->class != Cin){
 		syslog(0, logfile, "server: class %d", repp->qd->owner->class);
-		repp->flags = Runimplimented | Fresp | Fcanrec | Oquery;
+		repp->flags = Runimplimented | Fresp | Oquery;
+		if(!public)
+			repp->flags |= Fcanrec;
 		return;
 	}
 
 	myarea = inmyarea(repp->qd->owner->name);
 	if(myarea != nil && (repp->qd->type == Tixfr || repp->qd->type == Taxfr)){
 		syslog(0, logfile, "server: request %s", rrname(repp->qd->type, tname, sizeof tname));
-		repp->flags = Runimplimented | Fresp | Fcanrec | Oquery;
+		repp->flags = Runimplimented | Fresp | Oquery;
+		if(!public)
+			repp->flags |= Fcanrec;
 		return;
 	}
 
 	/*
 	 *  get the answer if we can
 	 */
-	if(reqp->flags & Frecurse)
+	if((reqp->flags & Frecurse) && !public)
 		neg = doextquery(repp, req, Recurse);
 	else
 		neg = doextquery(repp, req, Dontrecurse);
@@ -67,7 +82,7 @@ dnserver(DNSmsg *reqp, DNSmsg *repp, Request *req)
 	if(repp->an == 0){
 		dp = dnlookup(repp->qd->owner->name, repp->qd->owner->class, 0);
 		if(dp->rr == 0)
-			if(reqp->flags & Frecurse)
+			if((reqp->flags & Frecurse) && !public)
 				repp->flags |= dp->nonexistent|Fauth;
 	}
 

@@ -22,6 +22,7 @@ static RR *serveraddrs;
 int	debug;
 int	cachedb;
 ulong	now;
+int	public;			/* do not offer or implement recursive lookups over IP */
 int	testing;
 int traceactivity;
 char	*trace;
@@ -49,9 +50,13 @@ main(int argc, char *argv[])
 	char *p;
 	char *f[4];
 
+	public = 0;
 	strcpy(mntpt, "/net");
 
 	ARGBEGIN{
+	case 'p':
+		public = 1;
+		break;
 	case 'r':
 		resolver = 1;
 		break;

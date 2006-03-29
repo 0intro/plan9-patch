@@ -67,6 +67,7 @@ int	cachedb;
 ulong	now;
 int	testing;
 char	*trace;
+int	public;			/* do not offer or implement recursive lookups over IP */
 int	needrefresh;
 int	resolver;
 uchar	ipaddr[IPaddrlen];	/* my ip address */
@@ -103,7 +104,7 @@ char	*LOG;
 void
 usage(void)
 {
-	fprint(2, "usage: %s [-rs] [-f ndb-file] [-x netmtpt]\n", argv0);
+	fprint(2, "usage: %s [-rsp] [-f ndb-file] [-x netmtpt]\n", argv0);
 	exits("usage");
 }
 
@@ -115,10 +116,14 @@ main(int argc, char *argv[])
 	char	ext[Maxpath];
 	char	*p;
 
+	public = 0;
 	serve = 0;
 	setnetmtpt(mntpt, sizeof(mntpt), nil);
 	ext[0] = 0;
 	ARGBEGIN{
+	case 'p':
+		public = 1;
+		break;
 	case 'd':
 		debug = 1;
 		traceactivity = 1;
