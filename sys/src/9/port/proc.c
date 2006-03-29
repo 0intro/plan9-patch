@@ -963,7 +963,7 @@ postnote(Proc *p, int dolock, char *n, int flag)
 /*
  * weird thing: keep at most NBROKEN around
  */
-#define	NBROKEN 4
+#define	NBROKEN 8
 struct
 {
 	QLock;
