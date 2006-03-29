@@ -143,6 +143,7 @@ xread(Xfs *dev, Iobuf *p, long addr)
 		return -1;
 	}
 	/*chat("xread ok...");*/
+	return 0;
 }
 void 
 xwrite(Iobuf *p)

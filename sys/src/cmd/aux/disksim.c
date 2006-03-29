@@ -430,7 +430,7 @@ rdwrpart(Req *r)
 			dirty(offset, blk);
 		tot += n;
 	}
-next:
+// next:
 	/* full and right fringe blocks */
 	while(tot < count){
 		blk = getblock(offset+tot, r->ifcall.type==Twrite && nonzero);

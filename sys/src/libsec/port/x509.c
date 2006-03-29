@@ -2434,37 +2434,40 @@ errret:
 static char*
 tagdump(Tag tag)
 {
+	char *rval;
+
 	if(tag.class != Universal)
 		return smprint("class%d,num%d", tag.class, tag.num);
 	switch(tag.num){
-		case BOOLEAN: return "BOOLEAN"; break;
-		case INTEGER: return "INTEGER"; break;
-		case BIT_STRING: return "BIT STRING"; break;
-		case OCTET_STRING: return "OCTET STRING"; break;
-		case NULLTAG: return "NULLTAG"; break;
-		case OBJECT_ID: return "OID"; break;
-		case ObjectDescriptor: return "OBJECT_DES"; break;
-		case EXTERNAL: return "EXTERNAL"; break;
-		case REAL: return "REAL"; break;
-		case ENUMERATED: return "ENUMERATED"; break;
-		case EMBEDDED_PDV: return "EMBEDDED PDV"; break;
-		case SEQUENCE: return "SEQUENCE"; break;
-		case SETOF: return "SETOF"; break;
-		case NumericString: return "NumericString"; break;
-		case PrintableString: return "PrintableString"; break;
-		case TeletexString: return "TeletexString"; break;
-		case VideotexString: return "VideotexString"; break;
-		case IA5String: return "IA5String"; break;
-		case UTCTime: return "UTCTime"; break;
-		case GeneralizedTime: return "GeneralizedTime"; break;
-		case GraphicString: return "GraphicString"; break;
-		case VisibleString: return "VisibleString"; break;
-		case GeneralString: return "GeneralString"; break;
-		case UniversalString: return "UniversalString"; break;
-		case BMPString: return "BMPString"; break;
+		case BOOLEAN: rval = "BOOLEAN"; break;
+		case INTEGER: rval = "INTEGER"; break;
+		case BIT_STRING: rval = "BIT STRING"; break;
+		case OCTET_STRING: rval = "OCTET STRING"; break;
+		case NULLTAG: rval = "NULLTAG"; break;
+		case OBJECT_ID: rval = "OID"; break;
+		case ObjectDescriptor: rval = "OBJECT_DES"; break;
+		case EXTERNAL: rval = "EXTERNAL"; break;
+		case REAL: rval = "REAL"; break;
+		case ENUMERATED: rval = "ENUMERATED"; break;
+		case EMBEDDED_PDV: rval = "EMBEDDED PDV"; break;
+		case SEQUENCE: rval = "SEQUENCE"; break;
+		case SETOF: rval = "SETOF"; break;
+		case NumericString: rval = "NumericString"; break;
+		case PrintableString: rval = "PrintableString"; break;
+		case TeletexString: rval = "TeletexString"; break;
+		case VideotexString: rval = "VideotexString"; break;
+		case IA5String: rval = "IA5String"; break;
+		case UTCTime: rval = "UTCTime"; break;
+		case GeneralizedTime: rval = "GeneralizedTime"; break;
+		case GraphicString: rval = "GraphicString"; break;
+		case VisibleString: rval = "VisibleString"; break;
+		case GeneralString: rval = "GeneralString"; break;
+		case UniversalString: rval = "UniversalString"; break;
+		case BMPString: rval = "BMPString"; break;
 		default:
-			return smprint("Universal,num%d", tag.num);
+			rval = smprint("Universal,num%d", tag.num);
 	}
+	return rval;
 }
 
 static void

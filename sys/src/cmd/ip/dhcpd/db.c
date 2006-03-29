@@ -111,9 +111,8 @@ lockopen(char *file)
 				return fd;
 		}
 	}
-	if(tries >= 5)
-		return -1;
-
+//	if(tries >= 5)
+	return -1;
 }
 
 void

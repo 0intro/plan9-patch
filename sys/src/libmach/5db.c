@@ -467,6 +467,7 @@ armcondpass(Map *map, Rgetter rget, uchar cond)
 	uchar z;
 	uchar c;
 	uchar v;
+	int rval;
 
 	psr = rget(map, "PSR");
 	n = (psr >> 31) & 1;
@@ -475,86 +476,131 @@ armcondpass(Map *map, Rgetter rget, uchar cond)
 	v = (psr >> 28) & 1;
 
 	switch(cond) {
-		case 0:		return z;
-		case 1:		return !z;
-		case 2:		return c;
-		case 3:		return !c;
-		case 4:		return n;
-		case 5:		return !n;
-		case 6:		return v;
-		case 7:		return !v;
-		case 8:		return c && !z;
-		case 9:		return !c || z;
-		case 10:	return n == v;
-		case 11:	return n != v;
-		case 12:	return !z && (n == v);
-		case 13:	return z && (n != v);
-		case 14:	return 1;
-		case 15:	return 0;
+	case 0:
+		rval = z;
+		break;
+	case 1:
+		rval = !z;
+		break;
+	case 2:
+		rval = c;
+		break;
+	case 3:
+		rval = !c;
+		break;
+	case 4:
+		rval = n;
+		break;
+	case 5:
+		rval = !n;
+		break;
+	case 6:
+		rval = v;
+		break;
+	case 7:
+		rval = !v;
+		break;
+	case 8:
+		rval = c && !z;
+		break;
+	case 9:
+		rval = !c || z;
+		break;
+	case 10:
+		rval = n == v;
+		break;
+	case 11:
+		rval = n != v;
+		break;
+	case 12:
+		rval = !z && (n == v);
+		break;
+	case 13:
+		rval = z && (n != v);
+		break;
+	case 14:
+		rval = 1;
+		break;
+	default:
+		SET(rval);	/* never reached */
 	}
+	return rval;
 }
 
 static ulong
 armshiftval(Map *map, Rgetter rget, Instr *i)
 {
+	char buf[8];
+	ulong v, rval;
+	ulong s;
+
 	if(i->w & (1 << 25)) {				/* immediate */
 		ulong imm = i->w & BITS(0, 7);
 		ulong s = (i->w & BITS(8, 11)) >> 7; /* this contains the *2 */
 		return ROR(imm, s);
-	} else {
-		char buf[8];
-		ulong v;
-		ulong s = (i->w & BITS(7,11)) >> 7;
-
-		sprint(buf, "R%ld", i->w & 0xf);
-		v = rget(map, buf);
-
-		switch((i->w & BITS(4, 6)) >> 4) {
-		case 0:					/* LSLIMM */
-			return v << s;
-		case 1:					/* LSLREG */
-			sprint(buf, "R%lud", s >> 1);
-			s = rget(map, buf) & 0xFF;
-			if(s >= 32) return 0;
-			return v << s;
-		case 2:					/* LSRIMM */
-			return LSR(v, s);
-		case 3:					/* LSRREG */
-			sprint(buf, "R%ld", s >> 1);
-			s = rget(map, buf) & 0xFF;
-			if(s >= 32) return 0;
-			return LSR(v, s);
-		case 4:					/* ASRIMM */
-			if(s == 0) {
-				if((v & (1U<<31)) == 0)
-					return 0;
-				return 0xFFFFFFFF;
-			}
-			return ASR(v, s);
-		case 5:					/* ASRREG */
-			sprint(buf, "R%ld", s >> 1);
-			s = rget(map, buf) & 0xFF;
-			if(s >= 32) {
-				if((v & (1U<<31)) == 0)
-					return 0;
-				return 0xFFFFFFFF;
-			}
-			return ASR(v, s);
-		case 6:					/* RORIMM */
-			if(s == 0) {
-				ulong c = (rget(map, "PSR") >> 29) & 1;
-
-				return (c << 31) | LSR(v, 1);
-			}
-			return ROR(v, s);
-		case 7:					/* RORREG */
-			sprint(buf, "R%ld", (s>>1)&0xF);
-			s = rget(map, buf);
-			if(s == 0 || (s & 0xF) == 0)
-				return v;
-			return ROR(v, s & 0xF);
-		}
 	}
+
+	s = (i->w & BITS(7,11)) >> 7;
+
+	sprint(buf, "R%ld", i->w & 0xf);
+	v = rget(map, buf);
+
+	switch((i->w & BITS(4, 6)) >> 4) {
+	case 0:					/* LSLIMM */
+		rval = v << s;
+		break;
+	case 1:					/* LSLREG */
+		sprint(buf, "R%lud", s >> 1);
+		s = rget(map, buf) & 0xFF;
+		if(s >= 32) return 0;
+		rval = v << s;
+		break;
+	case 2:					/* LSRIMM */
+		rval = LSR(v, s);
+		break;
+	case 3:					/* LSRREG */
+		sprint(buf, "R%ld", s >> 1);
+		s = rget(map, buf) & 0xFF;
+		if(s >= 32) return 0;
+		rval = LSR(v, s);
+		break;
+	case 4:					/* ASRIMM */
+		if(s == 0) {
+			if((v & (1U<<31)) == 0)
+				return 0;
+			return 0xFFFFFFFF;
+		}
+		rval = ASR(v, s);
+		break;
+	case 5:					/* ASRREG */
+		sprint(buf, "R%ld", s >> 1);
+		s = rget(map, buf) & 0xFF;
+		if(s >= 32) {
+			if((v & (1U<<31)) == 0)
+				return 0;
+			return 0xFFFFFFFF;
+		}
+		rval = ASR(v, s);
+		break;
+	case 6:					/* RORIMM */
+		if(s == 0) {
+			ulong c = (rget(map, "PSR") >> 29) & 1;
+			return (c << 31) | LSR(v, 1);
+		}
+		rval = ROR(v, s);
+		break;
+	case 7:					/* RORREG */
+		sprint(buf, "R%ld", (s>>1)&0xF);
+		s = rget(map, buf);
+		if(s == 0 || (s & 0xF) == 0)
+			return v;
+		rval = ROR(v, s & 0xF);
+		break;
+	default:
+		SET(rval);	/* never reached */
+	}
+
+	return rval;
 }
 
 static int
@@ -577,7 +623,7 @@ armmaddr(Map *map, Rgetter rget, Instr *i)
 	ulong v;
 	ulong nb;
 	char buf[8];
-	ulong rn;
+	ulong rn, rval;
 
 	rn = (i->w >> 16) & 0xf;
 	sprint(buf,"R%ld", rn);
@@ -585,12 +631,24 @@ armmaddr(Map *map, Rgetter rget, Instr *i)
 	v = rget(map, buf);
 	nb = nbits(i->w & ((1 << 15) - 1));
 
-	switch((i->w >> 23) & 3) {
-		case 0: return (v - (nb*4)) + 4;
-		case 1: return v;
-		case 2: return v - (nb*4);
-		case 3: return v + 4;
+	switch((i->w >> 23) & 3){
+	case 0:
+		rval = (v - (nb*4)) + 4;
+		break;
+	case 1:
+		rval = v;
+		break;
+	case 2:
+		rval = v - (nb*4);
+		break;
+	case 4:
+		rval = v + 4;
+		break;
+	default:
+		SET(rval);	/* never reached */
 	}
+
+	return rval;
 }
 
 static uvlong
