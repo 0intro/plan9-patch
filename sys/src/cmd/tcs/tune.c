@@ -224,7 +224,7 @@ tune_out(Rune *r, int n, long *x)
 				}
 			}else if(lastr && lastr != Runeerror && (*r == 0x00b2/*²*/ || *r == 0x00b3/*³*/ || *r == 0x2074/*⁴*/)){
 				if(squawk)
-					EPR( "%s: character <U+%04X, U+%04X> not in output cs\n", argv0, lastr, *r);
+					EPR "%s: character <U+%04X, U+%04X> not in output cs\n", argv0, lastr, *r);
 				lastr = clean ? 0 : Runeerror;
 				nerrors++;
 			}else{
