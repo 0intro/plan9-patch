@@ -35,6 +35,26 @@ Machdata mipsmach =
 	mipsinstlen,		/* instruction size */
 };
 
+Machdata mipsmachle =
+{
+	{0, 0, 0, 0xD},		/* break point */
+	4,			/* break point size */
+
+	leswab,			/* short to local byte order */
+	leswal,			/* long to local byte order */
+	leswav,			/* vlong to local byte order */
+	risctrace,		/* C traceback */
+	riscframe,		/* Frame finder */
+	mipsexcep,		/* print exception */
+	0,			/* breakpoint fixup */
+	leieeesftos,		/* single precision float printer */
+	leieeedftos,		/* double precisioin float printer */
+	mipsfoll,		/* following addresses */
+	mipsinst,		/* print instruction */
+	mipsdas,		/* dissembler */
+	mipsinstlen,		/* instruction size */
+};
+
 /*
  *	mips r4k little-endian
  */

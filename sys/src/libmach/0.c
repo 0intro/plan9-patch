@@ -109,6 +109,7 @@ Mach mmips2be =
 	0x1000,		/* page size */
 	0xC0000000,	/* kernel base */
 	0x40000000,	/* kernel text mask */
+	0x7FFFFFFFULL,	/* user stack top */
 	4,		/* quantization of pc */
 	4,		/* szaddr */
 	8,		/* szreg */
