@@ -382,6 +382,7 @@ ctlr
 ctlr
 	0xC002D="MATROX/Matrox G400"
 	0xC002D="MATROX/Matrox G450"
+	0xC002D="MATROX/Matrox G550"
 	0xC002D="MATROX/MGA-G200 VGA"
 	link=vga
 	ctlr=mga4xx linear=1
