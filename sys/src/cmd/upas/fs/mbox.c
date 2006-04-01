@@ -62,7 +62,6 @@ static	char*	skiptosemi(char*);
 static	char*	getstring(char*, String*, int);
 static	void	setfilename(Message*, char*);
 static	char*	lowercase(char*);
-static	int	is8bit(Message*);
 static	int	headerline(char**, String*);
 static	void	initheaders(void);
 static void	parseattachments(Message*, Mailbox*);
@@ -1055,7 +1054,7 @@ decode(Message *m)
 	m->decoded = 1;
 }
 
-// convert latin1 to utf
+// convert to utf
 void
 convert(Message *m)
 {
@@ -1063,117 +1062,17 @@ convert(Message *m)
 	char *x;
 
 	// don't convert if we're not a leaf, not text, or already converted
-	if(m->converted)
+	if(m->converted || m->part != nil || cistrncmp(s_to_c(m->type), "text", 4) != 0)
 		return;
-	if(m->part != nil)
-		return;
-	if(cistrncmp(s_to_c(m->type), "text", 4) != 0)
-		return;
-
-	if(cistrcmp(s_to_c(m->charset), "us-ascii") == 0 ||
-	   cistrcmp(s_to_c(m->charset), "iso-8859-1") == 0){
-		len = is8bit(m);
-		if(len > 0){
-			len = 2*len + m->bend - m->body + 1;
-			x = emalloc(len);
-			len = latin1toutf(x, m->body, m->bend);
-			if(m->ballocd)
-				free(m->body);
-			m->body = x;
-			m->bend = x + len;
-			m->ballocd = 1;
-		}
-	} else if(cistrcmp(s_to_c(m->charset), "iso-8859-2") == 0){
-		len = xtoutf("8859-2", &x, m->body, m->bend);
-		if(len != 0){
-			if(m->ballocd)
-				free(m->body);
-			m->body = x;
-			m->bend = x + len;
-			m->ballocd = 1;
-		}
-	} else if(cistrcmp(s_to_c(m->charset), "iso-8859-15") == 0){
-		len = xtoutf("8859-15", &x, m->body, m->bend);
-		if(len != 0){
-			if(m->ballocd)
-				free(m->body);
-			m->body = x;
-			m->bend = x + len;
-			m->ballocd = 1;
-		}
-	} else if(cistrcmp(s_to_c(m->charset), "big5") == 0){
-		len = xtoutf("big5", &x, m->body, m->bend);
-		if(len != 0){
-			if(m->ballocd)
-				free(m->body);
-			m->body = x;
-			m->bend = x + len;
-			m->ballocd = 1;
-		}
-	} else if(cistrcmp(s_to_c(m->charset), "iso-2022-jp") == 0){
-		len = xtoutf("jis", &x, m->body, m->bend);
-		if(len != 0){
-			if(m->ballocd)
-				free(m->body);
-			m->body = x;
-			m->bend = x + len;
-			m->ballocd = 1;
-		}
-	} else if(cistrcmp(s_to_c(m->charset), "windows-1257") == 0
-			|| cistrcmp(s_to_c(m->charset), "windows-1252") == 0){
-		len = is8bit(m);
-		if(len > 0){
-			len = 2*len + m->bend - m->body + 1;
-			x = emalloc(len);
-			len = windows1257toutf(x, m->body, m->bend);
-			if(m->ballocd)
-				free(m->body);
-			m->body = x;
-			m->bend = x + len;
-			m->ballocd = 1;
-		}
-	} else if(cistrcmp(s_to_c(m->charset), "windows-1251") == 0){
-		len = xtoutf("cp1251", &x, m->body, m->bend);
-		if(len != 0){
-			if(m->ballocd)
-				free(m->body);
-			m->body = x;
-			m->bend = x + len;
-			m->ballocd = 1;
-		}
-	} else if(cistrcmp(s_to_c(m->charset), "koi8-r") == 0){
-		len = xtoutf("koi8", &x, m->body, m->bend);
-		if(len != 0){
-			if(m->ballocd)
-				free(m->body);
-			m->body = x;
-			m->bend = x + len;
-			m->ballocd = 1;
-		}
-	}
-
 	m->converted = 1;
-}
-
-enum
-{
-	Self=	1,
-	Hex=	2,
-};
-uchar	tableqp[256];
-
-static void
-initquoted(void)
-{
-	int c;
-
-	memset(tableqp, 0, 256);
-	for(c = ' '; c <= '<'; c++)
-		tableqp[c] = Self;
-	for(c = '>'; c <= '~'; c++)
-		tableqp[c] = Self;
-	tableqp['\t'] = Self;
-	tableqp['='] = Hex;
+	len = xtoutf(s_to_c(m->charset), &x, m->body, m->bend);
+	if(len != 0){
+		if(m->ballocd)
+			free(m->body);
+		m->body = x;
+		m->bend = x + len;
+		m->ballocd = 1;
+	}
 }
 
 static int
@@ -1188,13 +1087,14 @@ hex2int(int x)
 	return 0;
 }
 
+// underscores are translated in 2047 headers but not in the body
 static char*
 decquotedline(char *out, char *in, char *e, int uscores)
 {
 	int c, soft;
 
 	/* dump trailing white space */
-	while(e >= in && (*e == ' ' || *e == '\t' || *e == '\r' || *e == '\n'))
+	while(e >= in && isspace(*e))
 		e--;
 
 	/* trailing '=' means no newline */
@@ -1206,17 +1106,17 @@ decquotedline(char *out, char *in, char *e, int uscores)
 
 	while(in <= e){
 		c = (*in++) & 0xff;
-		switch(tableqp[c]){
-		case Self:
-			if(uscores && c == '_')
-				c = ' ';
-			*out++ = c;
-			break;
-		case Hex:
+		switch(c){
+		case '=':
 			c = hex2int(*in++)<<4;
 			c |= hex2int(*in++);
 			*out++ = c;
 			break;
+		case '_':
+			*out++ = uscores ? '_' : ' ';
+			break;
+		default:
+			*out++ = c;
 		}
 	}
 	if(!soft)
@@ -1230,9 +1130,6 @@ int
 decquoted(char *out, char *in, char *e, int uscores)
 {
 	char *p, *nl;
-
-	if(tableqp[' '] == 0)
-		initquoted();
 
 	p = out;
 	while((nl = strchr(in, '\n')) != nil && nl < e){
@@ -1263,35 +1160,31 @@ lowercase(char *p)
 	return op;
 }
 
-/*
- *  return number of 8 bit characters
- */
-static int
-is8bit(Message *m)
-{
-	int count = 0;
-	char *p;
-
-	for(p = m->body; p < m->bend; p++)
-		if(*p & 0x80)
-			count++;
-	return count;
-}
-
 // translate latin1 directly since it fits neatly in utf
-int
-latin1toutf(char *out, char *in, char *e)
+static int
+latin1toutf(char **out, char *in, char *e)
 {
 	Rune r;
 	char *p;
+	int n;
 
-	p = out;
+	for(n = 0, p = in; p<e;)
+		if(*p++ & 0x80)
+			n++;
+	if(n == 0)
+		return 0;
+
+	n += e-in;
+	p = *out = malloc(n+1);
+	if(p == nil)
+		return 0;
+
 	for(; in < e; in++){
 		r = (*in) & 0xff;
 		p += runetochar(p, &r);
 	}
 	*p = 0;
-	return p - out;
+	return n;
 }
 
 // translate any thing else using the tcs program
@@ -1303,6 +1196,12 @@ xtoutf(char *charset, char **out, char *in, char *e)
 	int fromtcs[2];
 	int n, len, sofar;
 	char *p;
+
+	// small speed hack.
+	if (cistrcmp(charset, "us-ascii") == 0 || cistrcmp(charset, "utf-8") == 8)
+		return 0;
+	if(cistrcmp(charset, "iso-8859-1") == 0)
+		return latin1toutf(out, in, e);
 
 	len = e-in+1;
 	sofar = 0;
@@ -1370,36 +1269,6 @@ xtoutf(char *charset, char **out, char *in, char *e)
 		break;
 	}
 	return sofar;
-}
-
-enum {
-	Winstart= 0x7f,
-	Winend= 0x9f,
-};
-
-Rune winchars[] = {
-	L'•',
-	L'•', L'•', L'‚', L'ƒ', L'„', L'…', L'†', L'‡',
-	L'ˆ', L'‰', L'Š', L'‹', L'Œ', L'•', L'•', L'•',
-	L'•', L'‘', L'’', L'“', L'”', L'•', L'–', L'—',
-	L'˜', L'™', L'š', L'›', L'œ', L'•', L'•', L'Ÿ',
-};
-
-int
-windows1257toutf(char *out, char *in, char *e)
-{
-	Rune r;
-	char *p;
-
-	p = out;
-	for(; in < e; in++){
-		r = (*in) & 0xff;
-		if(r >= 0x7f && r <= 0x9f)
-			r = winchars[r-0x7f];
-		p += runetochar(p, &r);
-	}
-	*p = 0;
-	return p - out;
 }
 
 void *

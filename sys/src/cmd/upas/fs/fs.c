@@ -2,6 +2,7 @@
 #include <auth.h>
 #include <fcall.h>
 #include <libsec.h>
+#include <ctype.h>
 #include "dat.h"
 
 enum
@@ -1350,47 +1351,29 @@ hdrlen(char *p, char *e)
 }
 
 // rfc2047 non-ascii
-typedef struct Charset Charset;
-struct Charset {
-	char *name;
-	int len;
-	int convert;
-	char *tcsname;
-} charsets[] =
-{
-	{ "us-ascii",		8,	1, nil, },
-	{ "utf-8",		5,	0, nil, },
-	{ "iso-8859-1",		10,	1, nil, },
-	{ "iso-8859-2",		10,	2, "8859-2", },
-	{ "big5",		4,	2, "big5", },
-	{ "iso-2022-jp",	11, 2, "jis", },
-	{ "windows-1251",	12,	2, "cp1251"},
-	{ "koi8-r",		6,	2, "koi8"},
-};
-
 int
 rfc2047convert(String *s, char *token, int len)
 {
+	char charset[41];		// c.f. rfc 2278
 	char decoded[1024];
-	char utfbuf[2*1024];
-	int i;
-	char *e, *x;
+	char *e, *x, *end, *tok0;
+	int l;
 
-	if(len == 0)
+	if(len < sizeof "=?x?y??=")
 		return -1;
 
+	tok0 = token;
 	e = token+len-2;
 	token += 2;
 
-	// bail if we don't understand the character set
-	for(i = 0; i < nelem(charsets); i++)
-		if(cistrncmp(charsets[i].name, token, charsets[i].len) == 0)
-		if(token[charsets[i].len] == '?'){
-			token += charsets[i].len + 1;
-			break;
-		}
-	if(i >= nelem(charsets))
+	x = strchr(token, '?');
+	l = x-token;
+	if (l >= sizeof charset || x>e)
 		return -1;
+	strncpy(charset, token, l);
+	charset[l] = 0;
+
+	token = x+1;
 
 	// bail if it doesn't fit 
 	if(e-token > sizeof(decoded)-1)
@@ -1399,92 +1382,61 @@ rfc2047convert(String *s, char *token, int len)
 	// bail if we don't understand the encoding
 	if(cistrncmp(token, "b?", 2) == 0){
 		token += 2;
-		len = dec64((uchar*)decoded, sizeof(decoded), token, e-token);
+		if ((end = strstr(token, "?=")) == nil)
+			return -1;
+		len = dec64((uchar*)decoded, sizeof decoded, token, end-token);
 		decoded[len] = 0;
 	} else if(cistrncmp(token, "q?", 2) == 0){
 		token += 2;
-		len = decquoted(decoded, token, e, 1);
+		if ((end = strstr(token, "?=")) == nil)
+			return -1;
+		len = decquoted(decoded, token, end, 1);
 		if(len > 0 && decoded[len-1] == '\n')
 			len--;
 		decoded[len] = 0;
 	} else
 		return -1;
 
-	switch(charsets[i].convert){
-	case 0:
+	if(xtoutf(charset, &x, decoded, decoded+len) <= 0){
 		s_append(s, decoded);
-		break;
-	case 1:
-		latin1toutf(utfbuf, decoded, decoded+len);
-		s_append(s, utfbuf);
-		break;
-	case 2:
-		if(xtoutf(charsets[i].tcsname, &x, decoded, decoded+len) <= 0){
-			s_append(s, decoded);
-		} else {
-			s_append(s, x);
-			free(x);
-		}
-		break;
+	} else {
+		s_append(s, x);
+		free(x);
 	}
-
-	return 0;
-}
-
-char*
-rfc2047start(char *start, char *end)
-{
-	int quests;
-
-	if(*--end != '=')
-		return nil;
-	if(*--end != '?')
-		return nil;
-
-	quests = 0;
-	for(end--; end >= start; end--){
-		switch(*end){
-		case '=':
-			if(quests == 3 && *(end+1) == '?')
-				return end;
-			break;
-		case '?':
-			++quests;
-			break;
-		case ' ':
-		case '\t':
-		case '\n':
-		case '\r':
-			/* can't have white space in a token */
-			return nil;
-		}
-	}
-	return nil;
+	return end-tok0+2;
 }
 
 // convert a header line
 String*
 stringconvert(String *s, char *uneaten, int len)
 {
-	char *token;
-	char *p;
-	int i;
+	char *p, *end, *pastept;
+	int c;
 
 	s = s_reset(s);
-	p = uneaten;
-	for(i = 0; i < len; i++){
-		if(*p++ == '='){
-			token = rfc2047start(uneaten, p);
-			if(token != nil){
-				s_nappend(s, uneaten, token-uneaten);
-				if(rfc2047convert(s, token, p - token) < 0)
-					s_nappend(s, token, p - token);
-				uneaten = p;
+	end = uneaten+len;
+	for(p = uneaten; p<end;){
+		c = *p;
+		if(c != '=' || p[1] != '?'){
+			s_putc(s, c);
+			p++;
+			continue;
+		}
+
+paste:
+		if((c = rfc2047convert(s, p, end-p)) >= 0) {
+			p += c;
+			for(pastept = p; isspace(*pastept);)
+				pastept++;
+			if(pastept[0] == '=' && pastept[1] == '?') {
+				p = pastept;
+				goto paste;
 			}
+		} else{
+			s_append(s, "=?");
+			p += 2;
 		}
 	}
-	if(p > uneaten)
-		s_nappend(s, uneaten, p-uneaten);
 	return s;
 }
 
