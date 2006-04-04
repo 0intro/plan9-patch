@@ -56,7 +56,7 @@ and
 .I longjmp
 can also be used to switch stacks.
 Defined in
-.B </$objtype/u.h>
+.B </$objtype/include/u.h>
 are several macros that can be used to build
 .B jmp_bufs
 by hand.  The following code establishes a
