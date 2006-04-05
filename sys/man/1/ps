@@ -4,12 +4,12 @@ ps, psu \- process status
 .SH SYNOPSIS
 .B ps
 [
-.B -pa
+.B -pasr
 ]
 .PP
 .B psu
 [
-.B -pa
+.B -pasr
 ]
 [
 .I user
@@ -93,6 +93,20 @@ The
 flag causes
 .I ps
 to print the arguments for the process.  Newlines in arguments will be translated to spaces for display.
+.PP
+With the
+.B -s
+flag,
+.I ps
+also prints, after the size, the local start time of each process. If less than 24 hours old the format is HH:MM:SS, if older the format is YYYYMMDD.
+.PP
+With the
+.B -r
+flag,
+.I ps
+also prints, after the size (or start time, if
+.B -s
+was given) the running time of each process as days, hours, minutes, and seconds.
 .SH FILES
 .B /proc/*/status
 .SH SOURCE

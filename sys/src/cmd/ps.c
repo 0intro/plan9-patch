@@ -9,6 +9,8 @@ int	cmp(void*, void*);
 Biobuf	bout;
 int	pflag;
 int	aflag;
+int	sflag;
+int	rflag;
 
 void
 main(int argc, char *argv[])
@@ -23,6 +25,12 @@ main(int argc, char *argv[])
 		break;
 	case 'p':
 		pflag++;
+		break;
+	case 'r':
+		rflag++;
+		break;
+	case 's':
+		sflag++;
 		break;
 	} ARGEND;
 	Binit(&bout, 1, OWRITE);
@@ -54,9 +62,11 @@ main(int argc, char *argv[])
 void
 ps(char *s)
 {
-	ulong utime, stime, size;
-	int argc, basepri, fd, i, n, pri;
-	char args[256], *argv[16], buf[64], pbuf[8], status[4096];
+	ulong utime, stime, size, runtime;
+	long tn=time(0);
+	int argc, basepri, fd, i, n, pri, days, hrs, mins, secs;
+	char args[256], *argv[16], buf[64], pbuf[8], sbuf[32], rbuf[32], status[4096];
+	Tm *pstm;
 
 	sprint(buf, "%s/status", s);
 	fd = open(buf, OREAD);
@@ -77,27 +87,54 @@ ps(char *s)
 	 * 1  user
 	 * 2  state
 	 * 3  cputime[6]
+	 * 5  runtime
 	 * 9  memory
 	 * 10 basepri
 	 * 11 pri
 	 */
 	utime = strtoul(argv[3], 0, 0)/1000;
 	stime = strtoul(argv[4], 0, 0)/1000;
+	runtime = strtoul(argv[5], 0, 0)/1000;
 	size  = strtoul(argv[9], 0, 0);
+
 	if(pflag){
 		basepri = strtoul(argv[10], 0, 0);
 		pri = strtoul(argv[11], 0, 0);
 		sprint(pbuf, " %2d %2d", basepri, pri);
 	} else
 		pbuf[0] = 0;
-	Bprint(&bout, "%-10s %8s %4lud:%.2lud %3lud:%.2lud%s %7ludK %-8.8s ",
-			argv[1],
-			s,
-			utime/60, utime%60,
-			stime/60, stime%60,
-			pbuf,
-			size,
-			argv[2]);
+
+	if(sflag){
+		pstm=localtime(tn-runtime);
+		if(runtime < 86400)
+			sprint(sbuf, " %02d:%02d:%02d",
+				pstm->hour, pstm->min, pstm->sec);
+		else
+			sprint(sbuf, " %d%02d%02d",
+				1900+pstm->year, 1+pstm->mon, pstm->mday);
+	} else
+		sbuf[0] = 0;
+
+	if(rflag){
+		secs = runtime%60;
+		mins = (runtime/60)%60;
+		hrs = (runtime/3600)%24;
+		days = runtime/86400;
+		sprint(rbuf, " %3d:%02d:%02d:%02d", 
+			days, hrs, mins, secs);
+	} else
+		rbuf[0] = 0;
+
+	Bprint(&bout, "%-10s %8s %4lud:%.2lud %3lud:%.2lud%s %7ludK%s%s %-8.8s ",
+		argv[1],
+		s,
+		utime/60, utime%60,
+		stime/60, stime%60,
+		pbuf,
+		size,
+		sbuf,
+		rbuf,
+		argv[2]);
 
 	if(aflag == 0){
     Noargs:
