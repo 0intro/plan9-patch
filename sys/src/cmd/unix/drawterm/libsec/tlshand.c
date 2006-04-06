@@ -1,6 +1,5 @@
 #include <u.h>
 #include <libc.h>
-#include <bio.h>
 #include <auth.h>
 #include <mp.h>
 #include <libsec.h>
@@ -116,7 +115,7 @@ typedef struct Msg{
 	} u;
 } Msg;
 
-typedef struct TlsSec{
+struct TlsSec{
 	char *server;	// name of remote; nil for server
 	int ok;	// <0 killed; ==0 in progress; >0 reusable
 	RSApub *rsapub;
@@ -130,7 +129,7 @@ typedef struct TlsSec{
 	void (*prf)(uchar*, int, uchar*, int, char*, uchar*, int, uchar*, int);
 	void (*setFinished)(TlsSec*, MD5state, SHAstate, uchar*, int);
 	int nfin;
-} TlsSec;
+};
 
 
 enum {
