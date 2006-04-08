@@ -188,6 +188,7 @@ pipefile pipefile
 plot plot
 plumb plumb
 pr pr
+kmem leak
 kprof prof
 prof prof
 tprof prof
