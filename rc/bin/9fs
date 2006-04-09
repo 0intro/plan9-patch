@@ -1,4 +1,15 @@
 #!/bin/rc
+
+rfork e
+fn srvmnt {
+	srv -q $1 $2
+	mount -n /srv/$2 $3 >[2=] || {
+		rm -f /srv/$2
+		srv -q $1 $2
+		mount -n /srv/$2 /$3
+	}
+}
+
 switch($1){
 case ''
 	echo usage: 9fs service '[mountpoint]' >[1=2]
@@ -20,8 +31,7 @@ case other
 case juke
 	srv -q il!jukefs && mount /srv/il!jukefs /n/njuke && bind -c /n/njuke/juke /n/juke
 case sources
-	srv -q tcp!sources.cs.bell-labs.com sources
-	mount -n /srv/sources /n/sources
+	srvmnt tcp!sources.cs.bell-labs.com sources /n/sources
 case sourcesdump
 	9fs sources
 	mount /srv/sources /n/sourcesdump main/archive
@@ -29,8 +39,7 @@ case sourcessnap
 	9fs sources
 	mount /srv/sources /n/sourcessnap main/snapshot
 case wiki
-	srv 'net!plan9.bell-labs.com!wiki' wiki	
-	mount /srv/wiki /mnt/wiki
+	srvmnt 'net!plan9.bell-labs.com!wiki' wiki /mnt/wiki
 case *
 	switch($#*){
 	case 1
