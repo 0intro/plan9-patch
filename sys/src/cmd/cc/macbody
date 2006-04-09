@@ -43,6 +43,27 @@ getsym(void)
 	return lookup();
 }
 
+Sym*
+getsymdots(int *dots)
+{
+	int c;
+	Sym *s;
+
+	s = getsym();
+	if(s != S)
+		return s;
+
+	c = getnsc();
+	if(c != '.'){
+		unget(c);
+		return S;
+	}
+	if((c = getc()) != '.' || (c = getc()) != '.' )
+		yyerror("bad dots in macro at '%c'", c);
+	*dots = 1;
+	return slookup("__VA_ARGS__");
+}
+
 int
 getcom(void)
 {
@@ -172,7 +193,7 @@ macdef(void)
 {
 	Sym *s, *a;
 	char *args[NARG], *np, *base;
-	int n, i, c, len;
+	int n, i, c, len, dots;
 	int ischr;
 
 	s = getsym();
@@ -182,13 +203,14 @@ macdef(void)
 		yyerror("macro redefined: %s", s->name);
 	c = getc();
 	n = -1;
+	dots = 0;
 	if(c == '(') {
 		n++;
 		c = getnsc();
 		if(c != ')') {
 			unget(c);
 			for(;;) {
-				a = getsym();
+				a = getsymdots(&dots);
 				if(a == S)
 					goto bad;
 				if(n >= NARG) {
@@ -199,7 +221,7 @@ macdef(void)
 				c = getnsc();
 				if(c == ')')
 					break;
-				if(c != ',')
+				if(c != ',' || dots)		// "..." must be last
 					goto bad;
 			}
 		}
@@ -325,6 +347,8 @@ macdef(void)
 	} while(len & 3);
 
 	*base = n+1;
+	if(dots)
+		*base |= 128;
 	s->macro = base;
 	if(debug['m'])
 		print("#define %s %s\n", s->name, s->macro+1);
@@ -343,10 +367,12 @@ macexpand(Sym *s, char *b)
 {
 	char buf[2000];
 	int n, l, c, nargs;
-	char *arg[NARG], *cp, *ob, *ecp;
+	char *arg[NARG], *cp, *ob, *ecp, dots;
 
 	ob = b;
-	nargs = *s->macro - 1;
+	nargs = *s->macro;
+	dots = nargs & 128;
+	nargs = (nargs & 127)-1;
 	if(nargs < 0) {
 		strcpy(b, s->macro+1);
 		if(debug['m'])
@@ -427,7 +453,7 @@ macexpand(Sym *s, char *b)
 				if(c == ',') {
 					*cp++ = 0;
 					arg[n++] = cp;
-					if(n > nargs)
+					if(!dots && n > nargs)
 						break;
 					continue;
 				}
@@ -444,7 +470,7 @@ macexpand(Sym *s, char *b)
 		}
 		*cp = 0;
 	}
-	if(n != nargs) {
+	if(n != nargs && !dots && n < nargs){
 		yyerror("argument mismatch expanding: %s", s->name);
 		*b = 0;
 		return;
@@ -470,6 +496,13 @@ macexpand(Sym *s, char *b)
 		c -= 'a';
 		if(c < 0 || c >= n)
 			continue;
+		if(dots && c == nargs-1)
+			for(;c < n-1; c++){
+				strcpy(b, arg[c]);
+				b += strlen(arg[c]);
+				strcpy(b, ", ");
+				b += 2;
+			}
 		strcpy(b, arg[c]);
 		b += strlen(arg[c]);
 	}
