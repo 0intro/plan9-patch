@@ -27,7 +27,7 @@ enum kwtype { KIF, KIFDEF, KIFNDEF, KELIF, KELSE, KENDIF, KINCLUDE, KDEFINE,
 #define	ISKW		02	/* is PP keyword */
 #define	ISUNCHANGE	04	/* can't be #defined in PP */
 #define	ISMAC		010	/* builtin macro, e.g. __LINE__ */
-
+#define	ISVARMAC	020	/* varadic macro */
 #define	EOB	0xFE		/* sentinel for end of input buffer */
 #define	EOFC	0xFD		/* sentinel for end of input file */
 #define	XPWS	1		/* token flag: white space to assure token sep. */

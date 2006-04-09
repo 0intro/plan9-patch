@@ -12,7 +12,9 @@ dodefine(Tokenrow *trp)
 	Token *tp;
 	Nlist *np;
 	Tokenrow *def, *args;
+	int dots;
 
+	dots = 0;
 	tp = trp->tp+1;
 	if (tp>=trp->lp || tp->type!=NAME) {
 		error(ERROR, "#defined token is not a name");
@@ -36,13 +38,15 @@ dodefine(Tokenrow *trp)
 			int err = 0;
 			for (;;) {
 				Token *atp;
-				if (tp->type!=NAME) {
+				if(tp->type == ELLIPS)
+					dots++;
+				else if (tp->type!=NAME) {
 					err++;
 					break;
 				}
 				if (narg>=args->max)
 					growtokenrow(args);
-				for (atp=args->bp; atp<args->lp; atp++)
+				for (atp=args->bp; !dots && atp<args->lp; atp++)
 					if (atp->len==tp->len
 					 && strncmp((char*)atp->t, (char*)tp->t, tp->len)==0)
 						error(ERROR, "Duplicate macro argument");
@@ -51,6 +55,8 @@ dodefine(Tokenrow *trp)
 				tp += 1;
 				if (tp->type==RP)
 					break;
+				if(dots)
+					error(ERROR, "arguments after '...' in macro");
 				if (tp->type!=COMMA) {
 					err++;
 					break;
@@ -83,6 +89,8 @@ dodefine(Tokenrow *trp)
 	np->ap = args;
 	np->vp = def;
 	np->flag |= ISDEFINED;
+	if(dots)
+		np->flag |= ISVARMAC;
 }
 
 /*
@@ -184,6 +192,7 @@ expand(Tokenrow *trp, Nlist *np)
 	Tokenrow *atr[NARG+1];
 	int hs;
 
+	memset(atr, 0, sizeof atr);
 	copytokenrow(&ntr, np->vp);		/* copy macro value */
 	if (np->ap==NULL)			/* parameterless */
 		ntokc = 1;
@@ -194,7 +203,7 @@ expand(Tokenrow *trp, Nlist *np)
 			/* gatherargs has already pushed trp->tr to the next token */
 			return;
 		}
-		if (narg != rowlen(np->ap)) {
+		if (narg != rowlen(np->ap) && ((np->flag & ISVARMAC) && narg< rowlen(np->ap))) {
 			error(ERROR, "Disagreement in number of macro arguments");
 			trp->tp->hideset = newhideset(trp->tp->hideset, np);
 			trp->tp += ntokc;
@@ -316,6 +325,20 @@ gatherargs(Tokenrow *trp, Tokenrow **atr, int *narg)
 	return ntok;
 }
 
+static Token comma[] = {
+	{(uchar)COMMA, 0, 0, 0, 1, (uchar*)","},
+	0,
+};
+static Tokenrow commatr = {
+	comma, comma, comma+1, 0
+};
+
+static int
+varargpos(Nlist *np)
+{
+	return np->ap->lp-np->ap->bp-1;		// c.f. cpp.h definition of Nlist
+}
+
 /*
  * substitute the argument list into the replacement string
  *  This would be simple except for ## and #
@@ -338,6 +361,11 @@ substargs(Nlist *np, Tokenrow *rtr, Tokenrow **atr)
 			ntok = 1 + (rtr->tp - tp);
 			rtr->tp = tp;
 			insertrow(rtr, ntok, stringify(atr[argno]));
+			if(argno == varargpos(np))
+				for(; atr[++argno]; ){
+					insertrow(rtr, 0, &commatr);
+					insertrow(rtr, 0, stringify(atr[argno]));
+				}
 			continue;
 		}
 		if (rtr->tp->type==NAME
@@ -352,6 +380,14 @@ substargs(Nlist *np, Tokenrow *rtr, Tokenrow **atr)
 				expandrow(&tatr, "<macro>");
 				insertrow(rtr, 1, &tatr);
 				dofree(tatr.bp);
+				if(argno == varargpos(np))
+					for(; atr[++argno]; ){
+						insertrow(rtr, 0, &commatr);
+						copytokenrow(&tatr, atr[argno]);
+						expandrow(&tatr, "<macro>");
+						insertrow(rtr, 0, &tatr);
+						dofree(tatr.bp);
+					}
 			}
 			continue;
 		}
@@ -412,6 +448,8 @@ lookuparg(Nlist *mac, Token *tp)
 
 	if (tp->type!=NAME || mac->ap==NULL)
 		return -1;
+	if(mac->flag & ISVARMAC && strcmp((char*)tp->t, "__VA_ARGS__") == 0)
+		return mac->ap->lp-mac->ap->bp-1;
 	for (ap=mac->ap->bp; ap<mac->ap->lp; ap++) {
 		if (ap->len==tp->len && strncmp((char*)ap->t,(char*)tp->t,ap->len)==0)
 			return ap - mac->ap->bp;
