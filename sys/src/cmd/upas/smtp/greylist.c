@@ -33,7 +33,7 @@ static int
 onwhitelist(void)
 {
 	int lnlen;
-	char *line, *parse;
+	char *line, *parse, *a[2];
 	char input[128];
 	uchar ip[IPaddrlen], ipmasked[IPaddrlen];
 	uchar mask4[IPaddrlen], addr4[IPaddrlen];
@@ -52,16 +52,18 @@ onwhitelist(void)
 	if (wl == nil)
 		return 1;
 	while ((line = Brdline(wl, '\n')) != nil) {
-		if (line[0] == '#' || line[0] == '\n')
-			continue;
 		lnlen = Blinelen(wl);
 		line[lnlen-1] = '\0';		/* clobber newline */
+		if (tokenize(line, a, sizeof(a)) < 1)
+			continue;
+		if (*a[0] == '#' || *a[0] == 0)
+			continue;
 
 		/* default mask is /32 (v4) or /128 (v6) for bare IP */
-		parse = line;
-		if (strchr(line, '/') == nil) {
-			strncpy(input, line, sizeof input - 5);
-			if (strchr(line, '.') != nil)
+		parse = a[0];
+		if (strchr(parse, '/') == nil) {
+			strncpy(input, parse, sizeof input - 5);
+			if (strchr(parse, '.') != nil)
 				strcat(input, "/32");
 			else
 				strcat(input, "/128");
@@ -238,6 +240,23 @@ isrcptrecent(char *rcpt)
 	return 0;
 }
 
+static char *
+rev(char *str)
+{
+	int i, n;
+	char *a[64];
+	static char buf[255];
+
+	*buf = 0;
+	n = gettokens(str, a, sizeof a, ".");
+	for (i = 0; i < n-1; i++){
+		strcat(buf, a[n-i-1]);
+		strcat(buf, ".");
+	}
+	strcat(buf, a[n-i-1]);
+	return buf;
+}
+
 void
 vfysenderhostok(void)
 {
@@ -259,9 +278,9 @@ vfysenderhostok(void)
 		if (fd >= 0) {
 			seek(fd, 0, 2);			/* paranoia */
 			if ((fqdn = csgetvalue(nil, "ip", nci->rsys, "dom", nil)) != nil)
-				fprint(fd, "# %s\n%s\n\n", fqdn, nci->rsys);
+				fprint(fd, "%-24s %s\n", nci->rsys, rev(fqdn));
 			else
-				fprint(fd, "# unknown\n%s\n\n", nci->rsys);
+				fprint(fd, "%s\n", nci->rsys);
 			close(fd);
 		}
 	} else {
