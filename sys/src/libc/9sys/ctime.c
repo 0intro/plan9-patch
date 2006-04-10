@@ -216,20 +216,13 @@ readtimezone(void)
 	int i;
 
 	memset(buf, 0, sizeof(buf));
-	i = open("/env/timezone", 0);
-	if(i < 0)
-		goto error;
-	if(read(i, buf, sizeof(buf)) >= sizeof(buf))
-		goto error;
-	close(i);
 	p = buf;
-	if(rd_name(&p, timezone.stname))
-		goto error;
-	if(rd_long(&p, &timezone.stdiff))
-		goto error;
-	if(rd_name(&p, timezone.dlname))
-		goto error;
-	if(rd_long(&p, &timezone.dldiff))
+	i = open("/env/timezone", 0);
+	if(i < 0 || read(i, buf, sizeof(buf)) >= sizeof(buf) ||
+	    rd_name(&p, timezone.stname) ||
+	    rd_long(&p, &timezone.stdiff) ||
+	    rd_name(&p, timezone.dlname) ||
+	    rd_long(&p, &timezone.dldiff))
 		goto error;
 	for(i=0; i<TZSIZE; i++) {
 		if(rd_long(&p, &timezone.dlpairs[i]))
@@ -237,8 +230,9 @@ readtimezone(void)
 		if(timezone.dlpairs[i] == 0)
 			return;
 	}
-
 error:
+	if (i >= 0)
+		close(i);
 	timezone.stdiff = 0;
 	strcpy(timezone.stname, "GMT");
 	timezone.dlpairs[0] = 0;
