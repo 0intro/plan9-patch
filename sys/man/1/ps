@@ -4,12 +4,12 @@ ps, psu \- process status
 .SH SYNOPSIS
 .B ps
 [
-.B -apr
+.B -aprs
 ]
 .PP
 .B psu
 [
-.B -apr
+.B -aprs
 ]
 [
 .I user
@@ -81,6 +81,12 @@ performing the named system call.
 waiting for more of a critical
 .IR resource .
 .PD
+.PP
+The
+.B -s
+flag causes
+.I ps
+to print, before the user time, the local start time for the process.
 .PP
 The
 .B -r

@@ -10,6 +10,7 @@ Biobuf	bout;
 int	pflag;
 int	aflag;
 int	rflag;
+int	sflag;
 
 void
 main(int argc, char *argv[])
@@ -27,6 +28,9 @@ main(int argc, char *argv[])
 		break;
 	case 'r':
 		rflag++;
+		break;
+	case 's':
+		sflag++;
 		break;
 	} ARGEND;
 	Binit(&bout, 1, OWRITE);
@@ -60,7 +64,9 @@ ps(char *s)
 {
 	ulong utime, stime, rtime, size;
 	int argc, basepri, fd, i, n, pri;
-	char args[256], *argv[16], buf[64], pbuf[8], rbuf[20], rbuf1[20], status[4096];
+	char args[256], *argv[16], buf[64], pbuf[8], rbuf[20], rbuf1[20], sbuf[20], status[4096];
+	Tm *tm;
+	long	tnow=time(0);
 
 	sprint(buf, "%s/status", s);
 	fd = open(buf, OREAD);
@@ -107,10 +113,19 @@ ps(char *s)
 	}else
 		rbuf1[0] = 0;
 
-	Bprint(&bout, "%-10s %8s%s %4lud:%.2lud %3lud:%.2lud %s %7ludK %-8.8s ",
+	if(sflag){
+		tm=localtime(tnow-rtime);
+		sprint(sbuf, " %d%02d%02d %02d:%02d:%02d",
+			1900+tm->year, 1+tm->mon, tm->mday,
+			tm->hour, tm->min, tm->sec);
+	} else
+		sbuf[0] = 0;
+
+	Bprint(&bout, "%-10s %8s%s%s %4lud:%.2lud %3lud:%.2lud %s %7ludK %-8.8s ",
 			argv[1],
 			s,
 			rbuf1,
+			sbuf,
 			utime/60, utime%60,
 			stime/60, stime%60,
 			pbuf,
