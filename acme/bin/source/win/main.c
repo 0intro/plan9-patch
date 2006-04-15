@@ -89,6 +89,7 @@ threadmain(int argc, char *argv[])
 	}
 
 	ctlprint(win->ctl, "scroll");
+	ctlprint(win->ctl, "scratch");
 	winsetdump(win, dir, buf);
 }
 

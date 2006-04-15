@@ -754,6 +754,14 @@ out:
 		if(strncmp(p, "scroll", 6) == 0){	/* turn on automatic scrolling (writes to body only) */
 			w->noscroll = FALSE;
 			m = 6;
+		}else
+		if(strncmp(p, "scratch", 7) == 0){	/* mark as a scratch buffer */
+			w->isscratch = TRUE;
+			m = 7;
+		}else
+		if(strncmp(p, "noscratch", 9) == 0){	/* mark as a non-scratch buffer */
+			w->isscratch = FALSE;
+			m = 9;
 		}else{
 			err = Ebadctl;
 			break;
