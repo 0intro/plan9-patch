@@ -164,6 +164,12 @@ Log file.
 .SH BUGS
 It would be nice to provide authentication for users, but Unix systems
 provide too low a level of security to be trusted in a Plan 9 world.
+.PP
+An option taking an argument must be written as two arguments
+(e.g., 
+.BR "-f /srv/fs.other" )
+and all such options must follow
+options that do not take arguments.
 .SH SEE ALSO
 RFC1057,
 .I "RPC: Remote Procedure Call Protocol Specification, Version 2."
