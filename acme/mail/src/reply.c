@@ -91,7 +91,8 @@ mkreply(Message *m, char *label, char *to, Plumbattr *attr, char *quotetext)
 	r->w = newwindow();
 	winname(r->w, r->name);
 	ctlprint(r->w->ctl, "cleartag");
-	wintagwrite(r->w, "fmt Look Post Undo", 4+5+5+4);
+	ctlprint(r->w->ctl, "menu\n");
+	wintagwrite(r->w, "fmt Look Post", 4+5+4);
 	r->tagposted = 1;
 	threadcreate(mesgctl, r, STACK);
 	winopenbody(r->w, OWRITE);
