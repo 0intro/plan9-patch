@@ -81,7 +81,7 @@ stringit(char *str)
 int
 isprint(Rune r)
 {
-	if ((r >= ' ' && r <0x7f) || r > 0xA0)
+	if ((r >= ' ' && r <0x7f) || (r > 0xA0 && r < Runeerror))
 		return 1;
 	else
 		return 0;
