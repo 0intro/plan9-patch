@@ -100,7 +100,7 @@ struct
 	
 } language[] =
 {
-	Normal, 0,	0x0080, 0x0080,	"Extended Latin",
+	Normal,	0,	0x00a0,	0x00ff,	"Latin",
 	Normal,	0,	0x0100,	0x01FF,	"Extended Latin",
 	Normal,	0,	0x0370,	0x03FF,	"Greek",
 	Normal,	0,	0x0400,	0x04FF,	"Cyrillic",
@@ -158,6 +158,7 @@ int	isp9font(void);
 int	isrtf(void);
 int	ismsdos(void);
 int	iself(void);
+int	isface(void);
 int	istring(void);
 int	iff(void);
 int	long0(void);
@@ -169,8 +170,11 @@ void	type(char*, int);
 int	utf_count(void);
 void	wordfreq(void);
 
+// iself is called before long0 because crackhdr will pick up some elf
+// executables, but not others.
 int	(*call[])(void) =
 {
+	iself,		/* recognizable by first 20 bytes: ELF (foreign) executable */
 	long0,		/* recognizable by first 4 bytes */
 	istring,	/* recognizable by first string */
 	iff,		/* interchange file format (strings) */
@@ -188,11 +192,12 @@ int	(*call[])(void) =
 	isenglish,	/* char frequency English */
 	isrtf,		/* rich text format */
 	ismsdos,	/* msdos exe (virus file attachement) */
-	iself,		/* ELF (foreign) executable */
+	isface,		/* olde-tyme face format */
 	0
 };
 
 int mime;
+int hflag;
 
 #define OCTET	"application/octet-stream\n"
 #define PLAIN	"text/plain\n"
@@ -208,8 +213,11 @@ main(int argc, char *argv[])
 	case 'm':
 		mime = 1;
 		break;
+	case 'h':
+		hflag = 1;
+		break;
 	default:
-		fprint(2, "usage: file [-m] [file...]\n");
+		fprint(2, "usage: file [-mh] [file...]\n");
 		exits("usage");
 	}ARGEND;
 
@@ -259,12 +267,36 @@ type(char *file, int nlen)
 	close(fd);
 }
 
+static int
+utf8len(char *s, char *e)
+{
+	int c, n, i;
+
+	c = *(uchar*)s++;
+	if (0x80 == (c&0xc0) || 0xc0 == (c&0xe0))
+		n = 2;
+	else if ((c&0xf0) == 0xe0)
+		n = 3;
+	else if ((c&0xf8) == 0xf0)
+		n = 4;
+	else
+		return -1;
+	i = n-1;
+	if(e-s > i)
+		i = e-s;
+	for(; i-- && (c = *(uchar*)s++);)
+		if(0x80 != (c&0x80))
+			return -1;
+	return n;
+}
+
 void
 filetype(int fd)
 {
 	Rune r;
 	int i, f, n;
 	char *p, *eob;
+	uchar c;
 
 	free(mbuf);
 	mbuf = dirfstat(fd);
@@ -301,28 +333,30 @@ filetype(int fd)
 		language[i].count = 0;
 	eob = (char *)buf+nbuf;
 	for(n = 0, p = (char *)buf; p < eob; n++) {
-		if (!fullrune(p, eob-p) && eob-p < UTFmax)
-			break;
-		p += chartorune(&r, p);
-		if (r == 0)
-			f = Cnull;
-		else if (r <= 0x7f) {
-			if (!isprint(r) && !isspace(r))
+		c = *(uchar*)p;
+		if (c < 0x80) {
+			if(c == 0)
+				f = Cnull;
+			else if (!isprint(c) && !isspace(c))
 				f = Ceascii;	/* ASCII control char */
-			else f = r;
-		} else if (r == 0x080) {
+			else f = c;
+		} else if((i = utf8len(p, eob)) > 0) {
+			// special care for non-basic-plane codepoints
+			chartorune(&r, p);
+			p += i-1;
 			bump_utf_count(r);
 			f = Cutf;
-		} else if (r < 0xA0)
-				f = Cbinary;	/* Invalid Runes */
-		else if (r <= 0xff)
-				f = Clatin;	/* Latin 1 */
-		else {
-			bump_utf_count(r);
-			f = Cutf;		/* UTF extension */
-		}
+		} else if(c <= 0xa0)
+			f = Cbinary;
+		else
+			f = Clatin;
 		cfreq[f]++;			/* ASCII chars peg directly */
+		p++;
 	}
+
+	if(hflag)
+		fprint(2, "n = %d, bin = %d, utf = %d, latin = %d, eascii = %d null = %d\n",
+			n, cfreq[Cbinary], cfreq[Cutf], cfreq[Clatin], cfreq[Ceascii], cfreq[Cnull]);
 	/*
 	 * gross classify
 	 */
@@ -363,7 +397,7 @@ filetype(int fd)
 	else if (guess == Feascii)
 		print(mime ? PLAIN : "extended ascii\n");
 	else if (guess == Flatin)
-		print(mime ? PLAIN : "latin ascii\n");
+		print(mime ? PLAIN : "latin1\n");
 	else if (guess == Futf && utf_count() < 4)
 		print_utf();
 	else print(mime ? OCTET : "binary\n");
@@ -662,6 +696,9 @@ struct	FILE_STRING
 	"\033%-12345X",	"HPJCL file",		9,	"application/hpjcl",
 	"ID3",			"mp3 audio with id3",	3,	"audio/mpeg",
 	"\211PNG",		"PNG image",		4,	"image/png",
+	"P3\n",			"ppm",			3,	"image/ppm",
+	"P6\n",			"ppm",			3,	"image/ppm",
+	"/* XPM */\n",		"xbm",			10,	"image/xbm",
 	0,0,0,0
 };
 
@@ -1150,13 +1187,12 @@ p9subfont(uchar *p)
 #define	WHITESPACE(c)		((c) == ' ' || (c) == '\t' || (c) == '\n')
 
 int
-isp9font(void)
+_isp9font(uchar *cp)
 {
-	uchar *cp, *p;
+	uchar *p;
 	int i, n;
 	char pathname[1024];
 
-	cp = buf;
 	if (!getfontnum(cp, &cp))	/* height */
 		return 0;
 	if (!getfontnum(cp, &cp))	/* ascent */
@@ -1166,6 +1202,7 @@ isp9font(void)
 			break;
 		if (!getfontnum(cp, &cp))	/* max */
 			return 0;
+		getfontnum(cp, &cp);	/* offset -- not required */
 		while (WHITESPACE(*cp))
 			cp++;
 		for (p = cp; *cp && !WHITESPACE(*cp); cp++)
@@ -1182,8 +1219,10 @@ isp9font(void)
 			memcpy(pathname+n, p, cp-p);
 			n += cp-p;
 			pathname[n] = 0;
-			if (access(pathname, AEXIST) < 0)
+			if (access(pathname, AEXIST) < 0) {
+			//	fprint(2, "notfont %s\n", pathname);
 				return 0;
+			}
 		}
 	}
 	if (i) {
@@ -1191,6 +1230,37 @@ isp9font(void)
 		return 1;
 	}
 	return 0;
+}
+
+// fonts can be longer than 6k
+int
+isp9font(void)
+{
+	Dir *d;
+	char *b;
+	vlong l;
+	int n;
+
+	d = dirfstat(fd);
+	if(!d)
+		return 0;
+	l = d->length;
+	free(d);
+
+	n = sizeof(buf)-1;
+	if(l < n)
+		return _isp9font(buf);
+	b = malloc(l+1);
+	if(!b)
+		return 0;
+	memcpy(b, buf, n);
+	seek(fd, n, 0);
+	if(readn(fd, b + n, l-n) != l-n)
+		return 0;
+	b[l] = 0;
+	n = _isp9font((uchar*)b);
+	free(b);
+	return n;
 }
 
 int
@@ -1275,4 +1345,42 @@ iself(void)
 	}
 
 	return 0;
+}
+
+int
+isface(void)
+{
+	int i, j, ldepth, l;
+	char *p;
+
+	ldepth = -1;
+	for(j = 0; j < 3; j++){
+		for(p = (char*)buf, i=0; i<3; i++){
+			if(p[0] != '0' || p[1] != 'x')
+				return 0;
+			if(buf[2+8] == ',')
+				l = 2;
+			else if(buf[2+4] == ',')
+				l = 1;
+			else
+				return 0;
+			if(ldepth == -1)
+				ldepth = l;
+			if(l != ldepth)
+				return 0;
+			strtoul(p, &p, 16);
+			if(*p++ != ',')
+				return 0;
+			while(*p == ' ' || *p == '\t')
+				p++;
+		}
+		if (*p++ != '\n')
+			return 0;
+	}
+	
+	if(mime)
+		print("application/x-face\n");
+	else
+		print("face image depth %d\n", ldepth);
+	return 1;
 }
