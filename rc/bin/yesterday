@@ -151,7 +151,10 @@ for(i){
 			'is not a backup day for' $xdump >[1=2]
 		exit 'bad date'
 	}
-	
-	$copy $xlast^$dumppath $xpath
+
+	if(test -e $xlast/plan9)
+		$copy $xlast^/plan9^$dumppath $xpath
+	if not
+		$copy $xlast^$dumppath $xpath
 }
 exit ''
