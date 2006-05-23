@@ -1244,7 +1244,7 @@ ismsdos(void)
 int
 iself(void)
 {
-	char *cpu[] = {		/* NB: incomplete and arbitary list */
+	static char *cpu[] = {		/* NB: incomplete and arbitary list */
 	[1]	"WE32100",
 	[2]	"SPARC",
 	[3]	"i386",
@@ -1267,12 +1267,18 @@ iself(void)
 	[62]	"AMD64",
 	[75]	"VAX",
 	};
-
+	static char *type[] = {
+	[1]	"relocatable object",
+	[2]	"executable",
+	[3]	"shared library",
+	[4]	"core dump",
+	};
 
 	if (memcmp(buf, "\x7fELF", 4) == 0){
 		if (!mime){
 			int n = (buf[19] << 8) | buf[18];
 			char *p = "unknown";
+			char *t = "unknown";
 
 			if (n > 0 && n < nelem(cpu) && cpu[n])
 				p = cpu[n];
@@ -1282,7 +1288,10 @@ iself(void)
 				if (n > 0 && n < nelem(cpu) && cpu[n])
 					p = cpu[n];
 			}
-			print("%s ELF executable\n", p);
+			n = buf[16];
+			if(n>0 && n < nelem(type) && type[n])
+				t = type[n];
+			print("%s ELF %s\n", p, t);
 		}
 		else
 			print("application/x-elf-executable");
