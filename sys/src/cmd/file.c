@@ -100,7 +100,7 @@ struct
 	
 } language[] =
 {
-	Normal, 0,	0x0080, 0x0080,	"Extended Latin",
+	Normal,	0,	0x00a0,	0x00ff,	"Latin",
 	Normal,	0,	0x0100,	0x01FF,	"Extended Latin",
 	Normal,	0,	0x0370,	0x03FF,	"Greek",
 	Normal,	0,	0x0400,	0x04FF,	"Cyrillic",
@@ -133,7 +133,7 @@ enum
 {
 	Fascii,		/* printable ascii */
 	Flatin,		/* latin 1*/
-	Futf,		/* UTf character set */
+	Futf,		/* UTF character set */
 	Fbinary,	/* binary */
 	Feascii,	/* ASCII with control chars */
 	Fnull,		/* NULL in file */
@@ -263,12 +263,36 @@ type(char *file, int nlen)
 	close(fd);
 }
 
+static int
+utf8len(uchar *s, uchar *e)
+{
+	int c, n, i;
+
+	c = *s++;
+	if ((c&0xe0) == 0xc0)
+		n = 2;
+	else if ((c&0xf0) == 0xe0)
+		n = 3;
+	else if ((c&0xf8) == 0xf0)
+		n = 4;
+	else
+		return -1;
+	i = n-1;
+	if(e-s < i)
+		i = e-s;
+	for(; i-- && (c = *s++);)
+		if(0x80 != (c&0xc0))
+			return -1;
+	return n;
+}
+
 void
 filetype(int fd)
 {
 	Rune r;
 	int i, f, n;
-	char *p, *eob;
+	uchar *p, *eob;
+	uchar c;
 
 	free(mbuf);
 	mbuf = dirfstat(fd);
@@ -303,30 +327,30 @@ filetype(int fd)
 	memset(cfreq, 0, sizeof(cfreq));
 	for (i = 0; language[i].name; i++)
 		language[i].count = 0;
-	eob = (char *)buf+nbuf;
-	for(n = 0, p = (char *)buf; p < eob; n++) {
-		if (!fullrune(p, eob-p) && eob-p < UTFmax)
-			break;
-		p += chartorune(&r, p);
-		if (r == 0)
-			f = Cnull;
-		else if (r <= 0x7f) {
-			if (!isprint(r) && !isspace(r))
+	eob = buf+nbuf;
+	for(n = 0, p = buf; p < eob; n++) {
+		c = *p;
+		if(c < 0x80){
+			if(c == 0)
+				f = Cnull;
+			else if(!isprint(c) && !isspace(c))
 				f = Ceascii;	/* ASCII control char */
-			else f = r;
-		} else if (r == 0x080) {
+			else
+				f = c;
+		} else if((i = utf8len(p, eob)) > 0){
+			// special care for non-basic-plane codepoints
+			chartorune(&r, (char*)p);
+			p += i-1;
 			bump_utf_count(r);
 			f = Cutf;
-		} else if (r < 0xA0)
-				f = Cbinary;	/* Invalid Runes */
-		else if (r <= 0xff)
-				f = Clatin;	/* Latin 1 */
-		else {
-			bump_utf_count(r);
-			f = Cutf;		/* UTF extension */
-		}
+		} else if(c <= 0xa0)
+			f = Cbinary;
+		else
+			f = Clatin;
 		cfreq[f]++;			/* ASCII chars peg directly */
+		p++;
 	}
+
 	/*
 	 * gross classify
 	 */
@@ -338,11 +362,14 @@ filetype(int fd)
 		guess = Flatin;
 	else if (cfreq[Ceascii])
 		guess = Feascii;
-	else if (cfreq[Cnull] == n) {
-		print(mime ? OCTET : "first block all null bytes\n");
-		return;
-	}
-	else guess = Fascii;
+	else if (cfreq[Cnull]){
+		if(cfreq[Cnull] == n) {
+			print(mime ? OCTET : "first block all null bytes\n");
+			return;
+		}
+		guess = Fbinary;
+	} else 
+		guess = Fascii;
 	/*
 	 * lookup dictionary words
 	 */
@@ -367,7 +394,7 @@ filetype(int fd)
 	else if (guess == Feascii)
 		print(mime ? PLAIN : "extended ascii\n");
 	else if (guess == Flatin)
-		print(mime ? PLAIN : "latin ascii\n");
+		print(mime ? PLAIN : "latin\n");
 	else if (guess == Futf && utf_count() < 4)
 		print_utf();
 	else print(mime ? OCTET : "binary\n");
