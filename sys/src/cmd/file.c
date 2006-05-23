@@ -142,7 +142,7 @@ enum
 void	bump_utf_count(Rune);
 int	cistrncmp(char*, char*, int);
 void	filetype(int);
-int	getfontnum(uchar*, uchar**);
+int	getfontnum(char*, char**);
 int	isas(void);
 int	isc(void);
 int	iscint(void);
@@ -1076,6 +1076,9 @@ depthof(char *s, int *newp)
 	case 24:
 	case 16:
 	case 8:
+	case 4:
+	case 2:
+	case 1:
 		return d;
 	}
 	return -1;
@@ -1163,43 +1166,68 @@ p9subfont(uchar *p)
 }
 
 #define	WHITESPACE(c)		((c) == ' ' || (c) == '\t' || (c) == '\n')
+#define	SPACE(c)			((c) == ' ' || (c) == '\t')
 
+int
+faccess(char *p, int m)
+{
+	char* s;
+	int i, r;
+
+	if(access(p, m) == 0)
+		return 0;
+	s = p + strlen(p);
+	for(i = 0; i < 2; i++) {
+		snprint(s, 4, ".%d", i);
+		r = access(p, m);
+		*s = 0;
+		if(r != 0)
+			return -1;
+	}
+	return 0;
+}
+	
 int
 isp9font(void)
 {
-	uchar *cp, *p;
+	char *p, *cp;
 	int i, n;
-	char pathname[1024];
+	char path[1024 + 1 + 3];
 
-	cp = buf;
+	cp = (char*)buf;
 	if (!getfontnum(cp, &cp))	/* height */
 		return 0;
 	if (!getfontnum(cp, &cp))	/* ascent */
 		return 0;
-	for (i = 0;; i++) {
+	while(WHITESPACE(*cp))
+		cp++;
+	for (i = 0; strchr(cp, '\n'); i++) {
 		if (!getfontnum(cp, &cp))	/* min */
 			break;
 		if (!getfontnum(cp, &cp))	/* max */
 			return 0;
-		while (WHITESPACE(*cp))
+		getfontnum(cp, &cp);	/* offset -- not required */
+		while(SPACE(*cp))
 			cp++;
-		for (p = cp; *cp && !WHITESPACE(*cp); cp++)
-				;
+		for(p = cp; !WHITESPACE(*cp); cp++)
+			;
 			/* construct a path name, if needed */
 		n = 0;
 		if (*p != '/' && slash) {
 			n = slash-fname+1;
-			if (n < sizeof(pathname))
-				memcpy(pathname, fname, n);
+			if (n < sizeof path)
+				memcpy(path, fname, n);
 			else n = 0;
 		}
-		if (n+cp-p < sizeof(pathname)) {
-			memcpy(pathname+n, p, cp-p);
+		if (n+cp-p < sizeof path - sizeof ".00") {
+			memcpy(path+n, p, cp-p);
 			n += cp-p;
-			pathname[n] = 0;
-			if (access(pathname, AEXIST) < 0)
+			path[n] = 0;
+			if(faccess(path, AEXIST) < 0)
 				return 0;
 		}
+		while(WHITESPACE(*cp))
+			cp++;
 	}
 	if (i) {
 		print(mime ? "text/plain\n" : "font file\n");
@@ -1209,15 +1237,18 @@ isp9font(void)
 }
 
 int
-getfontnum(uchar *cp, uchar **rp)
+getfontnum(char *cp, char **rp)
 {
-	while (WHITESPACE(*cp))		/* extract ulong delimited by whitespace */
-		cp++;
-	if (*cp < '0' || *cp > '9')
+	char *p;
+	ulong l;
+
+	*rp = cp;
+	l = strtoul(cp, &p, 0);
+	if(p == cp || !WHITESPACE(*p))
 		return 0;
-	strtoul((char *)cp, (char **)rp, 0);
-	if (!WHITESPACE(**rp))
+	if(l < 0 || l > 0xffff)
 		return 0;
+	*rp = p;
 	return 1;
 }
 
