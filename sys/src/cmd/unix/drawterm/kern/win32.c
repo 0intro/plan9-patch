@@ -448,23 +448,16 @@ oserrstr(void)
 long
 showfilewrite(char *a, int n)
 {
-	Rune *action, *arg, *cmd;
+	Rune *arg;
 	static Rune Lopen[] = { 'o', 'p', 'e', 'n', 0 };
+	static Rune Lexplorer[] = { 'e', 'x', 'p', 'l', 'o', 'r', 'e', 'r', 0 };
 
-	cmd = runesmprint("%.*s", n, a);
-	if(cmd == nil)
+	arg = runesmprint("%.*s", n, a);
+	if(arg == nil)
 		error("out of memory");
-	if(cmd[runestrlen(cmd)-1] == '\n')
-		cmd[runestrlen(cmd)] = 0;
-	p = runestrchr(cmd, ' ');
-	if(p){
-		action = cmd;
-		*p++ = 0;
-		arg = p;
-	}else{
-		action = Lopen;
-		arg = cmd;
-	}
-	ShellExecute(0, 0, action, arg, 0, SW_SHOWNORMAL);
+	if(arg[runestrlen(arg)-1] == '\n')
+		arg[runestrlen(arg)] = 0;
+
+	ShellExecute(0, Lopen, Lexplorer, arg, 0, SW_SHOWNORMAL);
 	return n;
 }
