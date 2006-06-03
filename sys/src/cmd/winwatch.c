@@ -195,8 +195,8 @@ eresized(int new)
 void
 click(Mouse m)
 {
-	int fd, i, j;	
-	char buf[128];
+	int fd, i, j, n;
+	char buf[128], rbuf[128];
 
 	if(m.buttons == 0 || (m.buttons & ~4))
 		return;
@@ -225,11 +225,17 @@ click(Mouse m)
 		return;
 
 	sprint(buf, "/dev/wsys/%d/wctl", win[i].n);
-	if((fd = open(buf, OWRITE)) < 0)
+	if((fd = open(buf, ORDWR)) < 0)
 		return;
-	write(fd, "unhide\n", 7);
-	write(fd, "top\n", 4);
-	write(fd, "current\n", 8);
+	if ((n = read(fd, rbuf, 128)) < 0)
+		return;
+	rbuf[n] = 0;
+	if (strstr(rbuf, "hidden")) {
+		write(fd, "unhide\n", 7);
+		write(fd, "top\n", 4);
+		write(fd, "current\n", 8);
+	} else if (strcmp(win[i].label, "winwatch") != 0)
+		write(fd, "hide\n", 5);
 	close(fd);
 }
 
