@@ -52,6 +52,7 @@ extern	int moreinput(void);
 extern	void restore(Symbol*);
 extern	void restoreall(void);
 extern	void execerror(char*, char*);
+extern	void runeexecerror(char*, Rune*);
 extern	void define(Symbol*, Formal*), verify(Symbol*);
 extern	Datum pop(void);
 extern	void initcode(void), push(Datum), xpop(void), constpush(void);
@@ -78,5 +79,4 @@ extern double	Pow(double, double);
 
 extern	void init(void);
 extern	int yyparse(void);
-extern	void execerror(char*, char*);
 extern	void *emalloc(unsigned);

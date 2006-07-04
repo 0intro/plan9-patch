@@ -50,12 +50,22 @@ the name
 by itself contains the value of the last expression evaluated.
 The variables
 .BR E ,
-.BR PI ,
-.BR PHI ,
+.BR PI,
+.BR PHI,
 .BR GAMMA
 and
 .B DEG 
 are predefined; the last is 59.25..., degrees per radian.
+The Greek symbols
+.BR π ,
+.BR ψ ,
+and
+.B γ
+may also be used in place of
+.BR PI ,
+.BR PHI ,
+and
+.B GAMMA.
 .PP
 Expressions are formed with these C-like operators, listed by
 decreasing precedence.

@@ -1,4 +1,7 @@
 %{
+#include <u.h>
+#include <libc.h>
+
 #include "hoc.h"
 #define	code2(c1,c2)	code(c1); code(c2)
 #define	code3(c1,c2,c3)	code(c1); code(c2); code(c3)
@@ -133,8 +136,6 @@ arglist:  /* nothing */ 	{ $$ = 0; }
 	;
 %%
 	/* end of grammar */
-#include <u.h>
-#include <libc.h>
 #include <bio.h>
 #include <ctype.h>
 char	*progname;
@@ -147,7 +148,7 @@ Biobuf	binbuf;
 char	**gargv;	/* global argument list */
 int	gargc;
 
-int c = '\n';	/* global for use by warning() */
+int r = L'\n';	/* global for use by warning() */
 
 int	backslash(int), follow(int, int, int);
 void	defnonly(char*), run(void);
@@ -155,65 +156,66 @@ void	warning(char*, char*);
 
 yylex(void)		/* hoc6 */
 {
-	while ((c=Bgetc(bin)) == ' ' || c == '\t')
+	while ((r=Bgetrune(bin)) == L' ' || r == L'\t')
 		;
-	if (c < 0)
+	if (r < 0)
 		return 0;
-	if (c == '\\') {
-		c = Bgetc(bin);
-		if (c == '\n') {
+	if (r == L'\\') {
+		r = Bgetrune(bin);
+		if (r == L'\n') {
 			lineno++;
 			return yylex();
 		}
 	}
-	if (c == '#') {		/* comment */
-		while ((c=Bgetc(bin)) != '\n' && c >= 0)
+	if (r == L'#') {		/* comment */
+		while ((r = Bgetrune(bin)) != L'\n' && r >= 0)
 			;
-		if (c == '\n')
+		if (r == L'\n')
 			lineno++;
-		return c;
+		return r;
 	}
-	if (c == '.' || isdigit(c)) {	/* number */
+	if (r == L'.' || isdigit(r)) {	/* number */
 		double d;
-		Bungetc(bin);
+		Bungetrune(bin);
 		Bgetd(bin, &d);
 		yylval.sym = install("", NUMBER, d);
 		return NUMBER;
 	}
-	if (isalpha(c) || c == '_') {
+	if (isalpharune(r) || r == L'_') {
 		Symbol *s;
-		char sbuf[100], *p = sbuf;
+		Rune sbuf[100], *p = sbuf;
+		char   cbuf[100*UTFmax];
 		do {
 			if (p >= sbuf + sizeof(sbuf) - 1) {
-				*p = '\0';
-				execerror("name too long", sbuf);
+				*p = 0;
+				runeexecerror("name too long", sbuf);
 			}
-			*p++ = c;
-		} while ((c=Bgetc(bin)) >= 0 && (isalnum(c) || c == '_'));
-		Bungetc(bin);
-		*p = '\0';
-		if ((s=lookup(sbuf)) == 0)
-			s = install(sbuf, UNDEF, 0.0);
+			*p++ = r;
+		} while ((r = Bgetrune(bin)) >= 0 && (isalpharune(r) || r == L'_'));
+		Bungetrune(bin);
+		*p = 0;
+		snprint(cbuf, sizeof cbuf, "%S", sbuf);
+		if ((s=lookup(cbuf)) == 0)
+			s = install(cbuf, UNDEF, 0.0);
 		yylval.sym = s;
 		return s->type == UNDEF ? VAR : s->type;
 	}
-	if (c == '"') {	/* quoted string */
-		char sbuf[100], *p;
-		for (p = sbuf; (c=Bgetc(bin)) != '"'; p++) {
-			if (c == '\n' || c == Beof)
-				execerror("missing quote", "");
+	if (r == L'"') {	/* quoted string */
+		Rune sbuf[100], *p;
+		for (p = sbuf; (r = Bgetrune(bin)) != L'"'; p++) {
+			if (r == L'\n' || r == Beof)
+				execerror("missing quote", 0);
 			if (p >= sbuf + sizeof(sbuf) - 1) {
-				*p = '\0';
-				execerror("string too long", sbuf);
+				*p =0;
+				runeexecerror("string too long", sbuf);
 			}
-			*p = backslash(c);
+			*p = backslash(r);
 		}
 		*p = 0;
-		yylval.sym = (Symbol *)emalloc(strlen(sbuf)+1);
-		strcpy((char*)yylval.sym, sbuf);
+		yylval.sym = (Symbol*)smprint("%S", sbuf);
 		return STRING;
 	}
-	switch (c) {
+	switch (r) {
 	case '+':	return follow('+', INC, follow('=', ADDEQ, '+'));
 	case '-':	return follow('-', DEC, follow('=', SUBEQ, '-'));
 	case '*':	return follow('=', MULEQ, '*');
@@ -226,28 +228,34 @@ yylex(void)		/* hoc6 */
 	case '|':	return follow('|', OR, '|');
 	case '&':	return follow('&', AND, '&');
 	case '\n':	lineno++; return '\n';
-	default:	return c;
+	default:	return r;
 	}
 }
 
-backslash(int c)	/* get next char with \'s interpreted */
+int
+backslash(int r)	/* get next char with \'s interpreted */
 {
 	static char transtab[] = "b\bf\fn\nr\rt\t";
-	if (c != '\\')
-		return c;
-	c = Bgetc(bin);
-	if (islower(c) && strchr(transtab, c))
-		return strchr(transtab, c)[1];
-	return c;
+	char *p;
+
+	if (r != L'\\')
+		return r;
+	r = Bgetrune(bin);
+	if(r >= Runeerror)
+		return r;
+	if (islower(r) && (p = strchr(transtab, (char)r)))
+		return (int)p[1];
+	return r;
 }
 
+int
 follow(int expect, int ifyes, int ifno)	/* look ahead for >=, etc. */
 {
-	int c = Bgetc(bin);
+	int r = Bgetrune(bin);
 
-	if (c == expect)
+	if (r == expect)
 		return ifyes;
-	Bungetc(bin);
+	Bungetrune(bin);
 	return ifno;
 }
 
@@ -258,11 +266,23 @@ yyerror(char* s)	/* report compile-time error */
 	warning(s, (char *)0);
 	longjmp(begin, 0);
 rob*/
-	execerror(s, (char *)0);
+	execerror(s, 0);
 }
 
 void
-execerror(char* s, char* t)	/* recover from run-time error */
+runeexecerror(char* s, Rune *t)	/* recover from run-time error */
+{
+	char buf[256];
+
+	snprint(buf, sizeof buf, "%S", t);
+	warning(s, buf);
+	Bseek(bin, 0L, 2);		/* flush rest of file */
+	restoreall();
+	longjmp(begin, 0);
+}
+
+void
+execerror(char* s, char *t)	/* recover from run-time error */
 {
 	warning(s, t);
 	Bseek(bin, 0L, 2);		/* flush rest of file */
@@ -273,7 +293,7 @@ execerror(char* s, char* t)	/* recover from run-time error */
 void
 fpecatch(void)	/* catch floating point exceptions */
 {
-	execerror("floating point exception", (char *) 0);
+	execerror("floating point exception", 0);
 }
 
 void
@@ -369,7 +389,7 @@ moreinput(void)
 }
 
 void
-warning(char* s, char* t)	/* print warning message */
+warning(char *s, char *t)	/* print warning message */
 {
 	fprint(2, "%s: %s", progname, s);
 	if (t)
@@ -377,8 +397,8 @@ warning(char* s, char* t)	/* print warning message */
 	if (infile)
 		fprint(2, " in %s", infile);
 	fprint(2, " near line %d\n", lineno);
-	while (c != '\n' && c != Beof)
-		if((c = Bgetc(bin)) == '\n')	/* flush rest of input line */
+	while (r != L'\n' && r != Beof)
+		if((r = Bgetrune(bin)) == L'\n')	/* flush rest of input line */
 			lineno++;
 }
 
