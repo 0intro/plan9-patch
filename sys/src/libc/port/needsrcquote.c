@@ -6,7 +6,7 @@ needsrcquote(int c)
 {
 	if(c <= ' ')
 		return 1;
-	if(strchr("`^#*[]=|\\?${}()'<>&;", c))
+	if(c < 0x80 && strchr("`^#*[]=|\\?${}()'<>&;", c))
 		return 1;
 	return 0;
 }
