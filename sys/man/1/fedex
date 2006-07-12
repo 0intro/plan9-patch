@@ -1,0 +1,18 @@
+.TH FEDEX 1
+.SH NAME
+fedex, ups \- Fedex and UPS parcel tracker lookup
+.SH SYNOPSIS
+.B fedex
+.I "tracking number"
+.PP
+.B ups
+.I "tracking number"
+.SH DESCRIPTION
+.B fedex
+and
+.B ups
+parses the Fedex or UPS website to see where your package is.
+.SH SOURCE
+.B /rc/bin/fedex
+.br
+.B /rc/bin/ups
