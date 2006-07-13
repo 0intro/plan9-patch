@@ -4,12 +4,15 @@ patch \- simple patch creation and tracking system
 .SH SYNOPSIS
 .B patch/create
 .I name
-.I email
 .I files ...
 [
 .B < 
 .I description
 ]
+.PP
+.B patch/email
+.I name
+.I email
 .PP
 .B patch/list
 [
@@ -44,11 +47,11 @@ and is stored in
 creates a new patch consisting of the changes to
 the listed files, reading
 a description of the patch from standard input.
-The
-.I email
-address, if not
-.LR - ,
-will be sent notification messages when the patch is applied
+.PP
+.I Patch/email
+specifies the
+.I email address
+that will be sent notification messages when the patch is applied
 or commented on.
 .PP
 .I Patch/list
@@ -86,10 +89,10 @@ Propose a change to
 .IR pwd ,
 which you have modified locally:
 .EX
-% patch/create pwd-errors user@host.dom /sys/src/cmd/pwd.c
+% patch/create pwd-errors /sys/src/cmd/pwd.c
 Fix pwd to print errors to fd 2 rather than 1.
 ^D
-% 
+% patch/email pwd-errors user@host.dom
 .EE
 .PP
 Then the developers at Bell Labs run
