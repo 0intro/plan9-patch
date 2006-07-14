@@ -1196,8 +1196,7 @@ mainloop_done:
 // We've just read an '&'; look for an entity reference
 // name, and if found, return translated char.
 // if there is a complete entity name but it isn't known,
-// try prefixes (gets around some buggy HTML out there),
-// and if that fails, back up to just past the '&' and return '&'.
+// back up to just past the '&' and return '&'.
 // If the entity can't be completed in the current buffer, back up
 // to the '&' and return -1.
 static int
@@ -1208,7 +1207,6 @@ ampersand(TokenSource* ts)
 	int	fnd;
 	int	ans;
 	int	v;
-	int	i;
 	int	k;
 	Rune	buf[SMALLBUFSIZE];
 
@@ -1219,12 +1217,23 @@ ampersand(TokenSource* ts)
 	if(c == '#') {
 		c = getchar(ts);
 		v = 0;
-		while(c >= 0) {
-			if(!(c < 256 && isdigit(c)))
-				break;
-			v = v*10 + c - 48;
-			c = getchar(ts);
-		}
+		if(c == 'X' || c == 'x')
+			for(c = getchar(ts); c < 256; c = getchar(ts))
+				if(c >= '0' && c <= '9')
+					v = v*16+c-'0';
+				else if(c >= 'A' && c<= 'F')
+					v = v*16+c-'A'+10;
+				else if(c >= 'a' && c <= 'f')
+					v = v*16+c-'a'+10;
+				else
+					break;
+		else
+			while(c >= 0) {
+				if(!(c < 256 && isdigit(c)))
+					break;
+				v = v*10 + c - 48;
+				c = getchar(ts);
+			}
 		if(c >= 0) {
 			if(!(c == ';' || c == '\n' || c == '\r'))
 				ungetchar(ts, c);
@@ -1245,7 +1254,7 @@ ampersand(TokenSource* ts)
 			c = getchar(ts);
 			if(c < 0)
 				break;
-			if(ISNAMCHAR(c)) {
+			if(c < 256 && (isalpha(c) || isdigit(c))) {
 				if(k < SMALLBUFSIZE-1)
 					buf[k++] = c;
 			}
@@ -1255,25 +1264,8 @@ ampersand(TokenSource* ts)
 				break;
 			}
 		}
-		if(c >= 0) {
+		if(c >= 256 || c != '=' && !(isalpha(c) || isdigit(c)))
 			fnd = _lookup(chartab, NCHARTAB, buf, k, &ans);
-			if(!fnd) {
-				// Try prefixes of s
-				if(c == ';' || c == '\n' || c == '\r')
-					ungetchar(ts, c);
-				i = k;
-				while(--k > 0) {
-					fnd = _lookup(chartab, NCHARTAB, buf, k, &ans);
-					if(fnd) {
-						while(i > k) {
-							i--;
-							ungetchar(ts, buf[i]);
-						}
-						break;
-					}
-				}
-			}
-		}
 	}
 	if(!fnd) {
 		backup(ts, savei);
