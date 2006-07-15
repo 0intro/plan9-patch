@@ -1,0 +1,38 @@
+.\" Contributed by Benjamin T. D. Newman
+.TH MNIHONGO 1
+.SH NAME
+mnihongo \- troff post-processor
+.SH SYNOPSIS
+.B "troff -mnihongo"
+[
+.I options
+]
+.PP
+.B troff
+[
+.I options
+] | 
+.B aux/mnihongo
+.SH DESCRIPTION
+Mnihongo is a 
+.IR troff (1)
+post-processor that 
+catches Unicode characters that might be Japanese,
+looks them up in a font file (currently
+.B /lib/font/bit/pelm/unicode.9x24.font\fR) 
+to get the
+bits, converts that to PostScript, and dumps that
+in the output.
+.PP
+Widths are taken from troff font Jp, which has at
+best a simple approximation to the truth.
+.PP
+The program itself is normally called implicitly
+by loading the troff macro package -mnihongo, which
+does a .pi command.
+.SH SOURCE
+/sys/src/cmd/aux/mnihongo/
+.SH SEE ALSO
+.IR troff (1)
+.SH BUGS
+Mnihongo is fairly clumsy.
