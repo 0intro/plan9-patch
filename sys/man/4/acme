@@ -341,11 +341,16 @@ which behave normally) have no immediate effect on the window;
 it is expected that the program reading the
 .B event
 file will interpret them.
-The messages have a fixed format:
+The output messages have a fixed format:
 a character indicating the origin or cause of the action,
 a character indicating the type of the action,
 four free-format blank-terminated decimal numbers,
 optional text, and a newline.
+.BR
+The input messages have the following format:
+a character indicating the origin or cause of the action,
+a character indicating the type of the action,
+two free-format blank-terminated decimal numbers, and a newline
 The first and second numbers are the character addresses of the action,
 the third is a flag,
 and the final is a count of the characters in the optional text, which
