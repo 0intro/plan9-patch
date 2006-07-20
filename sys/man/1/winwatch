@@ -15,7 +15,8 @@ winwatch \- monitor rio windows
 displays the labels of all current
 .IR rio (4)
 windows, refreshing the display every five seconds.
-Right clicking a window's label unhides, raises and gives focus to that window.
+Right clicking a window's label will toggle the hiding or the unhiding of that window.  
+When a window is unhidden, it is also raised and given focus.
 Typing
 .B q
 or

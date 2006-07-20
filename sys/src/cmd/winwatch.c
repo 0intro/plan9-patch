@@ -225,11 +225,20 @@ click(Mouse m)
 		return;
 
 	sprint(buf, "/dev/wsys/%d/wctl", win[i].n);
-	if((fd = open(buf, OWRITE)) < 0)
+	if((fd = open(buf, ORDWR)) < 0)	
 		return;
-	write(fd, "unhide\n", 7);
-	write(fd, "top\n", 4);
-	write(fd, "current\n", 8);
+
+	read(fd, buf, 127);
+	buf[127] = '\0';
+
+	if (strstr(buf, "hidden") != 0){
+		write(fd, "unhide\n", 7);
+		write(fd, "top\n", 4);
+		write(fd, "current\n", 8);
+	}
+	else 
+		write(fd, "hide\n", 5);
+
 	close(fd);
 }
 
