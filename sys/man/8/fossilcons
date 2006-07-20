@@ -75,6 +75,7 @@ con /srv/fscons
 [
 .B -dw
 |
+.B -r
 .I file
 ]
 .PP
