@@ -467,9 +467,11 @@ mga4xxdrawinit(VGAscr *scr)
 	uchar *mga;
  	Pcidev *p;
 
-	p = mgapcimatch();
-	if(p->did == MGA200)
-		return;
+	p = pcimatch(nil, MATROX, MGA4xx);
+	if(p == nil)
+		p = pcimatch(nil, MATROX, MGA550);
+	if(p == nil)
+		return ;
 
 	if(scr->mmio == 0)
 		return;
