@@ -11,7 +11,7 @@
 #include "dat.h"
 #include "fns.h"
 
-char PostContentType[] = "application/octet-stream";
+char PostContentType[] = "application/x-www-form-urlencoded";
 int httpdebug;
 
 typedef struct HttpState HttpState;
