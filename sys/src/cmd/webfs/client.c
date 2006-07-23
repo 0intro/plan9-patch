@@ -233,26 +233,27 @@ struct Ctab {
 	char *name;
 	int type;
 	void *offset;
+	void *offset2;
 };
 
 Ctab ctltab[] = {
-	"acceptcookies",	Bool,		(void*)offsetof(Ctl, acceptcookies),
-	"sendcookies",		Bool,		(void*)offsetof(Ctl, sendcookies),
-	"redirectlimit",		Int,		(void*)offsetof(Ctl, redirectlimit),
-	"useragent",		String,	(void*)offsetof(Ctl, useragent),
+	"acceptcookies",	Bool,	(void*)offsetof(Ctl, acceptcookies),	0,
+	"sendcookies",		Bool,	(void*)offsetof(Ctl, sendcookies),	0,
+	"redirectlimit",	Int,	(void*)offsetof(Ctl, redirectlimit),	0,
+	"useragent",		String,	(void*)offsetof(Ctl, useragent),	0,
 };
 
 Ctab globaltab[] = {
-	"chatty9p",		Int,		&chatty9p,
-	"fsdebug",		Int,		&fsdebug,
-	"cookiedebug",		Int,		&cookiedebug,
-	"urldebug",		Int,		&urldebug,
-	"httpdebug",		Int,		&httpdebug,
+	"chatty9p",		Int,	&chatty9p,	0,
+	"fsdebug",		Int,	&fsdebug,	0,
+	"cookiedebug",		Int,	&cookiedebug,	0,
+	"urldebug",		Int,	&urldebug,	0,
+	"httpdebug",		Int,	&httpdebug,	0,
 };
 
 Ctab clienttab[] = {
-	"baseurl",			XUrl,		(void*)offsetof(Client, baseurl),
-	"url",				XUrl,		(void*)offsetof(Client, url),
+	"baseurl",		XUrl,	(void*)offsetof(Client, baseurl),	0,
+	"url",			XUrl,	(void*)offsetof(Client, url),		(void*)offsetof(Client, baseurl),
 };
 
 static Ctab*
@@ -267,7 +268,7 @@ findcmd(char *cmd, Ctab *tab, int ntab)
 }
 
 static void
-parseas(Req *r, char *arg, int type, void *a)
+parseas(Req *r, char *arg, int type, void *a, void *b)
 {
 	Url *u;
 	char e[ERRMAX];
@@ -284,7 +285,7 @@ parseas(Req *r, char *arg, int type, void *a)
 		*(char**)a = estrdup(arg);
 		break;
 	case XUrl:
-		u = parseurl(arg, nil);
+		u = parseurl(arg, *(Url**)b);
 		if(u == nil){
 			snprint(e, sizeof e, "parseurl: %r");
 			respond(r, e);
@@ -312,20 +313,21 @@ ctlwrite(Req *r, Ctl *ctl, char *cmd, char *arg)
 	if((t = findcmd(cmd, ctltab, nelem(ctltab))) == nil)
 		return 0;
 	a = (void*)((uintptr)ctl+(uintptr)t->offset);
-	parseas(r, arg, t->type, a);
+	parseas(r, arg, t->type, a, 0);
 	return 1;
 }
 
 int
 clientctlwrite(Req *r, Client *c, char *cmd, char *arg)
 {
-	void *a;
+	void *a, *b;
 	Ctab *t;
 
 	if((t = findcmd(cmd, clienttab, nelem(clienttab))) == nil)
 		return 0;
 	a = (void*)((uintptr)c+(uintptr)t->offset);
-	parseas(r, arg, t->type, a);
+	b = (void*)((uintptr)c+(uintptr)t->offset2);
+	parseas(r, arg, t->type, a, b);
 	return 1;
 }
 
@@ -338,7 +340,7 @@ globalctlwrite(Req *r, char *cmd, char *arg)
 	if((t = findcmd(cmd, globaltab, nelem(globaltab))) == nil)
 		return 0;
 	a = t->offset;
-	parseas(r, arg, t->type, a);
+	parseas(r, arg, t->type, a, 0);
 	return 1;
 }
 
