@@ -50,7 +50,7 @@ True if the file exists and is append-only.
 .BI -L " file"
 True if the file exists and is exclusive-use.
 .TP
-.BI -T "file"
+.BI -T " file"
 True if the file exists and is temporary.
 .TP
 .IB s1 " = " s2
@@ -209,3 +209,7 @@ is in the current directory.
 .B /sys/src/cmd/test.c
 .SH "SEE ALSO"
 .IR rc (1) 
+.SH BUGS
+There is no way to test if a directory is writable, 
+.B -w
+always returns false for directories.
