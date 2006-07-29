@@ -1,3 +1,4 @@
 #!/bin/rc
+path=/bin
 # the -G flag is gone!
 exec /$cputype/bin/grep $*

@@ -1,4 +1,5 @@
 #!/bin/rc
+path=/bin
 
 flagfmt='d,l,t,v,b stem'
 args='grammar'

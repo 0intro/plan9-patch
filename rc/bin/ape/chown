@@ -1,4 +1,5 @@
 #!/bin/rc
+path=/bin
 
 echo 'Permission denied'
 exit 1

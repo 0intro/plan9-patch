@@ -1,4 +1,5 @@
 #!/bin/rc
+path=/bin
 # ld for ape, to keep configure happy
 
 O=`{sed -n 's/^O=//p' /$cputype/mkfile}

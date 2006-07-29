@@ -1,4 +1,5 @@
 #!/bin/rc
+path=/bin
 # Usage: install [options] srcfile dstfile
 # Usage: install srcfile dstfile owner group mode
 

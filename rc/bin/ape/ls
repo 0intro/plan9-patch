@@ -1,4 +1,5 @@
 #!/bin/rc
+path=/bin
 
 # flags common to GNU and BSD ls
 

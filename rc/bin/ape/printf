@@ -1,4 +1,5 @@
 #!/bin/rc
+path=/bin
 
 # Here only for autoconf and friends.
 echo -n $1

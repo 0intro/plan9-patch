@@ -1,3 +1,4 @@
 #!/bin/rc
+path=/bin
 
 exit 0

@@ -1,4 +1,5 @@
 #!/bin/rc
+path=/bin
 
 flagfmt='c,d,p,r,t,u,v,x'
 args='archive [files ...]'
