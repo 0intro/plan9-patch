@@ -234,6 +234,7 @@ sed sed
 seq seq
 size size
 sleep sleep
+msleep sleep
 sort sort
 spell spell
 sprog spell
