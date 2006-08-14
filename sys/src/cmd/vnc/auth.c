@@ -143,7 +143,7 @@ vnchandshake(Vnc *v)
 }
 
 int
-vncauth(Vnc *v)
+vncauth(Vnc *v, char *keyinf)
 {
 	char pw[128], *reason;
 	uchar chal[VncChalLen];
@@ -177,7 +177,7 @@ vncauth(Vnc *v)
 		if(p)
 			*p = 0;
 		if(auth_respond(chal, VncChalLen, nil, 0, chal, VncChalLen, auth_getkey,
-			"proto=vnc role=client server=%s", server) != VncChalLen){
+			"proto=vnc role=client server=%s %s", server, keyinf) != VncChalLen){
 			/* BUG This is for drawterm users who don't start their own factotums */
 			readln("password: ", pw, sizeof(pw));
 			vncencrypt(chal, VncChalLen, pw);
