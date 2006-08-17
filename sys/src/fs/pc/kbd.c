@@ -277,7 +277,7 @@ kbdintr0(void)
 			return -1;
 		}
 	}
-	return c;
+	return -1;
 }
 
 static void
