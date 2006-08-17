@@ -859,6 +859,8 @@ retry:
 					| (drive->info[Ilba48+1]<<16)
 					| ((Devsize)drive->info[Ilba48+2]<<32);
 				drive->flags |= Lba48;
+				if(DEBUG & Dbg48BIT)
+					print("LLBA48 drive @%.2x:%.3x\n", dev, cmdport);
 			}else
 				drive->sectors = (drive->info[Ilba+1]<<16)
 					 |drive->info[Ilba];
@@ -2002,6 +2004,8 @@ atainterrupt(Ureg*, void* arg)
 	}
 }
 
+static SDev *pnpsdev;
+
 static SDev*
 atapnp(void)
 {
@@ -2220,7 +2224,19 @@ atapnp(void)
 			ctlr->bmiba = (p->mem[4].bar & ~0x01) + channel*8;
 		}
 	}
+	pnpsdev = head;
 	return head;
+}
+
+static SDev*
+atapnpsd(void)
+{
+	static int once;
+
+	if(once)
+		return 0;
+	once = 1;
+	return pnpsdev;
 }
 
 static SDev*
@@ -2431,7 +2447,7 @@ atawctl(SDunit* unit, Cmdbuf* cb)
 SDifc sdataifc = {
 	"ata",				/* name */
 
-	atapnp,				/* pnp */
+	atapnpsd,				/* pnp */
 	atalegacy,			/* legacy */
 	ataid,				/* id */
 	ataenable,			/* enable */
@@ -2598,7 +2614,7 @@ ataxfer(Drive *dp, int inout, Devsize start, long bytes)
 	SDunit *unit = sdgetunit(sdevs[driveno/NCtlrdrv], driveno%NCtlrdrv);
 
 	if (unit == nil) {
-		print("mvsataxfer: nil unit\n");
+		print("ataxfer: nil unit h%d\n", driveno);
 		return -1;
 	}
 	if (dp->driveno == -1)

@@ -27,9 +27,6 @@
 #endif
 
 enum {
-	DEBUGPR = 0,
-	IDEBUG = 0,
-
 	/* old stuff carried forward */
 	NCtlr=		8,
 	NCtlrdrv=	8,
@@ -43,8 +40,8 @@ enum {
 	Ctlrmagic = 0xfeedfaceUL,
 };
 
-#define DPRINT	if(DEBUGPR)print
-#define IDPRINT if(IDEBUG)print
+#define DPRINT(...) 	print(__VA_ARGS__)
+#define IDPRINT(...) 	/*print(__VA_ARGS__) */
 
 enum {
 	SrbRing = 32,
@@ -932,6 +929,8 @@ mvsatagetdrive(Ctlr *ctlr, int subno, int driveno)
 /*
  * Device discovery
  */
+static SDev *pnpsdev;
+
 static SDev*
 mv50pnp(void)
 {
@@ -1028,6 +1027,17 @@ mv50pnp(void)
 		tail = sdev;
 	}
 	return head;
+}
+
+static SDev*
+mv50pnpsd(void)
+{
+	static int once;
+
+	if(once)
+		return 0;
+	once = 1;
+	return pnpsdev;
 }
 
 /*
@@ -1469,7 +1479,7 @@ err:
 SDifc sdmv50xxifc = {
 	"mv50xx",				/* name */
 
-	mv50pnp,			/* pnp */
+	mv50pnpsd,			/* pnp */
 	nil,				/* legacy */
 #ifdef FS
 	nil,			/* id */
