@@ -112,7 +112,7 @@ proceed:
 	for (i = 0; i < no; i++)
 		if (olist[i]-- > NFLD)	/* 0 origin */
 			error("field number too big in -o","");
-	if (argc != 3)
+	if (argc != 3 || j1 <= 0 || j2 <= 0)
 		error("usage: join [-1 x -2 y] [-o list] file1 file2","");
 	j1--;
 	j2--;	/* everyone else believes in 0 origin */
