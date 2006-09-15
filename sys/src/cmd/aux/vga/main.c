@@ -8,8 +8,6 @@
 Biobuf stdout;
 
 static int iflag, lflag, pflag, rflag;
-static char *usage =
-	"usage: aux/vga [ -BcdilpvV ] [ -b bios-id ] [ -m monitor ] [ -x db ] [ mode [ virtualsize ] ]\n";
 
 static char *dbname = "/lib/vgadb";
 static char monitordb[128];
@@ -149,6 +147,13 @@ chanstr[32+1] = {
 };
 
 void
+usage(void)
+{
+	fprint(2, "usage: aux/vga [ -BcdilpvV ] [ -b bios-id ] [ -m monitor ] [ -x db ] [ mode [ virtualsize ] ]\n");
+	exits("usage");
+}
+
+void
 main(int argc, char** argv)
 {
 	char *bios, buf[256], sizeb[256], *p, *vsize, *psize;
@@ -168,7 +173,7 @@ main(int argc, char** argv)
 	ARGBEGIN{
 
 	case 'b':
-		bios = ARGF();
+		bios = EARGF(usage());
 		break;
 
 	case 'B':
@@ -192,7 +197,7 @@ main(int argc, char** argv)
 		break;
 
 	case 'm':
-		type = ARGF();
+		type = EARGF(usage());
 		break;
 
 	case 'p':
@@ -216,11 +221,11 @@ main(int argc, char** argv)
 		break;
 
 	case 'x':
-		dbname = ARGF();
+		dbname = EARGF(usage());
 		break;
 
 	default:
-		error(usage, argv0);
+		usage();
 
 	}ARGEND
 
@@ -237,7 +242,7 @@ main(int argc, char** argv)
 	case 0:
 		break;
 	default:
-		error(usage, argv0);
+		usage();
 	}
 
 	if(lflag && strcmp(vsize, "text") == 0){
