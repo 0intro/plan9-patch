@@ -1968,6 +1968,8 @@ atapnp(void)
 		case (0x0053<<16)|0x10DE:	/* nVidia nForce4 */
 		case (0x0054<<16)|0x10DE:	/* nVidia nForce4 SATA */
 		case (0x0055<<16)|0x10DE:	/* nVidia nForce4 SATA */
+		case (0x0266<<16)|0x10DE:	// nVidia nForce4 430 southbridge
+		case (0x0267<<16)|0x10DE:	// nVidia nForce4 430 southbridge
 			/*
 			 * Ditto, although it may have a different base
 			 * address for the registers (0x50?).
