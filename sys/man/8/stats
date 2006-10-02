@@ -110,9 +110,9 @@ Upper-case options control details of the display.
 All graphs are affected; there is no mechanism to
 affect only one graph.
 .TP
-.BI -T " sleepsecs
-Set the number of seconds between samples to
-.I sleepsecs
+.BI -T " msec
+Set the number of milliseconds between samples to
+.I msec
 (default one second).
 .TP
 .BI -S " scale

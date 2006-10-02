@@ -1243,7 +1243,7 @@ main(int argc, char *argv[])
 			usage();
 		i = atoi(s);
 		if(i > 0)
-			sleeptime = 1000*i;
+			sleeptime = i;
 		break;
 	case 'S':
 		s = ARGF();
