@@ -392,6 +392,7 @@
 2020  dg          †	dagger
 2021  dd          ‡	double dagger
 2022  bu          •	bullet
+2026  3.           …         horizontal ellipsis
 203D  !? ?!       ‽	interrobang
 2070  s0          ⁰	superscript digit zero
 2071  s1          ⁱ	superscript digit one
@@ -410,7 +411,7 @@
 207E  s)          ⁾	superscript closing parenthesis
 207F  sn          ⁿ	superscript latin small letter n
 2013  en          –	en dash
-2014  em          –	em dash
+2014  em         —	em dash
 2080  b0          ₀	subscript digit zero
 2081  b1          ₁	subscript digit one
 2082  b2          ₂	subscript digit two
