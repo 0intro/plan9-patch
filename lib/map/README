@@ -1,0 +1,5 @@
+To get the map data files:
+
+  cd /lib/map
+  hget http://www.cs.dartmouth.edu/~doug/wdbii.tar.gz \
+    | gunzip | tar xv
