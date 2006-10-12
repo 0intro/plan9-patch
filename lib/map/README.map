@@ -1,0 +1,3 @@
+To get the map data use
+
+	hget http://www.cs.dartmouth.edu/~doug/wdbii.tar.gz | gunzip | tar xT
