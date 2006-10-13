@@ -309,7 +309,7 @@ pstring(Device *, int, ulong, void *b, int n)
 		fprint(2, "illegal count\n");
 		return;
 	}
-	n /= 2;
+	n = (n - 2)/2;
 	rb = (byte*)b + 2;
 	s = malloc(n*UTFmax+1);
 	for(l=0; --n >= 0; rb += 2){
