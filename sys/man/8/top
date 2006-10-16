@@ -1,0 +1,35 @@
+.TH STATS 8
+.SH NAME
+top \- display information about processes
+.SH SYNOPSIS
+.B top
+[
+.BI - t µs
+]
+[
+.BI - f font
+]
+.SH DESCRIPTION
+.I Top
+displays a list of processes running on the 
+.I machine
+it was started on. Each line contains the executable name of a process, the user runing it, percent of the cpu used in the last period, memory consumption and its priority. The processes are ordered based on the cpu time they have consumed in the last time interval. 
+.PP
+The right mouse button presents a menu to change the order in which processes are displayed. Possible ordering is by cpu time, memory consumption, user and priority.
+.PP
+The
+option 
+.TP
+.BI -T " µs
+specifies the duration between samples (default 5000µs).
+.TP
+.BI -f " font
+specifies a font different than the default system font.
+.PD
+.SH FILES
+.B /proc/pid/stats
+.SH SOURCE
+.B /sys/src/cmd/top.c
+.SH BUGS
+.I Top
+is designed to show process information, not to control processes. Hence it omits the process id in its display. 
