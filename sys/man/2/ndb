@@ -487,5 +487,5 @@ and
 They expect a fixed 64 byte long result
 buffer and existed when the values of a
 .I Ndbtuple
-structure where fixed length.
+structure were fixed length.
 
