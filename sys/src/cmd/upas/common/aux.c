@@ -40,7 +40,7 @@ append_match(Resub *subexp, String *sp, int se)
 /*
  *  check for shell characters in a String
  */
-static char *illegalchars = "\r\n";
+static char *illegalchars = "\r\n\x22";
 
 extern int
 shellchars(char *cp)
