@@ -38,6 +38,11 @@ ip \- network protocols over IP
 .BI /net/tcp/ n /status
 .BI /net/tcp/ n /listen
 \&...
+
+.ft L
+#include <u.h>
+#include <ip.h>
+.ft P
 .fi
 .SH DESCRIPTION
 The IP device provides the interface to Internet protocol stacks.
@@ -51,9 +56,10 @@ However multiple stacks can be used for debugging
 new IP networks or implementing firewalls or proxy
 services.
 .PP
-All addresses used are 16-byte IPv6 addresses.
-We implement IPv4 and IPv6.
-IPv4 addresses are a subset of the IPv6 addresses and both standard
+All addresses used are 16-byte IPv6 addresses.  Though
+we currently implement only IPv4, the IPv6 format is intended to
+prepare the way for an IPv6 implementation.  IPv4 addresses
+are a subset of the IPv6 addresses and both standard
 .SM ASCII
 formats
 are accepted.  In binary, all v4 addresses start with the
@@ -565,22 +571,41 @@ one of the following messages is written to
 .BR ctl ,
 then all messages sent to the announced port
 are received on the announced connection prefixed with the given structure.
+.TP
 .B headers
 .EX
 typedef struct Udphdr Udphdr;
 struct Udphdr
 {
-	uchar	raddr[16];	/* v6 remote address and port */
-	uchar	laddr[16];	/* v6 local address and port */
-	uchar	ifcaddr[16];	/* interface address (receive only) */
+	uchar	raddr[IPaddrlen];	/* remote address */
+	uchar	laddr[IPaddrlen];	/* local address */
+	uchar	ifcaddr[IPaddrlen];	/* ifc message came from */
+	uchar	rport[2];			/* remote port */
+	uchar	lport[2];			/* local port */
+};
+.EE
+.TP
+.B oldheaders
+.EX
+typedef struct OUdphdr OUdphdr;
+struct OUdphdr
+{
+	uchar	raddr[IPaddrlen];	/* remote address and port */
+	uchar	laddr[IPaddrlen];	/* local address and port */
 	uchar	rport[2];
 	uchar	lport[2];
 };
 .EE
 .PP
-The only difference in the two is the type of address, IPv4 or IPv6.
+Both formats use IPv6 addresses.  The
+.B headers
+format allows the application to recover the identity of the
+network interface the packet arrived via; the
+.B oldheaders
+format is obsolete and should not be used.
 Before a write, a user must prefix a similar structure to each message.
-The system overrides the user specified local port with the announced
+The system ignores any specification of ``incoming interface'' and
+overrides the user specified local port with the announced
 one.  If the user specifies an address that isn't a unicast address in
 .BR /net/ipselftab ,
 that too is overridden.
@@ -599,7 +624,13 @@ One must use either
 or
 .B announce
 followed immediately by
-.B headers .
+.B headers
+(the equivalent of UDP's
+.BR oldheaders )
+or
+.B headers++4
+(the equivalent of UDP's
+.BR headers).
 .PP
 Unlike IL or TCP, the reboot of one end of a connection does
 not force a closing of the connection.  Communications will
@@ -904,6 +935,7 @@ returns a list of 1 tagged number representing:
 .EE
 .SH "SEE ALSO"
 .IR listen (8),
+.IR ip (2),
 .IR dial (2),
 .IR ndb (6)
 .SH SOURCE

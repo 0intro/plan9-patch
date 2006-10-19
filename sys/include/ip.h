@@ -95,7 +95,7 @@ struct Udphdr
 	uchar	laddr[IPaddrlen];	/* local address */
 	uchar	ifcaddr[IPaddrlen];	/* address of ifc message was received from
 					   (only useful on reception) */
-	uchar	rport[2];		/* remove port */
+	uchar	rport[2];		/* remote port */
 	uchar	lport[2];		/* local port */
 };
 
