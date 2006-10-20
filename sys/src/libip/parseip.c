@@ -67,7 +67,7 @@ parseip(uchar *to, char *from)
 		memmove(&to[elipsis+16-i], &to[elipsis], i-elipsis);
 		memset(&to[elipsis], 0, 16-i);
 	}
-	if(v4){
+	if(v4 || memcmp(to, v4prefix, IPv4off) == 0){
 		to[10] = to[11] = 0xff;
 		return nhgetl(to+12);
 	} else
