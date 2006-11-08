@@ -68,11 +68,7 @@ structure is allocated by
 and should be freed after use.
 For programs that only need the pid of the exiting program,
 .I waitpid
-returns just the pid and discards the rest of the information;
-if there are no children to wait for,
-.I waitpid
-returns
-.BR -1 .
+returns just the pid and discards the rest of the information.
 .PP
 The underlying system call is
 .IR await ,
@@ -108,8 +104,6 @@ If the calling process has no living children,
 returns
 .BR -1 .
 .SH SOURCE
-.B /sys/src/libc/9sys/wait.c
-.B /sys/src/libc/9sys/waitpid.c
 .B /sys/src/libc/9syscall
 .br
 .B /sys/src/libc/9sys
