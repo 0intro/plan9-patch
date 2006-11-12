@@ -110,6 +110,8 @@ xfidopen(Xfid *x)
 			break;
 		case QWdata:
 		case QWxdata:
+			seq++;
+			filemark(t->file);
 			w->nopen[q]++;
 			break;
 		case QWevent:
