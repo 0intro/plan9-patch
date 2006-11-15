@@ -28,6 +28,7 @@ enum
 	Vremove,
 	Vunbind,
 	Vether,
+	Vgbe,
 	Vloopback,
 };
 
@@ -368,6 +369,7 @@ main(int argc, char **argv)
 			break;
 		case Vether:
 		case Vloopback:
+		case Vgbe:
 			conf.type = argv[0];
 			if(argc > 1){
 				conf.dev = argv[1];
@@ -575,7 +577,7 @@ adddefroute(char *mpoint, uchar *gaddr)
 void
 mkclientid(void)
 {
-	if(strcmp(conf.type, "ether") == 0)
+	if(strcmp(conf.type, "ether") == 0 || strcmp(conf.type, "gbe") == 0)
 	if(myetheraddr(conf.hwa, conf.dev) == 0){
 		conf.hwalen = 6;
 		conf.hwatype = 1;
@@ -612,7 +614,7 @@ controldevice(void)
 	if(firstctl == nil)
 		return;
 
-	if(strcmp(conf.type, "ether") == 0)
+	if(strcmp(conf.type, "ether") == 0 || strcmp(conf.type, "gbe") == 0)
 		snprint(ctlfile, sizeof(ctlfile), "%s/clone", conf.dev);
 	else
 		return;
@@ -1583,6 +1585,7 @@ char *verbs[] = {
 [Vremove]	"remove",
 [Vunbind]	"unbind",
 [Vether]	"ether",
+[Vgbe]	"gbe",
 [Vloopback]	"loopback",
 };
 
@@ -1617,7 +1620,7 @@ ndbconfig(void)
 	db = ndbopen(0);
 	if(db == nil)
 		sysfatal("can't open ndb: %r");
-	if(strcmp(conf.type, "ether") != 0 || myetheraddr(conf.hwa, conf.dev) != 0)
+	if((strcmp(conf.type, "ether") != 0 && strcmp(conf.type, "gbe") != 0) || myetheraddr(conf.hwa, conf.dev) != 0)
 		sysfatal("can't read hardware address");
 	sprint(etheraddr, "%E", conf.hwa);
 	nattr = 0;
