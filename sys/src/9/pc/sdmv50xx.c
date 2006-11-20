@@ -798,6 +798,8 @@ mv50interrupt(Ureg*, void *a)
 	for(i=0; i<ctlr->ndrive; i++){
 		if(cause & (3<<(i*2+i/4))){
 			drive = &ctlr->drive[i];
+			if(drive->edma == 0)
+				continue;	// not ready yet.
 			ilock(drive);
 			updatedrive(drive, drive->edma->iec);
 			while(ctlr->chip[i/4].arb->ic & (0x0101 << (i%4))){
@@ -846,6 +848,8 @@ mv50pnp(void)
 			free(sdev);
 			continue;
 		}
+memset(sdev, 0, sizeof *sdev);
+memset(ctlr, 0, sizeof *ctlr);
 		io = p->mem[0].bar & ~0x0F;
 		mem = vmap(io, p->mem[0].size);
 		if(mem == 0){
