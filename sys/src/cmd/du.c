@@ -209,5 +209,5 @@ k(vlong n)
 	if(nflag)
 		return n;
 	n = (n+blocksize-1)/blocksize;
-	return n*blocksize/1024LL;
+	return n;
 }
