@@ -202,12 +202,20 @@ void
 oappend(Node *n, Node *res)
 {
 	Node r, l;
+	int  empty ;
 
 	expr(n->left, &l);
 	expr(n->right, &r);
 	if(l.type != TLIST)
 		error("must append to list");
+	empty = ( l.l == nil && ( n->left->op == ONAME ) ) ;
 	append(res, &l, &r);
+	if ( empty ) {
+		Value * v = n->left->sym->v ;
+		v->type = res->type ;
+		v->Store = res->Store ;
+		v->comt = res->comt ;
+	}
 }
 
 void
