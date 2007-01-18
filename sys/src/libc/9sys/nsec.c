@@ -12,55 +12,31 @@ be2vlong(vlong *to, uchar *f)
 
 	t = (uchar*)to;
 	o = (uchar*)&order;
-	for(i = 0; i < 8; i++)
+	for(i = 0; i < sizeof order; i++)
 		t[o[i]] = f[i];
 }
 
 /*
- *  After a fork with fd's copied, both fd's are pointing to
- *  the same Chan structure.  Since the offset is kept in the Chan
- *  structure, the seek's and read's in the two processes can
- *  compete at moving the offset around.  Hence the retry loop.
- *
- *  Since the bintime version doesn't need a seek, it doesn't
- *  have the loop.
- */
+	Reopen /dev/bintime on a failed read on the theory
+	that the fd was mistakenly closed.  Beware rfork(RFFDG).
+*/
 vlong
 nsec(void)
 {
-	char b[12+1];
-	static int f = -1;
-	static int usebintime;
-	int retries;
+	static int fd = -1;
+	uchar b[8];
 	vlong t;
+	int i;
 
-	if(f < 0){
-		usebintime = 1;
-		f = open("/dev/bintime", OREAD|OCEXEC);
-		if(f < 0){
-			usebintime = 0;
-			f = open("/dev/nsec", OREAD|OCEXEC);
-			if(f < 0)
-				return 0;
+	for(i = 0; i < 2; i++){
+		if(fd < 0 && (fd = open("/dev/bintime", OREAD|OCEXEC)) < 0)
+			return 0;
+		if(pread(fd, b, sizeof b, 0) == sizeof b){
+			be2vlong(&t, b);
+			return t;
 		}
+		close(fd);
+		fd = -1;
 	}
-
-	if(usebintime){
-		if(read(f, b, sizeof(uvlong)) < 0)
-			goto error;
-		be2vlong(&t, (uchar*)b);
-		return t;
-	} else {
-		for(retries = 0; retries < 100; retries++){
-			if(seek(f, 0, 0) >= 0 && read(f, b, sizeof(b)-1) >= 0){
-				b[sizeof(b)-1] = 0;
-				return strtoll(b, 0, 0);
-			}
-		}
-	}
-
-error:
-	close(f);
-	f = -1;
 	return 0;
 }
