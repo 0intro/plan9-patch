@@ -720,7 +720,7 @@ rwrite(Fid *f)
 				if (debug) fprint(2, "bad3\n");
 				return Ebadctl;
 			}
-			if (f->dir == &dirs[Qvolume] && c->min != Undef  && c->max != Undef){
+			if (f->dir == &dirs[Qvolume] && ctl != Speed_control && c->min != Undef && c->max != Undef){
 				nnf = tokenize(fields[nf-1], subfields, nelem(subfields));
 				if (nnf <= 0 || nnf > 8){
 					if (debug) fprint(2, "bad4\n");
