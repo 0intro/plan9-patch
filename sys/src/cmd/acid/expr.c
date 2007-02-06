@@ -202,12 +202,20 @@ void
 oappend(Node *n, Node *res)
 {
 	Node r, l;
+	int  empty ;
 
 	expr(n->left, &l);
 	expr(n->right, &r);
 	if(l.type != TLIST)
 		error("must append to list");
+	empty = ( l.l == nil && ( n->left->op == ONAME ) ) ;
 	append(res, &l, &r);
+	if ( empty ) {
+		Value * v = n->left->sym->v ;
+		v->type = res->type ;
+		v->Store = res->Store ;
+		v->comt = res->comt ;
+	}
 }
 
 void
@@ -325,7 +333,18 @@ oadd(Node *n, Node *res)
 	Node l, r;
 
 	expr(n->left, &l);
-	expr(n->right, &r);
+	if ( n->right != ZN ) {
+	  expr(n->right, &r) ;
+	} else {
+		switch ( l.type ) {
+		default:
+			expr(con(0),&r) ;
+			break;
+		case TSTRING:
+		case TLIST:
+			break;
+		}
+	}
 	res->fmt = l.fmt;
 	res->op = OCONST;
 	res->type = TFLOAT;
@@ -358,6 +377,10 @@ oadd(Node *n, Node *res)
 		}
 		break;
 	case TSTRING:
+		if ( n->right == ZN ) {
+			*res = l ;
+			break ;
+		}
 		if(r.type == TSTRING) {
 			res->type = TSTRING;
 			res->fmt = 's';
@@ -372,6 +395,10 @@ oadd(Node *n, Node *res)
 		}
 		error("bad rhs for +");
 	case TLIST:
+		if ( n->right == ZN ) {
+			*res = l ;
+			break ;
+		}
 		res->type = TLIST;
 		switch(r.type) {
 		case TLIST:
