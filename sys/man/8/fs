@@ -93,7 +93,7 @@ fs, exsort \- file server maintenance
 .PP
 .B "sntp kick"
 .PP
-.BR stat [ adesw ]
+.BR stat [ admiesw ]
 .PP
 .B stats
 .RB [[ - ]
@@ -676,6 +676,10 @@ commands are connected with a service or device identified by the
 last character of the name:
 .BR d ,
 SCSI targets;
+.BR m ,
+Marvell SATA targets;
+.BR i ,
+IDE/ATA targets;
 .BR e ,
 Ethernet controllers;
 .BR w ,
