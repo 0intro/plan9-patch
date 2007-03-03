@@ -57,6 +57,7 @@ char	net[256];
 int	pptponly;	// only answer request that came from the pptp server
 int	mute, mutestat;
 int	minlease = MinLease;
+int staticlease = StaticLease;
 
 ulong	start;
 
@@ -199,7 +200,7 @@ timestamp(char *tag)
 void
 usage(void)
 {
-	fprint(2, "usage: dhcp [-dmsnp] [-f directory] [-x netmtpt] [-M minlease] addr n [addr n ...]\n");
+ 	fprint(2, "usage: dhcp [-dmsnprS] [-f directory] [-x netmtpt] [-M minlease] [-Z staticlease] addr n [addr n ...]\n");
 	exits("usage");
 }
 
@@ -259,6 +260,17 @@ main(int argc, char **argv)
 		if(minlease <= 0)
 			minlease = MinLease;
 		break;
+ 	case 'Z':
+ 		p = ARGF();
+ 		if(p == nil)
+ 			usage();
+ 		staticlease = atoi(p);
+ 		if(staticlease <= 0)
+ 			staticlease = StaticLease;
+ 		break;
+ 	default:
+ 		usage();
+ 		break;
 	} ARGEND;
 
 	while(argc > 1){
@@ -428,7 +440,7 @@ rcvdiscover(Req *rp)
 	Binding *b, *nb;
 
 	if(rp->staticbinding){
-		sendoffer(rp, rp->ii.ipaddr, (StaticLease > minlease ? StaticLease : minlease));
+ 		sendoffer(rp, rp->ii.ipaddr, (staticlease > minlease ? staticlease : minlease));
 		return;
 	}
 
@@ -486,7 +498,7 @@ rcvrequest(Req *rp)
 		/* check for hard assignment */
 		if(rp->staticbinding){
 			if(forme(rp->server))
-				sendack(rp, rp->ii.ipaddr, (StaticLease > minlease ? StaticLease : minlease), 1);
+				sendack(rp, rp->ii.ipaddr, (staticlease > minlease ? staticlease : minlease), 1);
 			else
 				warning(0, "!Request(%s via %I): for server %I not me",
 					rp->id, rp->gii.ipaddr, rp->server);
@@ -543,7 +555,7 @@ rcvrequest(Req *rp)
 					rp->id, rp->gii.ipaddr, rp->ip, rp->bp->chaddr);
 				sendnak(rp, "not valid");
 			}
-			sendack(rp, rp->ii.ipaddr, (StaticLease > minlease ? StaticLease : minlease), 1);
+			sendack(rp, rp->ii.ipaddr, (staticlease > minlease ? staticlease : minlease), 1);
 			return;
 		}
 
@@ -585,7 +597,7 @@ rcvrequest(Req *rp)
 					rp->id, rp->gii.ipaddr, rp->ciaddr);
 				sendnak(rp, "not valid");
 			}
-			sendack(rp, rp->ii.ipaddr, (StaticLease > minlease ? StaticLease : minlease), 1);
+			sendack(rp, rp->ii.ipaddr, (staticlease > minlease ? staticlease : minlease), 1);
 			return;
 		}
 
