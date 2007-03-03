@@ -4,12 +4,14 @@ dhcpd, dhcpleases, rarpd, tftpd \- Internet booting
 .SH SYNOPSIS
 .PP
 .B ip/dhcpd
-.RB [ -mdsSnpr ]
+.RB [ -mdsSnprZ ]
 .RB [ -f
 .IR ndb-file ]
 .RB [ -x
 .IR netmtpt ]
 .RB [ -M
+.IR secs ]
+.RB [ -Z
 .IR secs ]
 [
 .I address
@@ -210,7 +212,12 @@ The default is
 .B M
 Use
 .I secs
-as the minimum lease time.
+as the minimum lease time for dynamic addresses.
+.TP
+.B Z
+Use
+.I secs
+as the minimum lease time for static addresses.
 .PD
 .PP
 .I Dhcpleases
@@ -285,5 +292,7 @@ Restricts access to only those files rooted in the
 .BR /lib/ndb/dhcp "    directory of dynamic address files
 .SH SOURCE
 .B /sys/src/cmd/ip
+.br
+.B /sys/src/cmd/ip/dhcpd
 .SH "SEE ALSO"
 .IR ndb (6)
