@@ -1,6 +1,6 @@
 .TH REPLICA 8
 .SH NAME
-applychanges, applylog, compactdb, updatedb \- simple client-server replica management
+applychanges, applylog, compactdb, cphist, updatedb\- simple client-server replica management
 .SH SYNOPSIS
 .B replica/compactdb
 .I db
@@ -69,8 +69,20 @@ applychanges, applylog, compactdb, updatedb \- simple client-server replica mana
 [
 .I path ...
 ]
+.br
+.B replica/cphist
+[
+.B -evn
+]
+[
+.B -l
+.I lineno
+]
+.I clientroot
+.I serverroot
+.I oldserverroot
 .SH DESCRIPTION
-These four tools collectively provide simple log-based
+These five tools collectively provide simple log-based
 client-server replica management.
 The shell scripts described in
 .IR replica (1)
@@ -260,6 +272,47 @@ with the
 or
 .B -s 
 flags.
+.PP
+.I Cphist
+was designed to copy a dump faithfully from one file server to the next.
+Unlike other replica tools it takes special precautions to ensure that
+whenever files on the 
+.I server 
+and 
+.I oldserver 
+share a
+.BR qid.path ,
+the client's corresponding file will be modified and
+whenever they do not, the client's file will be deleted and
+a copy made from
+.IR server .
+Thus the
+.BR Qid -relationship 
+between the file on
+.I server
+and
+.I oldserver
+will be the same as for the current file on the client
+and that file in the client's most recent dump.
+Also,
+.B muid
+is set to preserve the output of
+.BR history (1).  
+The
+.B -e
+flag toggles exiting on first error.  The default is to exit on
+any error.  The
+.B -l
+.I lineno
+sets the first line of the log (the
+.I gen
+field) to be processed while
+.I -v
+sets verbose output and
+.I -n
+prints what
+.I cphist
+would do, but does nothing.
 .SH EXAMPLE
 One might
 keep a client kfs file system up-to-date
@@ -309,8 +362,19 @@ describes this in full.
 .SH SEE ALSO
 .IR replica (1)
 .SH BUGS
-These tools assume that 
+These tools (excepting
+.IR cphist )
+assume that 
 .I mtime
 combined with
 .I length
 is a good indicator of changes to a file's contents.
+.PP
+Perhaps
+.I cphist
+should inspect the source files directly rather than
+using a replica log, as it picks through the
+.I oldserver
+to discover
+.B muid
+and other bits of information not in the log.
