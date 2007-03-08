@@ -435,6 +435,10 @@ cmd_date(int argc, char *argv[])
 			goto out;
 		ct = t;
 		break;
+	case '=':
+		t = number(arg+1, 0, 10);
+		ct = t;
+		break;
 	case '+':
 		t = number(arg+1, 0, 10);
 		ct += t;
@@ -820,7 +824,7 @@ installcmds(void)
 	cmd_install("check", "[options]", cmd_check);
 	cmd_install("clri", "[file ...] -- purge files/dirs", cmd_clri);
 	cmd_install("create", "path uid gid perm [lad] -- make a file/dir", cmd_create);
-	cmd_install("date", "[[+-]seconds] -- print/set date", cmd_date);
+	cmd_install("date", "[[=+-]seconds] -- print/set date", cmd_date);
 	cmd_install("disallow", "-- enable permission checking", cmd_disallow);
 	cmd_install("duallow", "uid -- duallow", cmd_duallow);
 	cmd_install("flag", "-- print set flags", cmd_flag);
