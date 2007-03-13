@@ -171,77 +171,42 @@ static	char	dmsize[12] =
 };
 
 /*
- * The following table is used for 1974 and 1975 and
- * gives the day number of the first day after the Sunday of the
- * change.
+ * since we are the fileserver and can't depend on files being where
+ * they belong, we keep the equivalent of /adm/timezone/local in 
+ * the following structure, which is compiled into the executable.
  */
-static	struct
-{
-	short	yrfrom;
-	short	yrto;
-	short	daylb;
-	short	dayle;
-} daytab[] =
-{
-	107,	~(ushort)0>>1, 66, 310,
-	87,	106,	90,	303,
-	76,	86,	119,	303,
-	75,	75,	58,	303,
-	74,	74,	5,	333,
-	-1,	73,	119,	303,
-};
+typedef struct{
+	char	stname[4];
+	char	dlname[4];
+	long	stdiff;
+	long	dldiff;
+	long	dlpairs[150];
+} Timezone;
 
-static
-prevsunday(Tm *t, int d)
-{
-	if(d >= 58)
-		d += dysize(t->year) - 365;
-	return d - (d - t->yday + t->wday + 700) % 7;
-}
-
-static
-succsunday(Tm *t, int d)
-{
-	int dd;
-
-	if(d >= 58)
-		d += dysize(t->year) - 365;
-	dd = (d - t->yday + t->wday + 700) % 7;
-	if(dd == 0)
-		return d;
-	else
-		return d + 7 - dd;
-}
+#include "timezone.h"
 
 void
 localtime(Timet tim, Tm *ct)
 {
-	int daylbegin, daylend, dayno, i;
-	Timet copyt;
+	long t, *p;
+	int dlflag;
 
-	copyt = tim - conf.minuteswest*60L;
-	gmtime(copyt, ct);
-	dayno = ct->yday;
-
-	/* enforce sane bounds for daytab */
-	if (ct->year < -1) /* 1 jan 1970 00:00 GMT can be 31 dec 1969 locally */
-		ct->year = -1;
-	else if (ct->year > 60000)
-		ct->year = 60000;
-
-	for(i = 0; ; i++)
-		if(ct->year >= daytab[i].yrfrom &&
-		   ct->year <= daytab[i].yrto) {
-			daylbegin = succsunday(ct, daytab[i].daylb);
-			daylend = prevsunday(ct, daytab[i].dayle);
+	t = tim + timezone.stdiff;
+	dlflag = 0;
+	for(p = timezone.dlpairs; *p; p += 2)
+		if(t >= p[0])
+		if(t < p[1]) {
+			t = tim + timezone.dldiff;
+			dlflag++;
 			break;
 		}
-	if(conf.dsttime &&
-	    (dayno>daylbegin || (dayno==daylbegin && ct->hour >= 2)) &&
-	    (dayno<daylend   || (dayno==daylend   && ct->hour < 1))) {
-		copyt += 60L*60L;
-		gmtime(copyt, ct);
-		ct->isdst++;
+	gmtime(t, ct);
+	if(dlflag){
+		strcpy(ct->zone, timezone.dlname);
+		ct->tzoff = timezone.dldiff;
+	} else {
+		strcpy(ct->zone, timezone.stname);
+		ct->tzoff = timezone.stdiff;
 	}
 }
 
@@ -300,7 +265,8 @@ gmtime(Timet tim, Tm *ct)
 	dmsize[1] = 28;
 	ct->mday = d0 + 1;
 	ct->mon = d1;
-	ct->isdst = 0;
+	ct->tzoff = 0;
+	strcpy(ct->zone, "GMT");
 }
 
 void
@@ -325,7 +291,7 @@ Tfmt(Fmt* fmt)
 		return fmtstrcpy(fmt, "The Epoch");
 
 	localtime(t, &tm);
-	strcpy(s, "Day Mon 00 00:00:00 1900");
+	strcpy(s, "Day Mon 00 00:00:00 GMT 1900");
 	cp = &"SunMonTueWedThuFriSat"[tm.wday*3];
 	s[0] = cp[0];
 	s[1] = cp[1];
@@ -338,11 +304,15 @@ Tfmt(Fmt* fmt)
 	ct_numb(s+11, tm.hour+100);
 	ct_numb(s+14, tm.min+100);
 	ct_numb(s+17, tm.sec+100);
+	cp = tm.zone;
+	s[20] = *cp++;
+	s[21] = *cp++;
+	s[22] = *cp;
 	if(tm.year >= 100) {
-		s[20] = '2';
-		s[21] = '0';
+		s[24] = '2';
+		s[25] = '0';
 	}
-	ct_numb(s+22, tm.year+100);
+	ct_numb(s+26, tm.year+100);
 
 	return fmtstrcpy(fmt, s);
 }

@@ -1,4 +1,5 @@
 CONF=net32.16k
+ZONE=/adm/timezone/US_Eastern
 p=9
 
 objtype=386
@@ -142,4 +143,4 @@ $TARG.$O:	../pc/dosfs.h
 %.$O:	$HFILES
 
 clean:V:
-	rm -f *.[$OS] [$OS].out $TARG
+	rm -f *.[$OS] [$OS].out $TARG timezone.h

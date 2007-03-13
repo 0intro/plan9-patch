@@ -713,8 +713,8 @@ struct	Tm
 	int	mon;
 	int	year;
 	int	wday;
-	int	yday;
-	int	isdst;
+	char	zone[4];
+	int	tzoff;
 };
 
 struct	Rtc
