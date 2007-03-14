@@ -40,7 +40,7 @@
 %token <fval>	Tfconst
 %token <string>	Tstring
 %token Tif Tdo Tthen Telse Twhile Tloop Thead Ttail Tappend Tfn Tret Tlocal
-%token Tcomplex Twhat Tdelete Teval Tbuiltin
+%token Tcomplex Twhat Tdelete Teval Tbuiltin Ttry
 
 %%
 
@@ -259,6 +259,10 @@ expr		: castexpr
 		| expr Tfmt
 		{
 			$$ = an(OFMT, $1, con($2));
+		}
+		| Ttry '{' slist '}'
+		{
+			$$ = an(OTRY, $3, ZN);
 		}
 		;
 

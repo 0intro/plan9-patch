@@ -1,4 +1,5 @@
 /* acid.h */
+
 enum
 {
 	Eof		= -1,
@@ -53,6 +54,9 @@ Extern Node*	prnt;
 Extern List*	tracelist;
 Extern int	initialising;
 Extern int	quiet;
+Extern void*	tryio;
+Extern char*	tryres;
+Extern int	tryiop;
 
 extern void	(*expop[])(Node*, Node*);
 #define expr(n, r) (r)->comt=0; (*expop[(n)->op])(n, r);
@@ -217,6 +221,7 @@ int	numsym(char);
 void	odot(Node*, Node*);
 void	pcode(Node*, int);
 void	pexpr(Node*);
+void*	getio(void);
 int	popio(void);
 void	pstr(String*);
 void	pushfile(char*);
@@ -234,6 +239,7 @@ String*	strnodlen(char*, int);
 char*	system(void);
 void	trlist(Map*, uvlong, uvlong, Symbol*);
 void	unwind(void);
+void	unwindtry(Lsym** _hash);
 void	userinit(void);
 void	varreg(void);
 void	varsym(void);
@@ -295,4 +301,5 @@ enum
 	OFMT,
 	OEVAL,
 	OWHAT,
+	OTRY,
 };

@@ -33,6 +33,7 @@ keywds[] =
 	"delete",	Tdelete,
 	"whatis",	Twhat,
 	"eval",		Teval,
+	"try",		Ttry,
 	"builtin",	Tbuiltin,
 	0,		0
 };
@@ -131,6 +132,13 @@ restartio(void)
 {
 	Bflush(lexio->fin);
 	Binit(lexio->fin, 0, OREAD);
+}
+
+
+void*
+getio(void)
+{
+  return (void*) lexio ;
 }
 
 int

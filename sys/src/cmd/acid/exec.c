@@ -15,24 +15,30 @@ error(char *fmt, ...)
 
 	/* Unstack io channels */
 	if(iop != 0) {
-		for(i = 1; i < iop; i++)
+		for(i = tryiop+1; i < iop; i++)
 			Bterm(io[i]);
-		bout = io[0];
-		iop = 0;
+		bout = io[tryiop];
+		iop = tryiop;
 	}
 
 	ret = 0;
 	gotint = 0;
 	Bflush(bout);
-	if(silent)
+	if (silent && tryio == nil)
 		silent = 0;
 	else {
 		va_start(arg, fmt);
 		vseprint(buf, buf+sizeof(buf), fmt, arg);
 		va_end(arg);
-		fprint(2, "%L: (error) %s\n", buf);
+		if (tryio) {
+			tryres = strdup(buf) ;
+			if(tryres == 0)
+			  fatal("no memory");
+		}
+		else
+			fprint(2, "%L: (error) %s\n", buf);
 	}
-	while(popio())
+	while ((getio() != tryio) && popio())
 		;
 	interactive = 1;
 	longjmp(err, 1);
@@ -47,6 +53,24 @@ unwind(void)
 
 	for(i = 0; i < Hashsize; i++) {
 		for(s = hash[i]; s; s = s->hash) {
+			while(s->v->pop) {
+				v = s->v->pop;
+				free(s->v);
+				s->v = v;
+			}
+		}
+	}
+}
+
+void
+unwindtry(Lsym** _hash)
+{
+	int i;
+	Lsym *s;
+	Value *v;
+
+	for(i = 0; i < Hashsize; i++) {
+		for(s = hash[i]; s && s != _hash[i] ; s = s->hash) {
 			while(s->v->pop) {
 				v = s->v->pop;
 				free(s->v);
@@ -84,7 +108,7 @@ execute(Node *n)
 	switch(n->op) {
 	default:
 		expr(n, &res);
-		if(ret || (res.type == TLIST && res.l == 0))
+		if(ret || (res.type == TLIST && res.l == 0) || tryio)
 			break;
 		prnt->right = &res;
 		expr(prnt, &xx);

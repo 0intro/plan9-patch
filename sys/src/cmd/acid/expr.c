@@ -201,21 +201,20 @@ oindex(Node *n, Node *res)
 void
 oappend(Node *n, Node *res)
 {
-	Value *v;
 	Node r, l;
-	int  empty;
+	int  empty ;
 
 	expr(n->left, &l);
 	expr(n->right, &r);
 	if(l.type != TLIST)
 		error("must append to list");
-	empty = (l.l == nil && (n->left->op == ONAME));
+	empty = ( l.l == nil && ( n->left->op == ONAME ) ) ;
 	append(res, &l, &r);
-	if(empty) {
-		v = n->left->sym->v;
-		v->type = res->type;
-		v->Store = res->Store;
-		v->comt = res->comt;
+	if ( empty ) {
+		Value * v = n->left->sym->v ;
+		v->type = res->type ;
+		v->Store = res->Store ;
+		v->comt = res->comt ;
 	}
 }
 
@@ -334,7 +333,18 @@ oadd(Node *n, Node *res)
 	Node l, r;
 
 	expr(n->left, &l);
-	expr(n->right, &r);
+	if ( n->right != ZN ) {
+	  expr(n->right, &r) ;
+	} else {
+		switch ( l.type ) {
+		default:
+			expr(con(0),&r) ;
+			break;
+		case TSTRING:
+		case TLIST:
+			break;
+		}
+	}
 	res->fmt = l.fmt;
 	res->op = OCONST;
 	res->type = TFLOAT;
@@ -367,6 +377,10 @@ oadd(Node *n, Node *res)
 		}
 		break;
 	case TSTRING:
+		if ( n->right == ZN ) {
+			*res = l ;
+			break ;
+		}
 		if(r.type == TSTRING) {
 			res->type = TSTRING;
 			res->fmt = 's';
@@ -381,6 +395,10 @@ oadd(Node *n, Node *res)
 		}
 		error("bad rhs for +");
 	case TLIST:
+		if ( n->right == ZN ) {
+			*res = l ;
+			break ;
+		}
 		res->type = TLIST;
 		switch(r.type) {
 		case TLIST:
@@ -981,6 +999,53 @@ owhat(Node *n, Node *res)
 	whatis(n->sym);
 }
 
+void* tryio = nil;
+char* tryres = nil;
+int tryiop = 0;
+
+void
+otry(Node *n, Node *res)
+{
+	int _interactive, _silent;
+	jmp_buf	_err;
+	void* _tryio;
+	int _tryiop;
+	Lsym* _hash[Hashsize] ;
+
+	memcpy(_err,err,sizeof(jmp_buf));
+	_interactive = interactive;
+	interactive = 0;
+	_silent = silent;
+	silent = 1;
+	_tryio = tryio;
+	tryio = getio();
+	_tryiop = tryiop;
+	tryiop = iop;
+
+	/* save symbol table state */
+	memcpy(_hash,hash,sizeof(_hash)) ;
+
+	if ( setjmp(err) ) {
+		unwindtry(_hash) ;
+		res->string = strnode(tryres) ;
+		tryres = nil;
+	} else {
+		execute(n->left);
+		res->string = strnode("ok") ;
+	}
+
+	iop = tryiop;
+	tryiop = _tryiop;
+	tryio = _tryio;
+	silent = _silent;
+	interactive = _interactive;
+	memcpy(err,_err,sizeof(jmp_buf));
+
+	res->fmt = 's';
+	res->op = OCONST;
+	res->type = TSTRING;
+}
+
 void (*expop[])(Node*, Node*) =
 {
 	[ONAME]		oname,
@@ -1032,4 +1097,5 @@ void (*expop[])(Node*, Node*) =
 	[OFMT]		ofmt,
 	[OEVAL]		oeval,
 	[OWHAT]		owhat,
+	[OTRY]		otry,
 };

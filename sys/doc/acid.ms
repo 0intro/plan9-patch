@@ -992,6 +992,58 @@ statement. The definition of parameter names suppresses any variables
 of the same name until the function returns. The body of a function is a list
 of statements enclosed by braces.
 .SH
+Trapping Exceptions
+.PP
+.DS
+	result\f(CW = try \fPbody\f(CW ;\fP
+
+	body:
+		\f(CW{\fP statement \f(CW}\fP
+.DE
+Use the 
+.CW try
+statement to trap exceptions in Acid.  The body of a
+.CW try
+statement is a list of statements enclosed by braces.
+.PP
+Within the
+.I body
+of a
+.CW try
+statement, if the code being executed encounters an interpreter error or
+generates one by calling
+.CW error(\fIstring\f(CW),
+execution of the
+.CW try
+.I body
+is aborted.  The values of all local variables within the scope of the
+.CW try
+.I body
+are lost.  The values of local variables outside of the
+.CW try
+body are kept.  Processes being debugged are not effected.  
+The
+.CW try
+statement returns
+.I string
+from the call to
+.CW error(\fIstring\f(CW).
+.PP
+If no exception occurs, the
+.CW try
+statement returns
+.CW ok.
+.PP
+.RE
+For example:
+.P1
+acid: result = try { 1 + 1 ; }
+acid: print(result)
+ok
+acid: try { 1 + {} ; }
+bad rhs type +
+.P2
+.SH
 Code variables
 .PP
 Acid permits the delayed evaluation of a parameter to a function.  The parameter
