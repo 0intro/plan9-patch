@@ -1,50 +1,38 @@
 /*
- * Marvell 88SX[56]0[48][01] Serial ATA (SATA) driver
+ * Marvell 88SX[56]0[48][01] fileserver Serial ATA (SATA) driver
  *
  * See MV-S101357-00 Rev B Marvell PCI/PCI-X to 8-Port/4-Port
  * SATA Host Controller, ATA-5 ANSI NCITS 340-2000.
  *
- * This is a heavily-modified version of a driver written by Coraid, Inc.
+ * This is a heavily-modified version (by Coraid) of a heavily-modified
+ * version (from The Labs) of a driver written by Coraid, Inc.
  * The original copyright notice appears at the end of this file.
  */
 
-#ifdef FS
 #include "all.h"
 #include "io.h"
 #include "mem.h"
 
 #include "sd.h"
 #include "compat.h"
-#else
-#include	"u.h"
-#include	"../port/lib.h"
-#include	"mem.h"
-#include	"dat.h"
-#include	"fns.h"
-#include 	"io.h"
-#include	"../port/error.h"
-#include	"../port/sd.h"
-#endif
 
 enum {
-	DEBUGPR = 0,
-	IDEBUG = 0,
-
 	/* old stuff carried forward */
-	NCtlr=		8,
-	NCtlrdrv=	8,
-	NDrive=		NCtlr*NCtlrdrv,
-	Maxxfer=	16*1024,	/* maximum transfer size/cmd */
+	NCtlr		= 8,
+	NCtlrdrv		= 8,
+	NDrive		= NCtlr*NCtlrdrv,
+	Maxxfer		= 16*1024,	/* maximum transfer size/cmd */
 
-	Read = 0,
+	Read 		= 0,
 	Write,
 
-	Drvmagic =  0xcafebabeUL,
-	Ctlrmagic = 0xfeedfaceUL,
+	Drvmagic 	= 0xcafebabeUL,
+	Ctlrmagic 	= 0xfeedfaceUL,
 };
 
-#define DPRINT	if(DEBUGPR)print
-#define IDPRINT if(IDEBUG)print
+#define dprint(...)	// print(__VA_ARGS__)
+#define idprint(...)	
+#define ioprint(...)
 
 enum {
 	SrbRing = 32,
@@ -57,23 +45,25 @@ enum {
 	ARlba2		= 025,
 	ARlba1		= 024,
 	ARlba0		= 023,
-	ARseccnt		= 022,
+	ARseccnt	= 022,
 	ARstat		= 027,
 
-	ATAerr	= (1<<0),
-	ATAdrq	= (1<<3),
-	ATAdf 	= (1<<5),
+	ATAerr		= (1<<0),
+	ATAdrq		= (1<<3),
+	ATAdf 		= (1<<5),
 	ATAdrdy 	= (1<<6),
 	ATAbusy 	= (1<<7),
 	ATAabort	= (1<<2),
+	ATAobs		= (1<<1 | 1<<2 | 1<<4),
 	ATAeIEN	= (1<<1),
-	ATAsrst	= (1<<2),
-	ATAhob	= (1<<7),
+	ATAsrst		= (1<<2),
+	ATAhob		= (1<<7),
+	ATAbad		= (ATAbusy|ATAdf|ATAdrq|ATAerr),
 
-	SFdone = (1<<0),
-	SFerror = (1<<1),
+	SFdone 		= (1<<0),
+	SFerror 		= (1<<1),
 
-	SRBident = 0,
+	SRBident 	= 0,
 	SRBread,
 	SRBwrite,
 	SRBsmart,
@@ -82,60 +72,69 @@ enum {
 	SRBdatain,
 	SRBdataout,
 
-	RQread	= 1,			/* data coming IN from device */
+	RQread		= 1,			/* data coming IN from device */
 
-	PRDeot	= (1<<15),
+	PRDeot		= (1<<15),
 
 	/* EDMA interrupt error cause register */
 
 	ePrtDataErr	= (1<<0),
 	ePrtPRDErr	= (1<<1),
 	eDevErr		= (1<<2),
-	eDevDis		= (1<<3),
-	eDevCon		= (1<<4),
-	eOverrun		= (1<<5),
+	eDevDis		= (1<<3),	
+	eDevCon	= (1<<4),
+	eOverrun	= (1<<5),
 	eUnderrun	= (1<<6),
 	eSelfDis		= (1<<8),
 	ePrtCRQBErr	= (1<<9),
 	ePrtCRPBErr	= (1<<10),
-	ePrtIntErr		= (1<<11),
-	eIORdyErr		= (1<<12),
+	ePrtIntErr	= (1<<11),
+	eIORdyErr	= (1<<12),
+
+	// flags for sata 2 version
+	eSelfDis2	= (1<<7),
+	SerrInt		= (1<<5),
 
 	/* EDMA Command Register */
 
-	eEnEDMA		= (1<<0),
+	eEnEDMA	= (1<<0),
 	eDsEDMA 	= (1<<1),
 	eAtaRst 		= (1<<2),
 
 	/* Interrupt mask for errors we care about */
-	IEM			= (eDevDis | eDevCon | eSelfDis),
+	IEM		= (eDevDis | eDevCon | eSelfDis),
+	IEM2		= (eDevDis | eDevCon | eSelfDis2),
 
 	/* drive states */
-	Dnull = 0,
+	Dnull 		= 0,
 	Dnew,
-	Dident,
 	Dready,
 	Derror,
 	Dmissing,
-	Dunconfig,
+	Dlast,
 
 	/* drive flags */
-	Dext	 	= (1<<0),		/* use ext commands */
-	Dpio		= (1<<1),		/* doing pio */
-	Dwanted	= (1<<2),		/* someone wants an srb entry */
-	Dedma	= (1<<3),		/* device in edma mode */
-	Dpiowant	= (1<<4),		/* some wants to use the pio mode */
+	Dext	 	= (1<<0),	/* use ext commands */
+	Dpio		= (1<<1),	/* doing pio */
+	Dwanted		= (1<<2),	/* someone wants an srb entry */
+	Dedma		= (1<<3),	/* device in edma mode */
+	Dpiowant	= (1<<4),	/* some wants to use the pio mode */
+
+	// phyerrata magic crap
+	Mpreamp	= 0x7e0,
+	Dpreamp	= 0x720,
+
+	REV60X1B2	= 0x7,
+	REV60X1C0	= 0x9,
+
 };
 
-static char* diskstates[] =
-{
+static char* diskstates[Dlast] = {
 	"null",
 	"new",
-	"ident",
 	"ready",
 	"error",
 	"missing",
-	"unconfigured",
 };
 
 extern SDifc sdmv50xxifc;
@@ -151,50 +150,58 @@ typedef struct Rx Rx;
 typedef struct Srb Srb;
 typedef struct Tx Tx;
 
-struct Chip	/* pointers to per-Chip mmio */
+struct Chip			/* pointers to per-Chip mmio */
 {
-	Arb		*arb;
+	Arb	*arb;
 	Edma	*edma;	/* array of 4 */
 };
 
-struct Drive	/* a single disk */
+enum{
+	DMautoneg,
+	DMsatai,
+	DMsataii,
+};
+
+struct Drive			/* a single disk */
 {
 	Lock;
 
-	Ctlr		*ctlr;
+	Ctlr	*ctlr;
 	SDunit	*unit;
-//	int		subno;
-	char		name[10];
+	char	name[10];
 	ulong	magic;
 
 	Bridge	*bridge;
 	Edma	*edma;
-	Chip		*chip;
-	int		chipx;
+	Chip	*chip;
+	int	chipx;
 
-	int		state;
-	int		flag;
+	int	state;
+	int	flag;
 	uvlong	sectors;
+	ulong	pm2;		// phymode 2 init state
+	ulong	intick;		// check for hung westerdigital drives.
+	int	wait;
+	int	mode;		// DMautoneg, satai or sataii.
 
-	char		serial[20+1];
-	char		firmware[8+1];
-	char		model[40+1];
+	char	serial[20+1];
+	char	firmware[8+1];
+	char	model[40+1];
 
 	ushort	info[256];
 
-	Srb		*srb[SrbRing-1];
-	int		nsrb;
-	Prd		*prd;
-	Tx		*tx;
-	Rx		*rx;
+	Srb	*srb[SrbRing-1];
+	int	nsrb;
+	Prd	*prd;
+	Tx	*tx;
+	Rx	*rx;
 
-	Srb		*srbhead;
-	Srb		*srbtail;
+	Srb	*srbhead;
+	Srb	*srbtail;
 
 	/* added for file server */
 
 	/* for ata* routines */
-	int	online;
 	Devsize	offset;
 	int	driveno;		/* ctlr*NCtlrdrv + unit */
 	/*
@@ -204,68 +211,76 @@ struct Drive	/* a single disk */
 	uchar	buf[RBUFSIZE];
 };
 
-struct Ctlr		/* a single PCI card */
+struct Ctlr			/* a single PCI card */
 {
 	Lock;
 
-	int		irq;
-	int		tbdf;
+	int	irq;
+	int	tbdf;
+	int	rid;
 	ulong	magic;
-	int		enabled;
-	SDev		*sdev;
+	int	enabled;
+	int	type;
+	SDev	*sdev;
 	Pcidev	*pcidev;
 
 	uchar	*mmio;
-	Chip		chip[2];
-	int		nchip;
+	ulong	*lmmio;
+	Chip	chip[2];
+	int	nchip;
 	Drive	drive[NCtlrdrv];
-	int		ndrive;
+	int	ndrive;
 	Target	target[NTarget];	/* contains filters for stats */
 
 	/* old stuff carried forward */
-	QLock	idelock;	/* make seek & i/o atomic in ide* routines */
+	QLock	idelock;		/* make seek & i/o atomic in ide* routines */
 };
 
-struct Srb		/* request buffer */
+struct Srb			/* request buffer */
 {
 	Lock;
 	Rendez;
-	Srb		*next;
+	Srb	*next;
 
 	Drive	*drive;
 	uvlong	blockno;
-	int		count;
-	int		req;
-	int		flag;
+	int	count;
+	int	req;
+	int	flag;
 	uchar	*data;
 
 	uchar	cmd;
 	uchar	lba[6];
 	uchar	sectors;
-	int		sta;
-	int		err;
+	int	sta;
+	int	err;
 };
 
 /*
  * Memory-mapped I/O registers in many forms.
  */
-struct Bridge	/* memory-mapped per-Drive registers */
+struct Bridge
 {
 	ulong	status;
 	ulong	serror;
 	ulong	sctrl;
 	ulong	phyctrl;
-	char		fill1[0x2c];
+	ulong	phymode3;
+	ulong	phymode4;
+	uchar	fill0[0x14];
+	ulong	phymode1;
+	ulong	phymode2;
+	char	fill1[8];
 	ulong	ctrl;
-	char		fill2[0x34];
+	char	fill2[0x34];
 	ulong	phymode;
-	char		fill3[0x88];	/* pad to 0x100 in length */
-};
+	char	fill3[0x88];
+};				// most be 0x100 hex in length
 
-struct Arb		/* memory-mapped per-Chip registers */
+struct Arb			/* memory-mapped per-Chip registers */
 {
-	ulong	fill0;
-	ulong	rqop;	/* request queue out-pointer */
+	ulong	config;		/* satahc configuration register (sata2 only) */
+	ulong	rqop;		/* request queue out-pointer */
 	ulong	rqip;		/* response queue in pointer */
 	ulong	ict;		/* inerrupt caolescing threshold */
 	ulong	itt;		/* interrupt timer threshold */
@@ -273,85 +288,90 @@ struct Arb		/* memory-mapped per-Chip registers */
 	ulong	btc;		/* bridges test control */
 	ulong	bts;		/* bridges test status */
 	ulong	bpc;		/* bridges pin configuration */
-	char		fill1[0xdc];
+	char	fill1[0xdc];
 	Bridge	bridge[4];
 };
 
-struct Edma	/* memory-mapped per-Drive DMA-related registers */
+struct Edma			/* memory-mapped per-Drive DMA-related registers */
 {
-	ulong		config;		/* configuration register */
-	ulong		timer;
-	ulong		iec;			/* interrupt error cause */
-	ulong		iem;			/* interrupt error mask */
+	ulong	config;		/* configuration register */
+	ulong	timer;
+	ulong	iec;		/* interrupt error cause */
+	ulong	iem;		/* interrupt error mask */
 
-	ulong		txbasehi;		/* request queue base address high */
-	ulong		txi;			/* request queue in pointer */
-	ulong		txo;			/* request queue out pointer */
+	ulong	txbasehi;		/* request queue base address high */
+	ulong	txi;		/* request queue in pointer */
+	ulong	txo;		/* request queue out pointer */
 
-	ulong		rxbasehi;		/* response queue base address high */
-	ulong		rxi;			/* response queue in pointer */
-	ulong		rxo;			/* response queue out pointer */
+	ulong	rxbasehi;		/* response queue base address high */
+	ulong	rxi;		/* response queue in pointer */
+	ulong	rxo;		/* response queue out pointer */
 
-	ulong		ctl;			/* command register */
-	ulong		testctl;		/* test control */
-	ulong		status;
-	ulong		iordyto;		/* IORDY timeout */
-	char			fill[0xc8];
-	ushort		pio;			/* data register */
-	char			pad0[2];
-	uchar		err;			/* features and error */
-	char			pad1[3];
-	uchar		seccnt;		/* sector count */
-	char			pad2[3];
-	uchar		lba0;
-	char			pad3[3];
-	uchar		lba1;
-	char			pad4[3];
-	uchar		lba2;
-	char			pad5[3];
-	uchar		lba3;
-	char			pad6[3];
-	uchar		cmdstat;		/* cmd/status */
-	char			pad7[3];
-	uchar		altstat;		/* alternate status */
-	char			fill2[0x1edc];	/* pad to 0x2000 bytes */
+	ulong	ctl;		/* command register */
+	ulong	testctl;		/* test control */
+	ulong	status;
+	ulong	iordyto;		/* IORDY timeout */
+	char	fill[0x18];
+	ulong	sataconfig;	/* sata 2 */
+	char	fill[0xac];
+	ushort	pio;		/* data register */
+	char	pad0[2];
+	uchar	err;		/* features and error */
+	char	pad1[3];
+	uchar	seccnt;		/* sector count */
+	char	pad2[3];
+	uchar	lba0;
+	char	pad3[3];
+	uchar	lba1;
+	char	pad4[3];
+	uchar	lba2;
+	char	pad5[3];
+	uchar	lba3;
+	char	pad6[3];
+	uchar	cmdstat;		/* cmd/status */
+	char	pad7[3];
+	uchar	altstat;		/* alternate status */
+	uchar	fill2[0x1df];
+	Bridge	port;
+	char	fill3[0x1c00];	/* pad to 0x2000 bytes */
 };
 
 /*
  * Memory structures shared with card.
  */
-struct Prd		/* physical region descriptor */
+struct Prd			/* physical region descriptor */
 {
 	ulong	pa;		/* byte address of physical memory */
 	ushort	count;		/* byte count (bit0 must be 0) */
 	ushort	flag;
-	ulong	zero;			/* high long of 64 bit address */
+	ulong	zero;		/* high long of 64 bit address */
 	ulong	reserved;
 };
 
-struct Tx		/* command request block */
+struct Tx				/* command request block */
 {
 	ulong	prdpa;		/* physical region descriptor table structures */
-	ulong	zero;			/* must be zero (high long of prd address) */
-	ushort	flag;			/* control flags */
+	ulong	zero;		/* must be zero (high long of prd address) */
+	ushort	flag;		/* control flags */
 	ushort	regs[11];
 };
 
-struct Rx		/* command response block */
+struct Rx				/* command response block */
 {
-	ushort	cid;			/* cID of response */
-	uchar	cEdmaSts;		/* EDMA status */
+	ushort	cid;		/* cID of response */
+	uchar	cEdmaSts;	/* EDMA status */
 	uchar	cDevSts;		/* status from disk */
-	ulong	ts;			/* time stamp */
+	ulong	ts;		/* time stamp */
 };
 
 /* file-server-specific data */
 
-static Ctlr *mvsatactlr[NCtlr];
-static SDev *sdevs[NCtlr];
+static Ctlr 	*mvsatactlr[NCtlr];
+static SDev *	sdevs[NCtlr];
 
-static Drive *mvsatadrive[NDrive];
-static SDunit *sdunits[NDrive];
+static Drive 	*mvsatadrive[NDrive];
+static int		nmvsatadrive;
+static SDunit 	*sdunits[NDrive];
 
 static Drive	*mvsatadriveprobe(int driveno);
 static void	statsinit(void);
@@ -432,76 +452,210 @@ freesrb(Srb *p)
 	iunlock(&srblist);
 }
 
+static int
+ret0(void *)
+{
+	return 0;
+}
+
 /*
  * Wait for a byte to be a particular value.
  */
 static int
-satawait(uchar *p, uchar mask, uchar v, int ms)
+satawait(volatile uchar *p, uchar mask, uchar v, int ms)
 {
 	int i;
 
-//	DPRINT("satawait %p %#x %#x %d...", p, mask, v, ms);
-//	DPRINT("!%#x...", *p);
-	for(i=0; i<ms && (*p & mask) != v; i++){
-		if(i%1000 == 0)
-			DPRINT("!%#x", *p);
+	for(i=0; i<ms && (*p & mask) != v; i++)
 		microdelay(1000);
-	}
 	return (*p & mask) == v;
 }
 
 /*
  * Drive initialization
  */
+
+// unmask in the pci registers err done
+static void
+unmask(ulong *mmio, int port, int coal)
+{
+	port &= 7;
+	if(coal)
+		coal = 1;
+	if (port < 4)
+		mmio[0x1d64/4] |= (3 << (((port&3)*2)) | (coal<<8));
+	else
+		mmio[0x1d64/4] |= (3 << (((port&3)*2+9)) | (coal<<17));
+}
+
+static void
+mask(ulong *mmio, int port, int coal)
+{
+	port &= 7;
+	if(coal)
+		coal = 1;
+	if (port < 4)
+		mmio[0x1d64/4] &= ~(3 << (((port&3)*2)) | (coal<<8));
+	else
+		mmio[0x1d64/4] &= ~(3 << (((port&3)*2+9)) | (coal<<17));
+}
+
+/* I give up, marvell.  You win. */
+static void
+phyerrata(Drive *d)
+{
+	ulong n, m;
+	enum { BadAutoCal = 0xf << 26, };
+
+	if (d->ctlr->type == 1)
+		return;
+	microdelay(200);
+	n = d->bridge->phymode2;
+	while ((n & BadAutoCal) == BadAutoCal) {
+		dprint("%s: badautocal\n", d->unit->name);
+		n &= ~(1<<16);
+		n |= (1<<31);
+		d->bridge->phymode2 = n;
+		microdelay(200);
+		d->bridge->phymode2 &= ~((1<<16) | (1<<31));
+		microdelay(200);
+		n = d->bridge->phymode2;
+	}
+	n &= ~(1<<31);
+	d->bridge->phymode2 = n;
+	microdelay(200);
+
+	/* abra cadabra!  (random magic) */
+	m = d->bridge->phymode3;
+	m &= ~0x7f800000;
+	m |= 0x2a800000;
+	d->bridge->phymode3 = m;
+
+	/* fix phy mode 4 */
+	m = d->bridge->phymode3;
+	n = d->bridge->phymode4;
+	n &= ~(1<<1);
+	n |= 1;
+	switch(d->ctlr->rid){
+	case REV60X1B2:
+	default:
+		d->bridge->phymode4 = n;
+		d->bridge->phymode3 = m;
+		break;
+	case REV60X1C0:
+		d->bridge->phymode4 = n;
+		break;
+	}
+
+	/* revert values of pre-emphasis and signal amps to the saved ones */
+	n = d->bridge->phymode2;
+	n &= ~Mpreamp;
+	n |= d->pm2;
+	n &= ~(1<<16);
+	d->bridge->phymode2 = n;
+}
+
+static void
+edmacleanout(Drive *d)
+{
+	int i;
+	Srb *srb;
+
+	for(i=0; i<nelem(d->srb); i++){
+		if(srb = d->srb[i]){
+			d->srb[i] = nil;
+			d->nsrb--;
+			srb->flag |= SFerror|SFdone;
+			wakeup(srb);
+		}
+	}
+	while(srb = d->srbhead){
+		d->srbhead = srb->next;
+		srb->flag |= SFerror|SFdone;
+		wakeup(srb);
+	}
+}
+
+static void
+resetdisk(Drive *d)
+{
+	ulong n;
+
+	d->sectors = 0;
+	d->unit->sectors = 0;
+	if (d->ctlr->type == 2) {
+		// without bit 8 we can boot without disks, but
+		// inserted disks will never appear.  :-X
+		n = d->edma->sataconfig;
+		n &= 0xff;
+		n |= 0x9b1100;
+		d->edma->sataconfig = n;
+		n = d->edma->sataconfig;	//flush
+		USED(n);
+	}
+	d->edma->ctl = eDsEDMA;
+	microdelay(1);
+	d->edma->ctl = eAtaRst;
+	microdelay(25);
+	d->edma->ctl = 0;
+	if (satawait((uchar *)&d->edma->ctl, eEnEDMA, 0, 3*1000) == 0)
+		print("%s: eEnEDMA never cleared on reset\n", d->unit->name);
+	edmacleanout(d);
+	phyerrata(d);
+	d->bridge->sctrl = 0x301 | (d->mode << 4);
+	d->state = Dmissing;
+}
+
+static void
+edmainit(Drive *d)
+{
+	int i;
+
+	if(d->tx != nil)
+		return;
+
+	d->tx = xspanalloc(32*sizeof(Tx), 1024, 0);
+	d->rx = xspanalloc(32*sizeof(Rx), 256, 0);
+	d->prd = xspanalloc(32*sizeof(Prd), 32, 0);
+	for(i = 0; i < 32; i++)
+		d->tx[i].prdpa = PADDR(&d->prd[i]);
+	coherence();
+}
+
 static int
 configdrive(Ctlr *ctlr, Drive *d, SDunit *unit)
 {
-	int i;
-	ulong *r;
-
-	DPRINT("%s: configdrive\n", unit->name);
+	dprint("%s: configdrive\n", unit->name);
+	if (d->driveno < 0)
+		panic("mv50xx: configdrive: unset driveno\n");
 	d->unit = unit;
 	d->ctlr = ctlr;
 	d->chipx = unit->subno%4;
 	d->chip = &ctlr->chip[unit->subno/4];
-	d->bridge = &d->chip->arb->bridge[d->chipx];
 	d->edma = &d->chip->edma[d->chipx];
-	if (d->driveno < 0)
-		panic("mv50xx: configdrive: unset driveno\n");
 	sdunits[d->driveno] = unit;
 
-	if(d->tx == nil){
-		d->tx = mallocalign(32*sizeof(Tx), 1024, 0, 0);
-		d->rx = mallocalign(32*sizeof(Rx), 256, 0, 0);
-		d->prd = mallocalign(32*sizeof(Prd), 32, 0, 0);
-		if(d->tx == nil || d->rx == nil || d->prd == nil){
-			iprint("%s: out of memory allocating ring buffers\n",
-				unit->name);
-			free(d->tx);
-			d->tx = nil;
-			free(d->rx);
-			d->rx = nil;
-			free(d->prd);
-			d->prd = nil;
-			d->state = Dunconfig;
-			return 0;
-		}
-		for(i=0; i<32; i++)
-			d->tx[i].prdpa = PADDR(&d->prd[i]);
-		coherence();
+	edmainit(d);
+	d->mode = DMsatai;
+	if(d->ctlr->type == 1){
+		d->edma->iem = IEM;
+		d->bridge = &d->chip->arb->bridge[d->chipx];
+	}else{
+		d->edma->iem = IEM2;
+		d->bridge = &d->chip->edma[d->chipx].port;
+		d->edma->iem = ~(1<<6);
+		d->pm2 = Dpreamp;
+		if(d->ctlr->lmmio[0x180d8/4] & 1)
+			d->pm2 = d->bridge->phymode2 & Mpreamp;
 	}
-
-	/* leave disk interrupts turned off until we use it ... */
-	d->edma->iem = 0;
-
-	/* ... but enable them on the controller */
-	r = (ulong*)(d->ctlr->mmio + 0x1D64);
-	if(d->unit->subno < 4)
-		*r |= 3 << (d->chipx*2);
-	else
-		*r |= 3 << (d->chipx*2+9);
-
-	return 1;
+	resetdisk(d);
+	unmask(ctlr->lmmio, d->driveno, 0);
+	delay(100);
+	if(d->bridge->status){
+		dprint("%s: configdrive: found drive %lx\n", unit->name, d->bridge->status);
+		delay(1400);		// don't burn out the power supply.
+	}
+	return 0;
 }
 
 static int
@@ -509,34 +663,36 @@ enabledrive(Drive *d)
 {
 	Edma *edma;
 
-	DPRINT("%s: enabledrive\n", d->unit->name);
+	dprint("%s: enabledrive..", d->unit->name);
 
-	if((d->bridge->status & 0xF) != 0x3){	/* Det */
-		DPRINT("%s: not present\n", d->unit->name);
+	if((d->bridge->status & 0xf) != 3){
+		dprint("%s: not present\n", d->unit->name);
 		d->state = Dmissing;
-		return 0;
+		return -1;
 	}
 	edma = d->edma;
-	if(satawait(&edma->cmdstat, ATAbusy, 0, 10*1000) == 0){
-		print("%s: busy timeout\n", d->unit->name);
+	if(satawait(&edma->cmdstat, ATAbusy, 0, 5*1000) == 0){
+		dprint("%s: busy timeout\n", d->unit->name);
 		d->state = Dmissing;
-		return 0;
+		return -1;
 	}
-
 	edma->iec = 0;
 	d->chip->arb->ic &= ~(0x101 << d->chipx);
-	edma->config = 0x11F;
+	edma->config = 0x51f;
+	if (d->ctlr->type == 2)
+		edma->config |= 7<<11;
 	edma->txi = PADDR(d->tx);
-	edma->txo = (ulong)d->tx & 0x3E0;
-	edma->rxi = (ulong)d->rx & 0xF8;
+	edma->txo = (ulong)d->tx & 0x3e0;
+	edma->rxi = (ulong)d->rx & 0xf8;
 	edma->rxo = PADDR(d->rx);
 	edma->ctl |= 1;		/* enable dma */
 
-	DPRINT("%s: enable interrupts\n", d->unit->name);
-	if(d->bridge->status = 0x113)
+	if(d->bridge->status = 0x113){
+		dprint("%s: new\n", d->unit->name);
 		d->state = Dnew;
-	d->edma->iem = IEM;
-	return 1;
+	}else
+		print("%s: status not forced (should be okay)\n", d->unit->name);
+	return 0;
 }
 
 static void
@@ -545,7 +701,7 @@ disabledrive(Drive *d)
 	int i;
 	ulong *r;
 
-	DPRINT("%s: disabledrive\n", d->unit->name);
+	dprint("%s: disabledrive\n", d->unit->name);
 
 	if(d->tx == nil)	/* never enabled */
 		return;
@@ -553,7 +709,7 @@ disabledrive(Drive *d)
 	d->edma->ctl = 0;
 	d->edma->iem = 0;
 
-	r = (ulong*)(d->ctlr->mmio + 0x1D64);
+	r = (ulong*)(d->ctlr->mmio + 0x1d64);
 	i = d->chipx;
 	if(d->chipx < 4)
 		*r &= ~(3 << (i*2));
@@ -566,32 +722,30 @@ setudmamode(Drive *d, uchar mode)
 {
 	Edma *edma;
 
-	DPRINT("%s: setudmamode %d\n", d->unit->name, mode);
+	dprint("%s: setudmamode %d\n", d->unit->name, mode);
 
 	edma = d->edma;
 	if (edma == nil) {
 		print("setudamode(m%d): zero d->edma\m", d->driveno);
 		return 0;
 	}
-	if(satawait(&edma->cmdstat, ATAerr|ATAdrq|ATAdf|ATAdrdy|ATAbusy, ATAdrdy, 15*1000) == 0){
-		iprint("%s: cmdstat 0x%.2ux ready timeout\n",
-			d->unit->name, edma->cmdstat);
+	if(satawait(&edma->cmdstat, ~ATAobs, ATAdrdy, 9*1000) == 0){
+		print("%s: cmdstat 0x%.2ux ready timeout\n", d->unit->name, edma->cmdstat);
 		return 0;
 	}
 	edma->altstat = ATAeIEN;
 	edma->err = 3;
 	edma->seccnt = 0x40 | mode;
-	edma->cmdstat = 0xEF;
+	edma->cmdstat = 0xef;
 	microdelay(1);
-	if(satawait(&edma->cmdstat, ATAbusy, 0, 15*1000) == 0){
-		iprint("%s: cmdstat 0x%.2ux busy timeout\n",
-			d->unit->name, edma->cmdstat);
+	if(satawait(&edma->cmdstat, ATAbusy, 0, 5*1000) == 0){
+		print("%s: cmdstat 0x%.2ux busy timeout\n", d->unit->name, edma->cmdstat);
 		return 0;
 	}
 	return 1;
 }
 
-static void
+static int
 identifydrive(Drive *d)
 {
 	int i;
@@ -599,7 +753,7 @@ identifydrive(Drive *d)
 	Edma *edma;
 	SDunit *unit;
 
-	DPRINT("%s: identifydrive\n", d->unit->name);
+	dprint("%s: identifydrive\n", d->unit->name);
 
 	if(setudmamode(d, 5) == 0)	/* do all SATA support 5? */
 		goto Error;
@@ -607,17 +761,17 @@ identifydrive(Drive *d)
 	id = d->info;
 	memset(d->info, 0, sizeof d->info);
 	edma = d->edma;
-	if(satawait(&edma->cmdstat, 0xE9, 0x40, 15*1000) == 0)
+	if(satawait(&edma->cmdstat, ~ATAobs, ATAdrdy, 5*1000) == 0)
 		goto Error;
 
 	edma->altstat = ATAeIEN;	/* no interrupts */
-	edma->cmdstat = 0xEC;
+	edma->cmdstat = 0xec;
 	microdelay(1);
-	if(satawait(&edma->cmdstat, ATAbusy, 0, 15*1000) == 0)
+	if(satawait(&edma->cmdstat, ATAbusy, 0, 5*1000) == 0)
 		goto Error;
-	for(i=0; i<256; i++)
+	for(i = 0; i < 256; i++)
 		id[i] = edma->pio;
-	if(edma->cmdstat & (ATAerr|ATAdf))
+	if(edma->cmdstat & ATAbad)
 		goto Error;
 	i = lhgets(id+83) | lhgets(id+86);
 	if(i & (1<<10)){
@@ -638,74 +792,129 @@ identifydrive(Drive *d)
 	unit->inquiry[4] = sizeof(unit->inquiry)-4;
 	idmove((char*)unit->inquiry+8, id+27, 40);
 
-	if(enabledrive(d)) {
+	if(enabledrive(d) == 0) {
 		d->state = Dready;
-		print("mvsata: m%d: LLBA %lld sectors\n",
-			d->driveno, (Wideoff)d->sectors);
+		print("%s: LLBA %lld sectors\n", d->unit->name, d->sectors);
+		unit->sectors = d->sectors;
+		unit->secsize = 512;
 	} else
 		d->state = Derror;
-	return;
-
+	if(d->state == Dready)
+		return 0;
+	return -1;
 Error:
-	DPRINT("error...");
+	dprint("error...");
 	d->state = Derror;
+	return -1;
 }
 
-static void abortallsrb(Drive*);
+/* p. 163:
+	M	recovered error
+	P	protocol error
+	N	PhyRdy change
+	W	CommWake
+	B	8-to-10 encoding error
+	D	disparity error
+	C	crc error
+	H	handshake error
+	S	link sequence error
+	T	transport state transition error
+	F	unrecognized fis type
+	X	device changed
+*/
 
-/* NB: d->unit and d->edma can be nil, empirically */
+static char stab[] = {
+[1]	'M',
+[10]	'P',
+[16]	'N',
+[18]	'W', 'B', 'D', 'C', 'H', 'S', 'T', 'F', 'X'
+};
+static ulong sbad = (7<<20)|(3<<23);
+
 static void
-updatedrive(Drive *d, ulong cause)
+serrdecode(ulong r, char *s, char *e)
+{
+	int i;
+
+	e -=3;
+	for(i = 0; i < nelem(stab) && s < e; i++){
+		if((r&(1<<i)) && stab[i]){
+			*s++ = stab[i];
+			if(sbad&(1<<i))
+				*s++ = '*';
+		}
+	}
+	*s = 0;
+}
+
+char *iectab[] = {
+	"ePrtDataErr",
+	"ePrtPRDErr",
+	"eDevErr",
+	"eDevDis",
+	"eDevCon",
+	"SerrInt",
+	"eUnderrun",
+	"eSelfDis2",
+	"eSelfDis",
+	"ePrtCRQBErr",
+	"ePrtCRPBErr",
+	"ePrtIntErr",
+	"eIORdyErr",
+};
+
+static char*
+iecdecode(ulong cause)
+{
+	int i;
+
+	for(i = 0; i < nelem(iectab); i++)
+		if(cause&(1<<i))
+			return iectab[i];
+	return "";
+}
+
+enum{
+	Cerror	= ePrtDataErr|ePrtPRDErr|eDevErr|eSelfDis2|ePrtCRPBErr|ePrtIntErr,
+};
+
+static void
+updatedrive(Drive *d)
 {
 	int x;
+	ulong cause;
 	Edma *edma;
-
-	if(cause == 0)
-		return;
-
-	/* can't check this, cuz we have to run before identifydrive() */
-	if (0 && d->magic != Drvmagic) {
-		print("updatedrive: bad drive magic 0x%lux\n", d->magic);
-		return;
-	}
-	if (d == nil) {
-		DPRINT("nil d: updatedrive %#lux\n", cause);
-		return;
-	} else if (d->unit == nil)
-		DPRINT("nil d->unit: updatedrive %#lux\n", cause);
-	else if (d->unit->name == nil)
-		DPRINT("nil d->unit->name: updatedrive %#lux\n", cause);
-	else
-		DPRINT("%s: updatedrive %#lux\n", d->unit->name, cause);
+	char buf[32+4+1];
 
 	edma = d->edma;
-	if (edma == nil)
-		print("mv50xx: updatedrive(m%d): zero d->edma\n", d->driveno);
-	if(cause & eDevDis){
-		d->state = Dmissing;
-		if (edma)
-			edma->ctl |= eAtaRst;
-		microdelay(25);
-		if (edma)
-			edma->ctl &= ~eAtaRst;
-		microdelay(25);
+	if((edma->ctl&eEnEDMA) == 0){
+		// FEr SATA#4 40xx
+		x = d->edma->cmdstat;
+		USED(x);
 	}
-	if(cause & eDevCon){
-		d->bridge->sctrl = (d->bridge->sctrl & ~0xF) | 1;
+	cause = edma->iec;
+	if(cause == 0)
+		return;
+	dprint("%s: cause %08ulx [%s]\n", d->unit->name, cause, iecdecode(cause));
+	if(cause & eDevCon)
 		d->state = Dnew;
+	switch(d->ctlr->type){
+	case 1:
+		if(cause&eSelfDis)
+			d->state = Derror;
+		break;
+	case 2:
+		if(cause&eDevDis && d->state == Dready)
+			print("%s: pulled: st=%08ulx\n", d->unit->name, cause);
+		if(cause&Cerror)
+			d->state = Derror;
+		if(cause&SerrInt){
+			serrdecode(d->bridge->serror, buf, buf+sizeof buf);
+			dprint("%s: serror %08ulx [%s]\n", d->unit->name, (ulong)d->bridge->serror, buf);
+			d->bridge->serror = d->bridge->serror;
+		}
 	}
-	if(cause & eSelfDis)
-		d->state = Derror;
-	if (edma)
-		edma->iec = 0;
-	d->sectors = 0;
-	if (d->unit)
-		d->unit->sectors = 0;
-	abortallsrb(d);
-	SET(x);
-	if (edma)
-		x = edma->cmdstat;
-	USED(x);
+	edma->iec = ~cause;
 }
 
 /*
@@ -717,14 +926,6 @@ srbrw(int req, Drive *d, uchar *data, uint sectors, uvlong lba)
 	int i;
 	Srb *srb;
 	static uchar cmd[2][2] = { 0xC8, 0x25, 0xCA, 0x35 };
-
-	switch(req){
-	case SRBread:
-	case SRBwrite:
-		break;
-	default:
-		return nil;
-	}
 
 	srb = allocsrb();
 	srb->req = req;
@@ -766,15 +967,14 @@ mvsatarequest(ushort *cmd, Srb *srb, int ext)
 		*cmd++ = CMD(ARlba1, srb->lba[1]);
 		*cmd++ = CMD(ARlba2, srb->lba[5]);
 		*cmd++ = CMD(ARlba2, srb->lba[2]);
-		*cmd++ = CMD(ARdev, 0xE0);
+		*cmd++ = CMD(ARdev, 0xe0);
 	}else{
 		*cmd++ = CMD(ARlba0, srb->lba[0]);
 		*cmd++ = CMD(ARlba1, srb->lba[1]);
 		*cmd++ = CMD(ARlba2, srb->lba[2]);
-		*cmd++ = CMD(ARdev, srb->lba[3] | 0xE0);
+		*cmd++ = CMD(ARdev, srb->lba[3] | 0xe0);
 	}
-	*cmd++ = CMD(ARcmd, srb->cmd) | (1<<15);
-	USED(cmd);
+	*cmd = CMD(ARcmd, srb->cmd) | (1<<15);
 }
 
 static void
@@ -801,6 +1001,7 @@ startsrb(Drive *d, Srb *srb)
 			break;
 	if(i == nelem(d->srb))
 		panic("sdmv50xx: no free srbs");
+	d->intick = MACHP(0)->ticks;
 	d->srb[i] = srb;
 	edma = d->edma;
 	tx = (Tx*)KADDR(edma->txi);
@@ -812,7 +1013,12 @@ startsrb(Drive *d, Srb *srb)
 	mvsatarequest(tx->regs, srb, d->flag&Dext);
 	coherence();
 	edma->txi = advance(edma->txi, 5);
+	d->intick = MACHP(0)->ticks;
 }
+
+enum{
+	Rpidx	= 0x1f<<3,
+};
 
 static void
 completesrb(Drive *d)
@@ -822,20 +1028,22 @@ completesrb(Drive *d)
 	Srb *srb;
 
 	edma = d->edma;
-	if (edma == 0)
-		print("mv50xx: completesrb(m%d): zero d->edma\n", d->driveno);
+	if(edma == 0)
+		print("%s: completesrb: zero d->edma\n", d->unit->name);
 	if(edma == 0 || (edma->ctl & eEnEDMA) == 0)
 		return;
 
-	while((edma->rxo & (0x1F<<3)) != (edma->rxi & (0x1F<<3))){
+	while((edma->rxo&Rpidx) != (edma->rxi&Rpidx)){
 		rx = (Rx*)KADDR(edma->rxo);
 		if(srb = d->srb[rx->cid]){
 			d->srb[rx->cid] = nil;
 			d->nsrb--;
-			if(rx->cDevSts & (ATAerr|ATAdf))
+			if(rx->cDevSts & ATAbad)
 				srb->flag |= SFerror;
-			srb->flag |= SFdone;
+			if (rx->cEdmaSts)
+				iprint("cEdmaSts: %02ux\n", rx->cEdmaSts);
 			srb->sta = rx->cDevSts;
+			srb->flag |= SFdone;
 			wakeup(srb);
 		}else
 			iprint("srb missing\n");
@@ -844,27 +1052,6 @@ completesrb(Drive *d)
 			d->srbhead = srb->next;
 			startsrb(d, srb);
 		}
-	}
-}
-
-static void
-abortallsrb(Drive *d)
-{
-	int i;
-	Srb *srb;
-
-	for(i=0; i<nelem(d->srb); i++){
-		if(srb = d->srb[i]){
-			d->srb[i] = nil;
-			d->nsrb--;
-			srb->flag |= SFerror|SFdone;
-			wakeup(srb);
-		}
-	}
-	while(srb = d->srbhead){
-		d->srbhead = srb->next;
-		srb->flag |= SFerror|SFdone;
-		wakeup(srb);
 	}
 }
 
@@ -889,24 +1076,18 @@ mv50interrupt(Ureg*, void *a)
 	Drive *drive;
 
 	ctlr = a;
-	if (ctlr == nil)
-		panic("mv50interrupt: nil ctlr");
-	if (ctlr->magic != Ctlrmagic)
-		panic("mv50interrupt: ctlr %p: bad controller magic 0x%lux",
-			ctlr, ctlr->magic);
 	ilock(ctlr);
-	cause = *(ulong*)(ctlr->mmio + 0x1D60);
-//	DPRINT("sd%c: mv50interrupt: 0x%lux\n", ctlr->sdev->idno, cause);
+	cause = *(ulong*)(ctlr->mmio+0x1d60);
+//	dprint("sd%c: mv50interrupt: 0x%lux\n", ctlr->sdev->idno, cause);
 	for(i=0; i<ctlr->ndrive; i++)
 		if(cause & (3<<(i*2+i/4))){
 			drive = &ctlr->drive[i];
 			if (drive->magic != Drvmagic) {
-				print("mv50xx: interrupt for unconfigured drive %d\n",
-					i);
-				// continue;
+				print("m%d: interrupt for unconfigured drive\n", i);
+				continue;
 			}
 			ilock(drive);
-			updatedrive(drive, drive->edma->iec);
+			updatedrive(drive);
 			while(ctlr->chip[i/4].arb->ic & (0x0101 << (i%4))){
 				ctlr->chip[i/4].arb->ic = ~(0x101 << (i%4));
 				completesrb(drive);
@@ -916,17 +1097,92 @@ mv50interrupt(Ureg*, void *a)
 	iunlock(ctlr);
 }
 
-/* our Drives are statically allocated in the Ctlr */
-static Drive*
-mvsatagetdrive(Ctlr *ctlr, int subno, int driveno)
-{
-	Drive *drive = &ctlr->drive[subno];
+enum{
+	Nms		= 256,
+	Midwait		= 16*1024/Nms-1,
+	Mphywait	= 512/Nms-1,
+};
 
-	memset(drive, 0, sizeof *drive);
-	USED(driveno);
-	drive->driveno = -1;				/* unset */
-	drive->sectors = 0;
-	return drive;
+static void
+westerndigitalhung(Drive *d)
+{
+	Edma *e;
+
+	e = d->edma;
+	if(d->srb
+	&& TK2MS(MACHP(0)->ticks-d->intick) > 5*1000
+	&& TK2SEC(MACHP(0)->ticks-d->intick) < ~0-10UL	// wrap protection.
+	&& (e->rxo&Rpidx) == (e->rxi&Rpidx)){
+		dprint("westerndigital drive hung; resetting\n");
+		d->state = Derror;
+	}
+}
+
+static void
+checkdrive(Drive *d, int i)
+{
+	static ulong s, olds[NCtlr*NCtlrdrv];
+	char *name;
+
+	ilock(d);
+	name = d->unit->name;
+	s = d->bridge->status;
+	if(s != olds[i]){
+		dprint("%s: status: %08lx -> %08lx: %s\n", name, olds[i], s, diskstates[d->state]);
+		olds[i] = s;
+	}
+	// westerndigitalhung(d);
+	switch(d->state){
+	case Dnew:
+	case Dmissing:
+		switch(s){
+		case 0x000:
+			break;
+		default:
+			dprint("%s: unknown state %8lx\n", name, s);
+		case 0x100:
+			if(++d->wait&Mphywait)
+				break;
+		reset:	d->mode ^= 1;
+			dprint("%s: reset; new mode %d\n", name, d->mode);
+			resetdisk(d);
+			break;
+		case 0x123:
+		case 0x113:
+			s = d->edma->cmdstat;
+			if(s == 0x7f || (s&~ATAobs) != ATAdrdy){
+				if((++d->wait&Midwait) == 0)
+					goto reset;
+			}else if(identifydrive(d) == -1)
+				goto reset;
+		}
+		break;
+	case Dready:
+		if(s != 0)
+			break;
+		print("%s: pulled: st=%08ulx\n", name, s);
+//	case Dreset:
+	case Derror:
+		dprint("%s reset: mode %d\n", name, d->mode);
+		resetdisk(d);
+		break;
+	}
+	iunlock(d);
+}
+
+static void
+satakproc(void)
+{
+	int i;
+	static Rendez r;
+
+	
+	memset(&r, 0, sizeof r);
+	for(;;){
+		tsleep(&r, ret0, 0, Nms);
+		for(i = 0; i < nmvsatadrive; i++)
+			checkdrive(mvsatadrive[i], i);
+	}
 }
 
 /*
@@ -937,14 +1193,14 @@ mv50pnp(void)
 {
 	int i, nunit;
 	uchar *base;
-	ulong io;
-	void *mem;
+	ulong io, n, *mem;
 	Ctlr *ctlr;
 	Pcidev *p;
 	SDev *head, *tail, *sdev;
+	Drive *drive;
 	static int ctlrno, done;
 
-	DPRINT("mv50pnp\n");
+	dprint("mv50pnp\n");
 	if (done)
 		return nil;
 	done = 1;
@@ -952,7 +1208,7 @@ mv50pnp(void)
 	p = nil;
 	head = nil;
 	tail = nil;
-	while((p = pcimatch(p, 0x11AB, 0)) != nil){
+	while((p = pcimatch(p, 0x11ab, 0)) != nil){
 		switch(p->did){
 		case 0x5040:
 		case 0x5041:
@@ -962,8 +1218,7 @@ mv50pnp(void)
 		case 0x6081:
 			break;
 		default:
-			print("unknown Marvell controller %ux; ignoring\n",
-				(ushort)p->did);
+			print("mv50pnp: unknown did %ux ignored\n", (ushort)p->did);
 			continue;
 		}
 		if (ctlrno >= NCtlr) {
@@ -981,14 +1236,28 @@ mv50pnp(void)
 			free(sdev);
 			continue;
 		}
+		memset(sdev, 0, sizeof *sdev);
+		memset(ctlr, 0, sizeof *ctlr);
+
 		io = p->mem[0].bar & ~0x0F;
-		mem = (void *)vmap(io, p->mem[0].size);
+		mem = (ulong*)vmap(io, p->mem[0].size);
 		if(mem == 0){
 			print("sdmv50xx: address 0x%luX in use\n", io);
 			free(sdev);
 			free(ctlr);
 			continue;
 		}
+		ctlr->rid = p->rid;
+
+		// avert thine eyes!  (what does this do?)
+		mem[0x104f0/4] = 0;
+		ctlr->type = (p->did >> 12) & 3;
+		if(ctlr->type == 1){
+			n = mem[0xc00/4];
+			n &= ~(3<<4);
+			mem[0xc00/4] = n;
+		}
+
 		sdev->ifc = &sdmv50xxifc;
 		sdev->ctlr = ctlr;
 		sdev->nunit = nunit;
@@ -998,28 +1267,28 @@ mv50pnp(void)
 		ctlr->irq = p->intl;
 		ctlr->tbdf = p->tbdf;
 		ctlr->pcidev = p;
-		ctlr->mmio = mem;
+		ctlr->lmmio = mem;
+		ctlr->mmio = (uchar*)mem;
 		ctlr->nchip = (nunit+3)/4;
 		ctlr->ndrive = nunit;
 		ctlr->magic = Ctlrmagic;
 		ctlr->enabled = 0;
-		for(i=0; i<ctlr->nchip; i++){
+		for(i = 0; i < ctlr->nchip; i++){
 			base = ctlr->mmio+0x20000+0x10000*i;
 			ctlr->chip[i].arb = (Arb*)base;
 			ctlr->chip[i].edma = (Edma*)(base + 0x2000);
 		}
 		for (i = 0; i < nunit; i++) {
-			Drive *drive =
-				mvsatagetdrive(ctlr, i, ctlrno*NCtlrdrv +i);
-
-			if(drive == nil)
-				continue;
+			drive = &ctlr->drive[i];
+			drive->driveno = -1;				/* unset */
+			drive->sectors = 0;
 			drive->ctlr = ctlr;
 			drive->driveno = ctlrno*NCtlrdrv + i;
 			mvsatactlr[ctlrno] = ctlr;
 			mvsatadrive[drive->driveno] = drive;
 			drive->magic = Drvmagic;
 		}
+		nmvsatadrive += i;
 		ctlrno++;
 		if(head)
 			tail->next = sdev;
@@ -1040,7 +1309,7 @@ mv50enable(SDev *sdev)
 	char name[32];
 	Ctlr *ctlr;
 
-	DPRINT("sd%c: enable\n", sdev->idno);
+	dprint("sd%c: enable\n", sdev->idno);
 
 	ctlr = sdev->ctlr;
 	if (ctlr == nil)
@@ -1048,7 +1317,7 @@ mv50enable(SDev *sdev)
 	if (ctlr->enabled)
 		return 1;
 	snprint(name, sizeof name, "%s (%s)", sdev->name, sdev->ifc->name);
-	DPRINT("sd%c: irq %d\n", sdev->idno, ctlr->irq);
+	dprint("sd%c: irq %d\n", sdev->idno, ctlr->irq);
 	if (ctlr->magic != Ctlrmagic)
 		panic("mv50enable: bad controller magic 0x%lux", ctlr->magic);
 	intrenable(ctlr->irq, mv50interrupt, ctlr, ctlr->tbdf, name);
@@ -1067,7 +1336,7 @@ mv50disable(SDev *sdev)
 	Ctlr *ctlr;
 	Drive *drive;
 
-	DPRINT("sd%c: disable\n", sdev->idno);
+	dprint("sd%c: disable\n", sdev->idno);
 
 	ctlr = sdev->ctlr;
 	ilock(ctlr);
@@ -1095,7 +1364,7 @@ mv50clear(SDev *sdev)
 	Ctlr *ctlr;
 	Drive *d;
 
-	DPRINT("sd%c: clear\n", sdev->idno);
+	dprint("sd%c: clear\n", sdev->idno);
 
 	ctlr = sdev->ctlr;
 	for(i=0; i<ctlr->ndrive; i++){
@@ -1108,41 +1377,26 @@ mv50clear(SDev *sdev)
 }
 
 /*
- * Check that there is a disk or at least a hot swap bay in the drive.
+ * Check that there is a disk.
  */
 static int
 mv50verify(SDunit *unit)
 {
 	Ctlr *ctlr;
 	Drive *drive;
+	int i;
 
-	DPRINT("%s: verify\n", unit->name);
-
-	/*
-	 * First access of unit.
-	 */
-
+	dprint("%s: verify\n", unit->name);
 	ctlr = unit->dev->ctlr;
 	drive = &ctlr->drive[unit->subno];
 	ilock(ctlr);
 	ilock(drive);
-
-	if(!configdrive(ctlr, drive, unit) || !enabledrive(drive)){
-		iunlock(drive);
-		iunlock(ctlr);
-		return 0;
-	}
-	/*
-	 * Need to reset the drive before the first call to
-	 * identifydrive, or else the satawait in setudma will
-	 * freeze the machine when accessing edma->cmdstat.
-	 * I do not understand this.		-rsc
-	 */
-	updatedrive(drive, eDevDis);
-
+	i = configdrive(ctlr, drive, unit);
 	iunlock(drive);
 	iunlock(ctlr);
 
+	if(i == -1)
+		return 0;
 	return 1;
 }
 
@@ -1153,38 +1407,35 @@ static int
 mv50online(SDunit *unit)
 {
 	Ctlr *ctlr;
-	Drive *drive;
+	Drive *d;
+	int r, s0;
+	static int kproc;
+
+	if(kproc++ == 0)
+		userinit(satakproc, 0, "mvsata");
 
 	ctlr = unit->dev->ctlr;
-	drive = &ctlr->drive[unit->subno];
-	if (drive->magic != Drvmagic)
-		print("mv50online: bad drive magic 0x%lux\n", drive->magic);
-	ilock(drive);
-	if(drive->state == Dready){
-		unit->sectors = drive->sectors;
-		unit->secsize = 512;
-		iunlock(drive);
-		return 1;
+	d = &ctlr->drive[unit->subno];
+	if (d->magic != Drvmagic)
+		print("mv50online: bad drive magic 0x%lux\n", d->magic);
+	r = 0;
+	ilock(d);
+	s0 = d->state;
+	if(d->state == Dnew){
+		if(d->state == Derror)
+			resetdisk(d);
+		identifydrive(d);
+		if(d->state == Dready)
+			r++;
 	}
-
-	DPRINT("%s: online %s\n", unit->name, diskstates[drive->state]);
-
-	if(drive->state == Dnew || drive->state == Dmissing){
-		identifydrive(drive);
-		if(drive->state == Dready){
-			unit->sectors = drive->sectors;
-			unit->secsize = 512;
-			iunlock(drive);
-			return 2;	/* media changed */
-		}
-		else
-			print("mv50online: %s did not come ready, now %s\n",
-				unit->name, diskstates[drive->state]);
-	}
-	iunlock(drive);
-	return 0;
+	print("%s: online: %s -> %s\n", unit->name, diskstates[s0], diskstates[d->state]);
+	if(d->state == Dready)
+		r++;
+	iunlock(d);
+	return r;
 }
 
+#ifdef GROVEL
 /*
  * Register dumps
  */
@@ -1284,87 +1535,45 @@ rdinfo(char *p, char *e, ushort *info)
 	}
 	return p;
 }
-
-#ifndef FS
-static int
-mv50rctl(SDunit *unit, char *p, int l)
-{
-	char *e, *op;
-	Ctlr *ctlr;
-	Drive *drive;
-
-	if((ctlr = unit->dev->ctlr) == nil)
-		return 0;
-	drive = &ctlr->drive[unit->subno];
-
-	e = p+l;
-	op = p;
-	if(drive->state == Dready){
-		p = seprint(p, e, "model    %s\n", drive->model);
-		p = seprint(p, e, "serial   %s\n", drive->serial);
-		p = seprint(p, e, "firmware %s\n", drive->firmware);
-	}else
-		p = seprint(p, e, "no disk present\n");
-	p = seprint(p, e, "geometry %llud 512\n", drive->sectors);
-	p = rdinfo(p, e, drive->info);
-
-	p = rdregs(p, e, drive->chip->arb, regsarb, nelem(regsarb), nil);
-	p = rdregs(p, e, drive->bridge, regsbridge, nelem(regsbridge), nil);
-	p = rdregs(p, e, drive->edma, regsedma, nelem(regsedma), nil);
-
-	return p-op;
-}
-
-static int
-mv50wctl(SDunit *unit, Cmdbuf *cb)
-{
-	Ctlr *ctlr;
-	Drive *drive;
-
-	USED(unit);
-	if(strcmp(cb->f[0], "reset") == 0){
-		ctlr = unit->dev->ctlr;
-		drive = &ctlr->drive[unit->subno];
-		ilock(drive);
-		updatedrive(drive, eDevDis);
-		iunlock(drive);
-		return 0;
-	}
-	cmderror(cb, Ebadctl);
-	return -1;
-}
-
-static char*
-mv50rtopctl(SDev *sdev, char *p, char *e)
-{
-	char name[10];
-	Ctlr *ctlr;
-
-	ctlr = sdev->ctlr;
-	if(ctlr == nil)
-		return p;
-
-	snprint(name, sizeof name, "sd%c", sdev->idno);
-	p = rdregs(p, e, ctlr->mmio, regsctlr, nelem(regsctlr), name);
-	/* info for first disk */
-	p = rdregs(p, e, ctlr->chip[0].arb, regsarb, nelem(regsarb), name);
-	p = rdregs(p, e, &ctlr->chip[0].arb->bridge[0], regsbridge, nelem(regsbridge), name);
-	p = rdregs(p, e, &ctlr->chip[0].edma[0], regsedma, nelem(regsedma), name);
-
-	return p;
-}
 #endif
+
+static int
+waitready(Drive *d)
+{
+	ulong s, i;
+	Rendez r;
+
+	for(i = 0; i < 120; i++){
+		ilock(d);
+		s = d->bridge->status;
+		iunlock(d);
+		if(s == 0)
+			return SDeio;
+		if (d->state == Dready)
+			return SDok;
+		if ((i+1)%60 == 0){
+			ilock(d);
+			resetdisk(d);
+			iunlock(d);
+		}
+		memset(&r, 0, sizeof r);
+		tsleep(&r, ret0, 0, 1000);
+	}
+	print("%s: not responding after 2 minutes\n", d->unit->name);
+	return SDeio;
+}
 
 static int
 mv50rio(SDreq *r)
 {
-	int count, max, n, status;
+	int count, max, n, status, try, flag;
 	uchar *cmd, *data;
 	uvlong lba;
 	Ctlr *ctlr;
 	Drive *drive;
 	SDunit *unit;
 	Srb *srb;
+	Rendez rz;
 
 	unit = r->unit;
 	ctlr = unit->dev->ctlr;
@@ -1382,7 +1591,7 @@ mv50rio(SDreq *r)
 	case 0x2A:	/* write */
 		break;
 	default:
-		print("sdmv50xx: bad cmd 0x%.2ux\n", cmd[0]);
+		print("%s: bad cmd 0x%.2ux\n", drive->unit->name, cmd[0]);
 		r->status = SDcheck;
 		return SDcheck;
 	}
@@ -1394,6 +1603,10 @@ mv50rio(SDreq *r)
 	if(r->dlen < count*unit->secsize)
 		count = r->dlen/unit->secsize;
 
+	try = 0;
+retry:
+	if(waitready(drive) != SDok)
+		return SDeio;
 	/*
 	 * Could arrange here to have an Srb always outstanding:
 	 *
@@ -1420,79 +1633,53 @@ mv50rio(SDreq *r)
 		n = count;
 		if(n > max)
 			n = max;
+//		if((drive->edma->ctl&eEnEDMA) == 0)
+//			goto check try++ line;
 		srb = srbrw(cmd[0]==0x28 ? SRBread : SRBwrite, drive, data, n, lba);
 		ilock(drive);
 		startsrb(drive, srb);
 		iunlock(drive);
 
-		/*
-		 * Cannot let user interrupt the DMA.
-		 */
-		while(waserror())
-			;
-		tsleep(srb, srbdone, srb, 60*1000);
-		poperror();
-
-		if(!(srb->flag & SFdone)){
-			ilock(drive);
-			if(!(srb->flag & SFdone)){
-				/*
-				 * DMA didn't finish but we have to let go of
-				 * the data buffer.  Reset the drive to (try to) keep it
-				 * from using the buffer after we're gone.
-				 */
-				iprint("%s: i/o timeout\n", unit->name);
-				updatedrive(drive, eDevDis);
-				enabledrive(drive);
-				freesrb(srb);
-				iunlock(drive);
-				error("i/o timeout");
-			}
-			iunlock(drive);
-		}
-
-		if(srb->flag & SFerror){
-			freesrb(srb);
-			error("i/o error");
-		}
+		sleep(&srb->Rendez, srbdone, srb);
+		flag = srb->flag;
 		freesrb(srb);
+		if(flag == 0){
+			if(++try == 10){
+				print("%s: bad disk\n", drive->unit->name); 
+				return SDeio;
+			}
+			dprint("%s: retry\n", drive->unit->name);
+			memset(&rz, 0, sizeof rz);
+			tsleep(&rz, ret0, 0, 1000);
+			goto retry;
+		}
+		if(srb->flag & SFerror){
+			print("%s: i/o error\n", drive->unit->name);
+			return SDeio;
+		}
 		count -= n;
 		lba += n;
 		data += n*unit->secsize;
 	}
 	r->rlen = data - (uchar*)r->data;
 	return SDok;
-err:
-	return SDeio;
 }
 
 SDifc sdmv50xxifc = {
-	"mv50xx",				/* name */
+	"m",			/* name */
 
-	mv50pnp,			/* pnp */
-	nil,				/* legacy */
-#ifdef FS
+	mv50pnp,		/* pnp */
+	nil,			/* legacy */
 	nil,			/* id */
-#endif
 	mv50enable,		/* enable */
 	mv50disable,		/* disable */
 
-	mv50verify,			/* verify */
-	mv50online,			/* online */
-	mv50rio,				/* rio */
-#ifdef FS
+	mv50verify,		/* verify */
+	mv50online,		/* online */
+	mv50rio,			/* rio */
 	nil,
 	nil,
-#else
-	mv50rctl,			/* rctl */
-	mv50wctl,			/* wctl */
-#endif
 	scsibio,			/* bio */
-#ifndef FS
-	nil,			/* probe */
-	mv50clear,			/* clear */
-	mv50rtopctl,			/* rtopctl */
-#endif
 };
 
 /*
@@ -1502,30 +1689,23 @@ SDifc sdmv50xxifc = {
  */
 
 static Drive*
-mvsatapart(Drive *dp)
+mvsatapart(Drive *d)
 {
-	return dp;
+	return d;
 }
 
 static Drive*
 mvsatadriveprobe(int driveno)
 {
-	Drive *drive;
+	Drive *d;
 
-	drive = mvsatadrive[driveno];
-	if (drive == nil)
+	d = mvsatadrive[driveno];
+	if (d == nil)
 		return nil;
-	if (drive->magic != Drvmagic)
-		print("mv50xx: mvsatadriveprobe(m%d): bad drive magic 0x%lux\n",
-			driveno, drive->magic);
-	drive->driveno = driveno;
-	if(drive->online == 0){
-		/* LBA assumed */
-		print("m%d: LBA %,llud sectors\n",
-			drive->driveno, (Wideoff)drive->sectors);
-		drive->online = 1;
-	}
-	return mvsatapart(drive);
+	if (d->magic != Drvmagic)
+		print("m%d: mvsatadriveprobe: bad magic 0x%lux\n", driveno, d->magic);
+	d->driveno = driveno;
+	return mvsatapart(d);
 }
 
 /* find all the controllers, enable interrupts, set up SDevs & SDunits */
@@ -1533,12 +1713,11 @@ int
 mvsatainit(void)
 {
 	unsigned i;
-	SDev *sdp;
-	SDev **sdpp;
-	SDunit *sup;
-	SDunit **supp;
+	SDev *sdp, **sdpp;
+	SDunit *sup, **supp;
 	static int first = 1;
 
+	dprint("mvsatainit(first=%d)\n", first);
 	if (first)
 		first = 0;
 	else
@@ -1553,7 +1732,7 @@ mvsatainit(void)
 		i = sdpp - sdevs;
 		sdp->ifc = &sdmv50xxifc;
 		sdp->nunit = NCtlrdrv;
-		sdp->index = i;
+//		sdp->index = i;
 		sdp->idno = 'E' + i;
 		sdp->ctlr = mvsatactlr[i];
 		if (sdp->ctlr != nil)
@@ -1573,21 +1752,21 @@ mvsatainit(void)
 }
 
 Devsize
-mvsataseek(int driveno, Devsize offset)
+mvsataseek(int n, Devsize offset)
 {
-	Drive *drive = mvsatadrive[driveno];
+	Drive *d;
 
-	if (drive == nil || !drive->online)
+	if((d = mvsatadrive[n]) == nil)
 		return -1;
-	drive->offset = offset;
-	return offset;
+	d->offset = offset;
+	return n;
 }
 
 /* zero indicates failure; only otherinit() cares */
 int
 setmv50part(int driveno, char *)
 {
-	/* mvsatadriveprobe() sets drive->online */
+//	dprint("m%d: setmv50part(%s)\n", driveno, name);
 	if(mvsatadriveprobe(driveno) == nil)
 		return 0;
 	return 1;
@@ -1618,42 +1797,46 @@ keepstats(SDunit *unit, int dbytes)
 	qunlock(tp);
 }
 
-static long
-mvsataxfer(Drive *dp, void *, int inout, Devsize start, long bytes)
+static void
+pedanticchecks(Drive *d)
 {
-	unsigned driveno = dp->driveno;
-	ulong secsize = dp->unit->secsize, sects;
-	SDunit *unit;
-	SDunit **unitp = sdunits + driveno;
-	static int beenhere;
+	SDunit *u;
+	int n;
 
-	DPRINT("%s: mvsataxfer\n", dp->unit->name);
-	unit = *unitp;
-	if (unit == nil) {
-		print("mvsataxfer: nil unit\n");
-		return -1;
-	}
-	if (!beenhere && dp->unit != unit) {
-		beenhere = 1;
-		print("mvsataxfer: units differ: dp->unit %p unit %p\n",
-			dp->unit, unit);
-	}
-	if (dp->driveno == -1)
-		panic("mvsataxfer: dp->driveno unset");
-	if (unit->dev != sdevs[driveno/NCtlrdrv])
-		panic("mvsataxfer: SDunit[%d].dev is wrong controller", driveno);
-	if (unit->subno != driveno%NCtlrdrv)
-		panic("mvsataxfer: SDunit[%d].subno is %d, not %d",
-			driveno, unit->subno, driveno%NCtlrdrv);
+	n = d->driveno;
+	if(n == -1)
+		panic("mvsataxfer: d->driveno unset");
+	if((u = sdunits[n]) == nil)
+		panic("mvsataxfer: nil unit");
+	if(d->unit != u)
+		panic("mvsataxfer: units differ: d->unit %p != %p", d->unit, u);
+	if(u->dev != sdevs[n/NCtlrdrv])
+		panic("mvsataxfer: SDunit[%d].dev on wrong controller", n);
+	if(u->subno != n%NCtlrdrv)
+		panic("mvsataxfer: SDunit[%d].subno %d != %d\n", n, u->subno, n%NCtlrdrv);
+}
+	
+static long
+mvsataxfer(Drive *d, int inout, Devsize start, long bytes)
+{
+	ulong secsize, sects;
+	SDunit *unit;
+//	static int n;
+
+//	if((++n&0x7fff) == 0)
+//		idprint("%s: mvsataxfer(%c, %lld, %ld)\n", d->unit->name, "rw"[inout], start, bytes);
+	secsize = d->unit->secsize;
+	unit = d->unit;
+//	pedanticchecks(d);
 	if (unit->sectors == 0) {
-		unit->sectors = dp->sectors;
+		unit->sectors = d->sectors;
 		unit->secsize = secsize;
 	}
 	keepstats(unit, bytes);
 	sects = (bytes + secsize - 1) / secsize;	/* round up */
 	if (start%secsize != 0)
-		print("mvsataxfer: start offset not on sector boundary\n");
-	return scsibio(unit, 0, inout, dp->buf, sects, start/secsize);
+		print("%s: start offset not on sector boundary\n", d->unit->name);
+	return scsibio(unit, 0, inout, d->buf, sects, start/secsize);
 }
 
 /*
@@ -1669,26 +1852,22 @@ mvsataread(int driveno, void *a, long n)
 	int skip;
 	Off rv, i;
 	uchar *aa = a;
-//	Ctlr *cp;
 	Drive *dp;
 
-	DPRINT("m%d: mvsataread\n", driveno);
 	dp = mvsatadrive[driveno];
-	if(dp == nil || !dp->online)
+	if(dp == nil)
 		return 0;
-	DPRINT("%s: mvsataread drive=%p\n", dp->unit->name, dp);
+	ioprint("%s: mvsataread drive=%p\n", dp->unit->name, dp);
 
-//	cp = dp->ctlr;
 	if (dp->unit->secsize == 0)
 		panic("mvsataread: %s: sector size of zero", dp->unit->name);
 	skip = dp->offset % dp->unit->secsize;
 	for(rv = 0; rv < n; rv += i){
-		i = mvsataxfer(dp, nil, Read, dp->offset+rv-skip, n-rv+skip);
+		i = mvsataxfer(dp, Read, dp->offset+rv-skip, n-rv+skip);
 		if(i == 0)
 			break;
-		if(i < 0) {
+		if(i < 0)
 			return -1;
-		}
 		i -= skip;
 		if(i > n - rv)
 			i = n - rv;
@@ -1704,16 +1883,12 @@ mvsatawrite(int driveno, void *a, long n)
 {
 	Off rv, i, partial;
 	uchar *aa = a;
-//	Ctlr *cp;
 	Drive *dp;
 
-	DPRINT("m%d: mvsatawrite\n", driveno);
 	dp = mvsatadrive[driveno];
-	if(dp == nil || !dp->online)
+	if(dp == nil)
 		return 0;
-	DPRINT("%s: mvsatawrite drive=%p\n", dp->unit->name, dp);
-
-//	cp = dp->ctlr;
+	ioprint("%s: mvsatawrite drive=%p\n", dp->unit->name, dp);
 
 	/*
 	 *  if not starting on a sector boundary,
@@ -1723,16 +1898,14 @@ mvsatawrite(int driveno, void *a, long n)
 		panic("mvsatawrite: %s: sector size of zero", dp->unit->name);
 	partial = dp->offset % dp->unit->secsize;
 	if(partial){
-		if (mvsataxfer(dp, nil, Read, dp->offset-partial,
-		    dp->unit->secsize) < 0)
+		if(mvsataxfer(dp, Read, dp->offset-partial, dp->unit->secsize) < 0)
 			return -1;
 		if(partial+n > dp->unit->secsize)
 			rv = dp->unit->secsize - partial;
 		else
 			rv = n;
 		memmove(dp->buf+partial, aa, rv);
-		if (mvsataxfer(dp, nil, Write, dp->offset-partial,
-		    dp->unit->secsize) < 0)
+		if(mvsataxfer(dp, Write, dp->offset-partial, dp->unit->secsize) < 0)
 			return -1;
 	} else
 		rv = 0;
@@ -1747,7 +1920,7 @@ mvsatawrite(int driveno, void *a, long n)
 		if(i > Maxxfer)
 			i = Maxxfer;
 		memmove(dp->buf, aa+rv, i);
-		i = mvsataxfer(dp, nil, Write, dp->offset+rv, i);
+		i = mvsataxfer(dp, Write, dp->offset+rv, i);
 		if(i == 0)
 			break;
 		if(i < 0)
@@ -1759,12 +1932,10 @@ mvsatawrite(int driveno, void *a, long n)
 	 *  read in the last sector before writing it out.
 	 */
 	if(partial){
-		if (mvsataxfer(dp, nil, Read, dp->offset+rv, dp->unit->secsize)
-		    < 0)
+		if (mvsataxfer(dp, Read, dp->offset+rv, dp->unit->secsize) < 0)
 			return -1;
 		memmove(dp->buf, aa+rv, partial);
-		if (mvsataxfer(dp, nil, Write, dp->offset+rv, dp->unit->secsize)
-		    < 0)
+		if (mvsataxfer(dp, Write, dp->offset+rv, dp->unit->secsize) < 0)
 			return -1;
 		rv += partial;
 	}
@@ -1797,35 +1968,20 @@ mvideinit(Device *d)
 	int driveno;
 	Drive *dp;
 
-	DPRINT("mvideinit\n");
 	mvsatainit();
 	if (d->private)
 		return;
 	/* call setmv50part() first in case we didn't boot off this drive */
 	driveno = d->wren.ctrl*NCtlrdrv + d->wren.targ;
-	DPRINT("%Z: mvideinit\n", d);
+	dprint("%Z: mvideinit\n", d);
 	setmv50part(driveno, "disk");
-	dp = mvsatadriveprobe(driveno);
-	if (dp) {
-		print("mvideinit(ctrl %d targ %d) driveno %d\n",
-			d->wren.ctrl, d->wren.targ, dp->driveno);
-		if (dp->driveno != driveno)
-			panic("mvideinit: dp->dev != driveno");
-		if (dp->magic != Drvmagic)
-			panic("mvideinit: %Z: bad drive magic", d);
-		d->private = dp;
-		if (dp->unit == nil)
-			panic("mvideinit: %Z: nil dp->unit", d);
-		/* print the sizes now, not later */
-		print(
-	"  mvidesize(driveno %d):  %llud %lud-byte sectors -> %llud blocks\n",
-			dp->driveno, (Wideoff)dp->sectors, dp->unit->secsize,
-			(Wideoff)mvidesize(d));
-		if (dp->unit->secsize == 0)
-			panic("%Z: zero sector size", d);
-		if (dp->sectors == 0)
-			panic("%Z: zero sectors", d);
-	}
+	if((dp = mvsatadriveprobe(driveno)) == 0)
+		return;
+	d->private = dp;
+	if (dp->unit == nil)
+		panic("mvideinit: %Z: nil dp->unit", d);
+	/* 0 size okay. */
+	print("\t\t%llud sectors/%llud blocks\n", dp->sectors, mvidesize(d));
 }
 
 int
@@ -1836,7 +1992,7 @@ mvideread(Device *d, Devsize b, void *c)
 	Ctlr *cp;
 
 	if (d == nil || d->private == nil) {
-		print("mvideread: %Z: nil d or d->private == nil\n", d);
+		print("mvideread: %Z: nil device/drive\n", d);
 		return 1;
 	}
 	dp = d->private;
@@ -1849,8 +2005,7 @@ mvideread(Device *d, Devsize b, void *c)
 	driveno = dp->driveno;
 	if (driveno == -1)
 		panic("mvideread: dp->driveno unset");
-	IDPRINT("mvideread(dev %lux, %lld, %lux, %d): %lux\n",
-		(ulong)d, (Wideoff)b, (ulong)c, driveno, (ulong)dp);
+	idprint("mvideread(%d, %lld)\n", driveno, (Wideoff)b);
 	mvsataseek(driveno, b * RBUFSIZE);
 	x = mvsataread(driveno, c, RBUFSIZE) != RBUFSIZE;
 	qunlock(&cp->idelock);
@@ -1865,7 +2020,7 @@ mvidewrite(Device *d, Devsize b, void *c)
 	Ctlr *cp;
 
 	if (d == nil || d->private == nil) {
-		print("mvidewrite: %Z: nil d or d->private == nil\n", d);
+		print("mvideread: %Z: nil device/drive\n", d);
 		return 1;
 	}
 	dp = d->private;
@@ -1878,8 +2033,7 @@ mvidewrite(Device *d, Devsize b, void *c)
 	driveno = dp->driveno;
 	if (driveno == -1)
 		panic("mvidewrite: dp->driveno unset");
-	IDPRINT("mvidewrite(%ux, %lld, %ux): driveno %d\n",
-		(int)d, (Wideoff)b, (int)c, driveno);
+	idprint("mvidewrite(%d, %lld)\n", driveno, (Wideoff)b);
 	mvsataseek(driveno, b * RBUFSIZE);
 	x = mvsatawrite(driveno, c, RBUFSIZE) != RBUFSIZE;
 	qunlock(&cp->idelock);
@@ -1901,10 +2055,10 @@ cmd_stat(int, char*[])
 			tp = &ctlr->target[targetno];
 			if(tp->fflag == 0)
 				continue;
-			print("\t%d.%d work =%7W%7W%7W xfrs\n",
+			print("\t%d.%d work =%9W%9W%9W xfrs\n",
 				ctlrno, targetno,
 				tp->work+0, tp->work+1, tp->work+2);
-			print("\t    rate =%7W%7W%7W tBps\n",
+			print("\t    rate =%9W%9W%9W tBps\n",
 				tp->rate+0, tp->rate+1, tp->rate+2);
 		}
 	}
