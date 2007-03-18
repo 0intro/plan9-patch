@@ -22,6 +22,7 @@ int		canlock(Lock*);
 int		canpage(Proc*);
 int		canqlock(QLock*);
 int		canrlock(RWlock*);
+void		cecputs(char*, int);
 void		chandevinit(void);
 void		chandevreset(void);
 void		chandevshutdown(void);

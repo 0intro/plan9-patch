@@ -177,7 +177,7 @@ putstrn0(char *str, int n, int usewrite)
 		uartputs(str, n);
 		return;
 	}
-
+	cecputs(str, n);
 	while(n > 0) {
 		t = memchr(str, '\n', n);
 		if(t && !kbd.raw) {
@@ -264,6 +264,7 @@ iprint(char *fmt, ...)
 	if(screenputs != nil && iprintscreenputs)
 		screenputs(buf, n);
 	uartputs(buf, n);
+	cecputs(buf, n);
 	if(locked)
 		unlock(&iprintlock);
 	splx(s);
@@ -321,7 +322,7 @@ pprint(char *fmt, ...)
 	c = up->fgrp->fd[2];
 	if(c==0 || (c->mode!=OWRITE && c->mode!=ORDWR))
 		return 0;
-	n = snprint(buf, sizeof buf, "%s %lud: ", up->text, up->pid);
+	n = sprint(buf, "%s %lud: ", up->text, up->pid);
 	va_start(arg, fmt);
 	n = vseprint(buf+n, buf+sizeof(buf), fmt, arg) - buf;
 	va_end(arg);
@@ -337,6 +338,36 @@ pprint(char *fmt, ...)
 
 	return n;
 }
+
+static void
+echocec(char *buf, int n)
+{
+	char *e, *p;
+	char ebuf[128];
+	int x;
+
+	p = ebuf;
+	e = ebuf + sizeof(ebuf) - 4;
+	while(n-- > 0){
+		if(p >= e){
+			cecputs(ebuf, p - ebuf);
+			p = ebuf;
+		}
+		x = *buf++;
+		if(x == '\n'){
+			*p++ = '\r';
+			*p++ = '\n';
+		}else if(x == 0x15){
+			*p++ = '^';
+			*p++ = 'U';
+			*p++ = '\n';
+		}else
+			*p++ = x;
+	}
+	if(p != ebuf)
+		cecputs(ebuf, p - ebuf);
+}
+
 
 static void
 echoscreen(char *buf, int n)
@@ -478,6 +509,7 @@ echo(char *buf, int n)
 		echoscreen(buf, n);
 	if(serialoq)
 		echoserialoq(buf, n);
+	echocec(buf, n);
 }
 
 /*
