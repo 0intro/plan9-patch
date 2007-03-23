@@ -63,6 +63,7 @@ will return 0 bytes.  Writes to a pipe with no reader will generate a note
 .IR read (2),
 .IR pipe (3)
 .SH DIAGNOSTICS
+Returns a negative number if an error occurred.
 Sets
 .IR errstr .
 .SH BUGS
