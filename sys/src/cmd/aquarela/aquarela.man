@@ -1,0 +1,81 @@
+.TH aquarela 8
+.SH NAME
+aquarela \- Microsoft\(tm Windows filesystem server
+.SH SYNOPSIS
+.B aquarela
+[
+.B -n
+] [
+.B -d
+.I option
+] [
+.B -p 
+] [
+.B -w
+.I workgroup 
+] [
+.B -u
+.I 0|1
+]
+.PP
+.I Aquarela
+listens on port 455 and port 137, and optionally 129 for incomming
+MicroSoft file shareing protocol (a.k.a SMB and CIFS) requests and serves and fulfills
+these from its current namespace.
+.PP
+Transcoding is peformed between spaces and non breaking spaces to accommodate 
+fileservers other than fossil.
+.PP
+Log messages are appended to 
+.I /sys/log/aquarela
+if it exists.
+.PP
+The options are:
+.TP
+.B -u
+.I 0|1
+Force unicode support off/on; since there is no code page support,
+the server actually sends UTF if this is disabled 
+.TP
+.B -w
+.I workgroup
+Sets the workgroup (aka primary domain) to 
+.IR workgroup .
+By default the workgroup is
+.IR PLAN9 .
+.TP
+.B -n
+Enable vestigial Netbios support, it starts up a Netbios listener to answer
+name queries, and attempts to register the server with the local
+master browser for the chosen workgroup. It will not act as LMB
+itself, so relies on the existence of another one, e.g. samba's 
+.IR nmbd(1) .
+This option should not be used unless strictly nescessary.
+.TP
+.B -p
+Sends logging to standard output, as well as to the log file.
+.TP
+.B -d
+.I option
+Enable one of many possible debugging options 
+.PP
+By default only the share 
+.B local
+is offered, which maps to the plan9 directory
+.IR /n/local " \-"
+which is usually bound over the root of the 
+plan9 fileserver. If a different share is requested then
+.IR 9fs (1)
+is envoked to provide access to that filesyetem.
+.SH EXAMPLES
+To mount /boot on a plan9 system from a 
+.I linux
+machine, using smbfs
+.EX
+
+	$ smbumount $home/mnt
+	$ smbmount //celeste/boot /mnt/celeste -o username=glenda
+.EE
+.SH BUGS
+.I Aquarela
+should be regarded as a work in progress.
