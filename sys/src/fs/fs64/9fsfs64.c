@@ -41,14 +41,15 @@ static struct
 	{ "hd", ataread,	ataseek,	atawrite,	setatapart, },
 	{ "md", mvsataread,	mvsataseek,	mvsatawrite,	setmv50part, },
 /*	{ "sd", scsiread,	scsiseek,	scsiwrite,	setscsipart, },  */
-	{ 0, },
 };
+
+char *bootpart;
 
 void
 otherinit(void)
 {
 	int dev, i, nfd, nhd, s;
-	char *p, *q, buf[sizeof(nvrfile)+8];
+	char *p, *q, *part, *v[4], buf[sizeof(nvrfile)+16];
 
 	kbdinit();
 	printcpufreq();
@@ -62,18 +63,26 @@ otherinit(void)
 	mvsatainit();		/* harmless to call again */
 	nfd = floppyinit();
 	dev = 0;
+	part = "disk";
 	if(p = getconf("nvr")){
-		strncpy(buf, p, sizeof(buf)-2);
-		buf[sizeof(buf)-1] = 0;
-		p = strchr(buf, '!');
-		q = strrchr(buf, '!');
-		if(p == 0 || q == 0 || strchr(p+1, '!') != q)
+		strncpy(buf, p, sizeof buf-2);
+		buf[sizeof buf-1] = 0;
+		switch(getfields(buf, v, nelem(v), 0, "!")){
+		default:
 			panic("malformed nvrfile: %s\n", buf);
-		*p++ = 0;
-		*q++ = 0;
-		dev = strtoul(p, 0, 0);
-		strcpy(nvrfile, q);
-		p = buf;
+		case 4:
+			p = v[0];
+			dev = strtoul(v[1], 0, 0);
+			part = v[2];
+			strcpy(nvrfile, v[3]);
+			break;
+		case 3:
+			p = v[0];
+			dev = strtoul(v[1], 0, 0);
+			part = "disk";
+			strcpy(nvrfile, v[2]);
+			break;
+		}	
 	} else
 	if(p = getconf("bootfile")){
 		strncpy(buf, p, sizeof(buf)-2);
@@ -95,17 +104,18 @@ otherinit(void)
 	else
 		p = "sd";
 
-	for(i = 0; nvrdevs[i].name; i++){
-		if(strcmp(p, nvrdevs[i].name) == 0){
-			dos.dev = dev;
-			if (nvrdevs[i].part &&
-			    (*nvrdevs[i].part)(dos.dev, "disk") == 0)
-				break;
-			dos.read = nvrdevs[i].read;
-			dos.seek = nvrdevs[i].seek;
-			dos.write = nvrdevs[i].write;
-			break;
-		}
+	print("p = [%s]; dev=%d; part=[%s]; nvrfile=[%s]\n", p, dev, part, nvrfile);
+	for(i = 0; i < nelem(nvrdevs); i++){
+		if(strcmp(p, nvrdevs[i].name) != 0)
+			continue;
+		dos.dev = dev;
+		if(nvrdevs[i].part && nvrdevs[i].part(dos.dev, part) == 0)
+			continue;
+		dos.read = nvrdevs[i].read;
+		dos.seek = nvrdevs[i].seek;
+		dos.write = nvrdevs[i].write;
+		bootpart = p;
+		break;
 	}
 	if(dos.read == 0)
 		panic("no device (%s) for nvram\n", p);
@@ -125,6 +135,15 @@ touser(void)
 {
 	int i;
 
+#ifdef dowereallyneedthis
+	/* forget about partiton set for plan9.nvr */
+	for(i = 0; nvrdevs[i].name; i++)
+		if(strcmp(bootpart, nvrdevs[i].name) == 0){
+			if(nvrdevs[i].part)
+				nvrdevs[i].part(dos.dev, "disk");
+			break;
+		}
+ #endif
 	settime(rtctime());
 	boottime = time();
 
@@ -180,9 +199,6 @@ localconfinit(void)
 	conf.ripoff = 1;
 	conf.nlgmsg = 1100;	/* @8576 bytes, for packets */
 	conf.nsmmsg = 500;	/* @128 bytes */
-
-	conf.minuteswest = 8*60;
-	conf.dsttime = 1;
 }
 
 int (*fsprotocol[])(Msgbuf*) = {

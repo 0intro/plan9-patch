@@ -10,7 +10,8 @@
 #include "compat.h"
 #undef error
 
-#define parttrace 0
+#define parttrace(...) //print(__VA_ARGS__)
+#define partaddtrace(...) print(__VA_ARGS__)
 
 extern SDifc sdataifc, sdmv50xxifc;
 
@@ -34,14 +35,16 @@ enum {
 	Rawstatus,
 };
 
+// didn't want to confuse the diff.
+static int _sdinit(void);
+
 void
 sdaddpart(SDunit* unit, char* name, Devsize start, Devsize end)
 {
 	SDpart *pp;
 	int i, partno;
 
-	if(parttrace)
-		print("add %d %s %s %lld %lld\n", unit->npart, unit->name,
+	partaddtrace("add %d %s %s %lld %lld\n", unit->npart, unit->name,
 			name, start, end);
 	/*
 	 * Check name not already used
@@ -58,16 +61,14 @@ sdaddpart(SDunit* unit, char* name, Devsize start, Devsize end)
 			}
 			if(strcmp(name, pp->name) == 0){
 				if(pp->start == start && pp->end == end){
-					if(parttrace)
-						print("already present\n");
+					parttrace("already present\n");
 					return;
 				}
 			}
 		}
 	}else{
 		if((unit->part = malloc(sizeof(SDpart)*SDnpart)) == nil){
-			if(parttrace)
-				print("malloc failed\n");
+			parttrace("malloc failed\n");
 			return;
 		}
 		partno = 0;
@@ -97,8 +98,7 @@ sddelpart(SDunit* unit,  char* name)
 	int i;
 	SDpart *pp;
 
-	if(parttrace)
-		print("del %d %s %s\n", unit->npart, unit->name, name);
+	parttrace("del %d %s %s\n", unit->npart, unit->name, name);
 	/*
 	 * Look for the partition to delete.
 	 * Can't delete if someone still has it open.
@@ -122,6 +122,26 @@ sddelpart(SDunit* unit,  char* name)
 	}
 }
 
+static void
+add9loadparts(SDunit *unit)
+{
+	char *s, *v[16], *w[3], buf[80];
+	int i, n;
+		
+	snprint(buf, sizeof buf, "%spart", unit->name);
+	if((s = getconf(buf)) == 0)
+		return;
+
+	strncpy(buf, s, sizeof buf-2);
+	buf[sizeof buf-1] = 0;
+	n = getfields(buf, v, nelem(v), 0, "/");
+	for(i = 0; i<n; i++){
+		if(getfields(v[i], w, nelem(w), 0, " ") != 3)
+			continue;
+		sdaddpart(unit, w[0], strtoll(w[1], 0, 0), strtoll(w[2], 0, 0));
+	}
+}
+
 static int
 sdinitpart(SDunit* unit)
 {
@@ -132,6 +152,7 @@ sdinitpart(SDunit* unit)
 		unit->part = nil;
 	}
 
+	parttrace("sdinitpart\n");
 	if(unit->inquiry[0] & 0xC0)
 		return 0;
 	switch(unit->inquiry[0] & 0x1F){
@@ -141,12 +162,17 @@ sdinitpart(SDunit* unit)
 	case 0x07:			/* MO */
 		break;
 	default:
+		parttrace("unknown device type: %x\n", unit->inquiry[0] & 0x1F);
 		return 0;
 	}
 
-	if(unit->dev->ifc->online == nil || unit->dev->ifc->online(unit) == 0)
+	if(unit->dev->ifc->online == nil || unit->dev->ifc->online(unit) == 0){
+		parttrace("offline\n");
 		return 0;
+	}
+	parttrace("calling sdaddpart\n");
 	sdaddpart(unit, "data", 0, unit->sectors);
+	add9loadparts(unit);
 	return 1;
 }
 
@@ -156,6 +182,13 @@ sdgetunit(SDev* sdev, int subno)
 	int index;
 	SDunit *unit;
 
+	parttrace("sdgetunit(%s, %d)\n", sdev->ifc->name, subno);
+	if(sdlist == nil)
+		_sdinit();
+	if(subno >= sdnunit){
+		parttrace("sdgetunit: partition out-of-range %d >= %d\n", subno, sdnunit);
+		return nil;
+	}
 	/*
 	 * Associate a unit with a given device and sub-unit
 	 * number on that device.
@@ -187,11 +220,13 @@ sdgetunit(SDev* sdev, int subno)
 		if(unit->dev->ifc->verify(unit) == 0){
 			qunlock(&sdqlock);
 			free(unit);
+			parttrace("sdgetunit() -> nil\n");
 			return nil;
 		}
 		sdunit[index] = unit;
 	}
 	qunlock(&sdqlock);
+	parttrace("sdgetunit() -> %s\n", unit->name);
 	return unit;
 }
 
@@ -240,8 +275,10 @@ _sdinit(void)
 	 * of units attached and marking each device with an index
 	 * into the linear top-level directory array of units.
 	 */
+	parttrace("_sdinit()\n");
 	tail = nil;
 	for(i = 0; sdifc[i] != nil; i++){
+		parttrace("probe %s\n", sdifc[i]->name);
 		if((sdev = sdifc[i]->pnp()) == nil)
 			continue;
 		if(sdlist != nil)
@@ -249,9 +286,11 @@ _sdinit(void)
 		else
 			sdlist = sdev;
 		for(tail = sdev; tail->next != nil; tail = tail->next){
+			parttrace("\t" "[%2d.%2d]", sdnunit, sdnunit+tail->nunit-1);
 			tail->index = sdnunit;
 			sdnunit += tail->nunit;
 		}
+		parttrace("\t" "[%2d.%2d]\n", sdnunit, sdnunit+tail->nunit-1);
 		tail->index = sdnunit;
 		sdnunit += tail->nunit;
 	}
@@ -345,19 +384,15 @@ sdfindpart(SDunit *unit, char *name)
 {
 	int i;
 
-	if(parttrace)
-		print("findpart %d %s %s\t\n", unit->npart, unit->name, name);
+	parttrace("findpart %d %s %s\t\n", unit->npart, unit->name, name);
 	for(i=0; i<unit->npart; i++) {
-		if(parttrace)
-			print("%s...", unit->part[i].name);
+		parttrace("%s...", unit->part[i].name);
 		if(strcmp(unit->part[i].name, name) == 0){
-			if(parttrace)
-				print("\n");
+			parttrace("\n");
 			return &unit->part[i];
 		}
 	}
-	if(parttrace)
-		print("not found\n");
+	parttrace("not found\n");
 	return nil;
 }
 
