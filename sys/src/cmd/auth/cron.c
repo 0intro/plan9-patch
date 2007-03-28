@@ -512,7 +512,8 @@ rexec(User *user, Job *j)
 			_exits(0);
 		}
 syslog(0, CRONLOG, "%s: ran '%s' on %s", user->name, j->cmd, j->host);
-		execl("/bin/rc", "rc", "-c", buf, nil);
+		putenv("service", "rx");
+		execl("/bin/rc", "rc", "-lc", buf, nil);
 		syslog(0, CRONLOG, "%s: exec failed for %s on %s: %r",
 			user->name, j->cmd, j->host);
 		_exits(0);
