@@ -41,6 +41,7 @@ main(int argc, char *argv[])
 		diff = 1;
 		break;
 	case 'b':
+		diff = 1;
 		diffb = 1;
 		break;
 	case 's':
