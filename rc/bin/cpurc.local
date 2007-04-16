@@ -10,5 +10,3 @@ fileserver=kfs
 # replace FACEDOM with the local domain to be used in the faces database
 facedom=FACEDOM
 
-# turn on cooperative scheduling (assuming it starts off)
-echo coop > /dev/reboot
