@@ -27,7 +27,7 @@ if(! test -e /srv/cs)
 sysname=`{cat /dev/sysname}
 
 # machine specific startup (e.g., for devices not probed)
-if(test -e /cfg/$sysname/termrc)
+if(~ $#sysname 1 && ! ~ $#sysname '' && test -e /cfg/$sysname/termrc)
 	. /cfg/$sysname/termrc
 
 # start IP on the LAN, if not already configured.  diskless terminals
