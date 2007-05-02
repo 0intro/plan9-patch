@@ -33,6 +33,9 @@ enum
 	/* maximum ms we'll wait for a command */
 	Maxwait=	1000*60*30,		/* inactive for 30 minutes, we hang up */
 
+	/* maximum pad passwords before we giveup */
+	Maxbadpass=	5,
+
 	Maxerr=		128,
 	Maxpath=	512,
 };
@@ -72,6 +75,9 @@ char*	abspath(char*);
 int	crlfwrite(int, char*, int);
 int	sodoff(void);
 int	accessok(char*);
+
+void	slowbrutes(void);
+void	knockknock(void);
 
 typedef struct Cmd	Cmd;
 struct Cmd
@@ -225,6 +231,7 @@ main(int argc, char **argv)
 	Binit(&in, 0, OREAD);
 	reply("220 Plan 9 FTP server ready");
 	alarm(Maxwait);
+	slowbrutes();
 	while(cmd = Brdline(&in, '\n')){
 		alarm(0);
 
@@ -554,6 +561,7 @@ usercmd(char *name)
 int
 passcmd(char *response)
 {
+	int rc;
 	char namefile[128];
 	AuthInfo *ai;
 
@@ -573,7 +581,8 @@ passcmd(char *response)
 			return reply("530 Not logged in");
 		createperm = 0664;
 		/* login has already setup the namespace */
-		return loginuser(user, nil, 0);
+		rc = loginuser(user, nil, 0);
+		goto done;
 	} else {
 		/* for everyone else, do challenge response */
 		if(ch == nil)
@@ -581,10 +590,15 @@ passcmd(char *response)
 		ch->resp = response;
 		ch->nresp = strlen(response);
 		ai = auth_response(ch);
-		if(ai == nil)
-			return reply("530 Not logged in: %r");
-		if(auth_chuid(ai, nil) < 0)
-			return reply("530 Not logged in: %r");
+		if(ai == nil){
+			rc = reply("530 Not logged in: %r");
+			goto done;
+
+		}
+		if(auth_chuid(ai, nil) < 0){
+			rc = reply("530 Not logged in: %r");
+			goto done;
+		}
 		auth_freechal(ch);
 		ch = nil;
 
@@ -593,10 +607,14 @@ passcmd(char *response)
 		strcpy(mailaddr, user);
 		createperm = 0660;
 		if(access(namefile, 0) == 0)
-			return loginuser(user, namefile, 0);
+			rc = loginuser(user, namefile, 0);
 		else
-			return loginuser(user, "/lib/namespace", 0);
+			rc = loginuser(user, "/lib/namespace", 0);
+		goto done;
 	}
+done:
+	knockknock();
+	return rc;
 }
 
 /*
@@ -1830,3 +1848,105 @@ accessok(char *path)
 
 	return r;
 }
+
+static int mkdirs(char *);
+
+/*
+ * if any directories leading up to path don't exist, create them.
+ * modifies but restores path.
+ */
+static int
+mkpdirs(char *path)
+{
+	int rv = 0;
+	char *sl = strrchr(path, '/');
+
+	if (sl != nil) {
+		*sl = '\0';
+		rv = mkdirs(path);
+		*sl = '/';
+	}
+	return rv;
+}
+
+/*
+ * if path or any directories leading up to it don't exist, create them.
+ * modifies but restores path.
+ */
+static int
+mkdirs(char *path)
+{
+	int fd;
+
+	if (access(path, AEXIST) >= 0)
+		return 0;
+
+	/* make presumed-missing intermediate directories */
+	if (mkpdirs(path) < 0)
+		return -1;
+
+	/* make final directory */
+	fd = create(path, OREAD, 0777|DMDIR);
+	if (fd < 0)
+		/*
+		 * we may have lost a race; if the directory now exists,
+		 * it's okay.
+		 */
+		return access(path, AEXIST) < 0? -1: 0;
+	close(fd);
+	return 0;
+}
+
+/*
+ * Slow up our startup time exponentially when an IP address fails to
+ * login, to discourage people from brute force-ing our accounts.
+ */
+void
+slowbrutes(void)
+{
+	Dir *d;
+	char fn[128];
+
+	snprint(fn, sizeof(fn), "/ftp/tmp/%s", nci->rsys);
+	if((d = dirstat(fn)) == nil)
+		return;
+	sleep(d->length*d->length*100);
+	free(d);
+}
+
+/*
+ * Only allow Maxbadpass attempts to login in this session
+ *
+ * A valid login (other than none and anonymous) reactivates
+ * an IP address slowed due to apparant brute forcing.
+ */
+void
+knockknock(void)
+{
+	int fd;
+	char fn[128];
+	static int sessfail = 0;
+	static int watched = 0;
+
+	snprint(fn, sizeof(fn), "/ftp/tmp/%s", nci->rsys);
+	if(loggedin){
+		remove(fn);
+		return;
+	}
+
+	if(++sessfail >= Maxbadpass)
+		exits("too many pad passwords");
+
+	if(watched == 0){
+		if((fd = open(fn, OWRITE)) == -1){
+			if(mkpdirs(fn) != 0)
+				return;
+			if((fd = create(fn, OWRITE, DMAPPEND|0666)) == -1)
+				return;
+		}
+		write(fd, "x", 1);
+		close(fd);
+		watched++;
+	}
+}
+
