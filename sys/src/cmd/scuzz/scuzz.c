@@ -1516,18 +1516,6 @@ cmdhelp(ScsiReq *rp, int argc, char *argv[])
 	return 0;
 }
 
-static int atatable[4] = {
-	'C', 'D', 'E', 'F',
-};
-static int scsitable[16] = {
-	'0', '1', '2', '3', '4', '5', '6', '7',
-	'8', '9', 'a', 'b', 'c', 'd', 'e', 'f',
-};
-static int unittable[16] = {
-	'0', '1', '2', '3', '4', '5', '6', '7',
-	'8', '9', 'a', 'b', 'c', 'd', 'e', 'f',
-};
-
 static long
 cmdprobe(ScsiReq *rp, int argc, char *argv[])
 {
@@ -1539,17 +1527,17 @@ cmdprobe(ScsiReq *rp, int argc, char *argv[])
 	rp->status = STok;
 	scsireq.flags = 0;
 
-	for(ctlr="CDEF0123456789abcdef"; *ctlr; ctlr++) {
+	for(ctlr="CDEFGHI0123456789abcdef"; *ctlr; ctlr++) {
 		/*
 		 * I can guess how many units you have.
 		 */
-		if(*ctlr >= 'C' && *ctlr <= 'F')
+		if(*ctlr >= 'C' || *ctlr <= 'D')
 			unit = "01";
 		else if((*ctlr >= '0' && *ctlr <= '9')
 		     || (*ctlr >= 'a' && *ctlr <= 'f'))
 			unit = "0123456789abcdef";
 		else
-			unit = "012345678";
+			unit = "01234567";
 
 		for(; *unit; unit++){
 			sprint(buf, "/dev/sd%c%c", *ctlr, *unit);
