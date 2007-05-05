@@ -778,15 +778,13 @@ ataverify(Drive *dp)
 }
 
 static Drive*
-atagetdrive(int cmdport, int ctlport, int dev)
+atagetdrive(int cmdport, int ctlport, int dev, int driveno)
 {
 	Drive *drive;
-	int as, i, pkt, driveno;
+	int as, i, pkt;
 	uchar buf[512], *p;
 	ushort iconfig, *sp;
 
-	driveno = (cmdport == Ctlr0cmd? 0:
-		cmdport == Ctlr1cmd? NCtlrdrv: 2*NCtlrdrv);
 	if (dev == Dev1)
 		driveno++;
 
@@ -1026,7 +1024,7 @@ tryedd1:
 	 * If the one drive found is Dev0 and the EDD command
 	 * didn't indicate Dev1 doesn't exist, check for it.
 	 */
-	if((drive = atagetdrive(cmdport, ctlport, dev)) == nil)
+	if((drive = atagetdrive(cmdport, ctlport, dev, drivenum)) == nil)
 		goto release;
 	if((ctlr = malloc(sizeof(Ctlr))) == nil){
 		free(drive);
@@ -1039,6 +1037,7 @@ tryedd1:
 		goto release;
 	}
 	memset(sdev, 0, sizeof(SDev));
+	sdev->index = drivenum;
 	drive->ctlr = ctlr;
 
 	atactlr[drivenum/NCtlrdrv] = ctlr;
@@ -1055,7 +1054,7 @@ tryedd1:
 			 * Ataprobe is the only place possibly invalid
 			 * drives should be selected.
 			 */
-			drive = atagetdrive(cmdport, ctlport, Dev1);
+			drive = atagetdrive(cmdport, ctlport, Dev1, drivenum-1);
 			if(drive != nil){
 				drive->ctlr = ctlr;
 				ctlr->drive[1] = drive;
@@ -2533,7 +2532,7 @@ atainit(void)
 		i = sdpp - sdevs;
 		sdp->ifc = &sdataifc;
 		sdp->nunit = NCtlrdrv;
-		sdp->index = i;
+		//sdp->index = i;
 		sdp->idno = 'C' + i;
 		sdp->ctlr = atactlr[i];
 		if (sdp->ctlr != nil)
