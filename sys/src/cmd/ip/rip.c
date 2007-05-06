@@ -202,7 +202,7 @@ void
 main(int argc, char *argv[])
 {
 	int i, n;
-	OUdphdr *up;
+	Udphdr *up;
 	Ripmsg *m;
 	Rip *r;
 	Route route;
@@ -292,12 +292,12 @@ main(int argc, char *argv[])
 		if(n <= 0)
 			continue;
 
-		n = (n-OUdphdrsize-4)/sizeof(Rip);
+		n = (n-Udphdrsize-4)/sizeof(Rip);
 		if(n <= 0)
 			continue;
 
-		up = (OUdphdr*)buf;
-		m = (Ripmsg*)(buf+OUdphdrsize);
+		up = (Udphdr*)buf;
+		m = (Ripmsg*)(buf+Udphdrsize);
 		if(m->type != Response || m->vers != Version)
 			continue;
 		v6tov4(raddr, up->raddr);
@@ -334,7 +334,6 @@ openport(void)
 		fatal(1, "can't announce");
 	if(fprint(ripctl, "headers") < 0)
 		fatal(1, "can't set header mode");
-	fprint(ripctl, "oldheaders");
 
 	sprint(data, "%s/data", devdir);
 
@@ -615,17 +614,17 @@ sendto(Ifc *ip)
 {
 	int h, n;
 	Route *r;
-	uchar mbuf[OUdphdrsize+512];
+	uchar mbuf[Udphdrsize+512];
 	Ripmsg *m;
-	OUdphdr *u;
+	Udphdr *u;
 	uchar raddr[Pasize];
 
-	u = (OUdphdr*)mbuf;
+	u = (Udphdr*)mbuf;
 	for(n = 0; n < Pasize; n++)
 		raddr[n] = ip->net[n] | ~(ip->mask[n]);
 	v4tov6(u->raddr, raddr);
 	hnputs(u->rport, 520);
-	m = (Ripmsg*)(mbuf+OUdphdrsize);
+	m = (Ripmsg*)(mbuf+Udphdrsize);
 	m->type = Response;
 	m->vers = Version;
 	if(debug)
@@ -666,14 +665,14 @@ sendto(Ifc *ip)
 				fprint(2, " %16V & %16V -> %16V %2d\n", r->dest, r->mask, r->gate, r->metric);
 
 			if(++n == Maxroutes && !readonly){
-				write(ripfd, mbuf, OUdphdrsize+4+n*20);
+				write(ripfd, mbuf, Udphdrsize+4+n*20);
 				n = 0;
 			}
 		}
 	}
 
 	if(n && !readonly)
-		write(ripfd, mbuf, OUdphdrsize+4+n*20);
+		write(ripfd, mbuf, Udphdrsize+4+n*20);
 }
 void
 broadcast(void)

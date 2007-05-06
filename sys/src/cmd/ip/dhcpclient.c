@@ -369,7 +369,6 @@ openlisten(char *net)
 
 	if(fprint(cfd, "headers") < 0)
 		myfatal("can't set header mode: %r");
-	fprint(cfd, "oldheaders");
 
 	sprint(data, "%s/data", devdir);
 
@@ -544,11 +543,11 @@ void
 bootpdump(uchar *p, int n)
 {
 	Bootp *bp;
-	OUdphdr *up;
+	Udphdr *up;
 	int len, i, code;
 
 	bp = (Bootp*)p;
-	up = (OUdphdr*)bp->udphdr;
+	up = (Udphdr*)bp->udphdr;
 
 	if(n < bp->optmagic - p) {
 		fprint(2, "dhcpclient: short bootp packet");
