@@ -1,6 +1,7 @@
 #include "tdef.h"
 #include "fns.h"
 #include "ext.h"
+#include <assert.h>
 
 #define	HY_BIT	0200	/* stuff in here only works for 7-bit ascii */
 			/* this value is used (as a literal) in suftab.c */
@@ -399,7 +400,7 @@ static int texit(Tchar *start, Tchar *end)	/* hyphenate as in tex, return # foun
 	for (i = 0; i <= nw; i++)
 		cnt[i] = '0';
 
-	for (wp = w; wp < w + nw; wp++) {
+	for (wp = w; wp+1 < w+nw; wp++) {
 		for (pp = trie[trieindex(*wp, *(wp+1))]; pp < nextpat; ) {
 			if (pp == 0		/* no trie entry */
 			 || *pp != *wp		/* no match on 1st letter */
@@ -536,5 +537,8 @@ static void fixup(void)	/* build indexes of where . a b c ... start */
 
 static int trieindex(int d1, int d2)
 {
-	return 27 * (d1 == '.' ? 0 : d1 - 'a' + 1) + (d2 == '.' ? 0 : d2 - 'a' + 1);
+	int i;
+	i = 27 * (d1 == '.' ? 0 : d1 - 'a' + 1) + (d2 == '.' ? 0 : d2 - 'a' + 1);
+	assert(0 <= i && i < 27*27);
+	return i;
 }
