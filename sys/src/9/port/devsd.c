@@ -881,6 +881,7 @@ sdsetsense(SDreq *r, int status, int key, int asc, int ascq)
 	unit->sense[12] = asc;
 	unit->sense[13] = ascq;
 
+	r->status = status;
 	if(status == SDcheck && !(r->flags & SDnosense)){
 		/* request sense case from sdfakescsi */
 		len = sizeof unit->sense;
