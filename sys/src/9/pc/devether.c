@@ -358,7 +358,7 @@ parseether(uchar *to, char *from)
 static Ether*
 etherprobe(int cardno, int ctlrno)
 {
-	int i;
+	int i, j;
 	Ether *ether;
 	char buf[128], name[32];
 
@@ -425,19 +425,15 @@ etherprobe(int cardno, int ctlrno)
 	sprint(buf+i, "\n");
 	print(buf);
 
-	if(ether->mbps >= 1000){
-		netifinit(ether, name, Ntypes, 512*1024);
-		if(ether->oq == 0)
-			ether->oq = qopen(512*1024, Qmsg, 0, 0);
-	}else if(ether->mbps >= 100){
-		netifinit(ether, name, Ntypes, 256*1024);
-		if(ether->oq == 0)
-			ether->oq = qopen(256*1024, Qmsg, 0, 0);
-	}else{
-		netifinit(ether, name, Ntypes, 128*1024);
-		if(ether->oq == 0)
-			ether->oq = qopen(128*1024, Qmsg, 0, 0);
-	}
+	j = ether->mbps;
+	for(i = 0; j >= 10; i++)
+		j /= 10;
+	if(i > 0)
+		i--;
+	i = (128<<i)*1024;
+	netifinit(ether, name, Ntypes, i);
+	if(ether->oq == 0)
+		ether->oq = qopen(i, Qmsg, 0, 0);
 	if(ether->oq == 0)
 		panic("etherreset %s", name);
 	ether->alen = Eaddrlen;
