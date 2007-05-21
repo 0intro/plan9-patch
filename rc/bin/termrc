@@ -25,6 +25,10 @@ if(test -e /rc/bin/termrc.local)
 if(! test -e /srv/cs)
 	ndb/cs -f $NDBFILE
 sysname=`{cat /dev/sysname}
+if(~ $sysname '') {
+	sysname=gnot
+	echo -n $sysname >/dev/sysname
+}
 
 # machine specific startup (e.g., for devices not probed)
 if(test -e /cfg/$sysname/termrc)
