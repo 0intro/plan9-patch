@@ -27,7 +27,7 @@ if(test -e /rc/bin/termrc.local)
 if(! test -e /srv/cs)
 	ndb/cs -f $NDBFILE
 sysname=`{cat /dev/sysname}
-if (~ $#sysname 0 || ~ $sysname '') {
+if (~ $#sysname 0) {
 	sysname = gnot			# default
 	echo -n $sysname >/dev/sysname
 }
