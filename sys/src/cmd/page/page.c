@@ -21,6 +21,7 @@ int truecolor;
 int imagemode;
 int notewatcher;
 int notegp;
+int cachemax = 15;
 
 int
 watcher(void*, char *x)
@@ -70,7 +71,7 @@ afmt(Fmt *fmt)
 void
 usage(void)
 {
-	fprint(2, "usage: page [-biRrw] [-p ppi] file...\n");
+	fprint(2, "usage: page [-biRrw] [-p ppi] [-c numcachedpages] file...\n");
 	exits("usage");
 }
 
@@ -121,6 +122,9 @@ main(int argc, char **argv)
 		break;
 	case 'i':
 		imagemode = 1;
+		break;
+	case 'c':
+		cachemax = atoi(EARGF(usage()));
 		break;
 	default:
 		usage();

@@ -15,6 +15,16 @@
 
 Document *doc;
 Image *im;
+
+typedef struct Imcache {	/* list to cache rendered pages */
+	int page, angle;
+	Image *im;
+	struct Imcache *next;
+} Imcache;
+Imcache *cache = nil;
+int cachesz;			/* current number of cache elements */
+extern int cachemax;	/* set with -c option */
+
 int page;
 int angle = 0;
 int showbottom = 0;		/* on the next showpage, move the image so the bottom is visible. */
@@ -115,6 +125,69 @@ menugen(int n)
 	return menustr;
 }
 
+Image*
+cachefind(int page, int angle)
+{
+	Imcache *c;
+	Image *tmp;
+	for(c = cache; c; c = c->next)
+		if(c->page == page && c->angle == angle) {	/* Return a copy of the rendered image from cache */
+			tmp = xallocimage(display, Rect(0, 0, Dx(c->im->r), Dy(c->im->r)), c->im->chan, 0, DNofill);
+			drawop(tmp, tmp->r, c->im, nil, c->im->r.min, S);
+			return tmp;
+		}
+	return nil;
+}
+
+/* recursive helper to free list elements from here on */
+void
+cachefree(Imcache *c)
+{
+	if(c == nil) return;
+	if(c->next)
+		cachefree(c->next);
+	if(c->im)
+		freeimage(c->im);
+	free(c);
+}
+
+/* ensure the cache contains at most cachemax elements */
+void
+cachetrim(void)
+{
+	int i;
+	Imcache *c;
+	for(c = cache, i=0; c && i < cachemax; c = c->next, i++);
+	if(i == cachemax) {
+		cachefree(c->next);
+		c->next = nil;
+		cachesz = cachemax;
+	}
+}
+
+/* add image to linked list of cached bitmaps along with page number and rotation angle */
+void
+cacheadd(int page, int angle, Image *im)
+{
+	Imcache *c;
+	if(im == nil) return;
+	if(cachefind(page, angle) == nil){	/* don't add it if it's already there */
+		c = malloc(sizeof(Imcache));
+		c->page = page;
+		c->angle = angle;
+		c->im = xallocimage(display, Rect(0, 0, Dx(im->r), Dy(im->r)), im->chan, 0, DNofill);
+		if(c->im == nil){
+			free(c);
+			return;
+		}
+		drawop(c->im, c->im->r, im, nil, im->r.min, S);
+		c->next = cache;	/* this element becomes the new head of the list */
+		cache = c;
+		if(++cachesz > cachemax)
+			cachetrim();
+	}
+}
+
 void
 showpage(int page, Menu *m)
 {
@@ -131,41 +204,45 @@ showpage(int page, Menu *m)
 		im = nil;
 		return;
 	}
-	im = doc->drawpage(doc, page);
-	if(im == nil) {
-		if(doc->fwdonly)	/* this is how we know we're out of pages */
-			wexits(0);
 
-		im = xallocimage(display, Rect(0,0,50,50), GREY1, 1, DBlack);
+	if((im = cachefind(page, angle)) == nil) {	/* use the cached copy if available */
+		im = doc->drawpage(doc, page);
 		if(im == nil) {
-			fprint(2, "out of memory: %r\n");
-			wexits("memory");
+			if(doc->fwdonly)	/* this is how we know we're out of pages */
+				wexits(0);
+	
+			im = xallocimage(display, Rect(0,0,50,50), GREY1, 1, DBlack);
+			if(im == nil) {
+				fprint(2, "out of memory: %r\n");
+				wexits("memory");
+			}
+			string(im, ZP, display->white, ZP, display->defaultfont, "?");
+		}else if(resizing){
+			resize(Dx(im->r), Dy(im->r));
 		}
-		string(im, ZP, display->white, ZP, display->defaultfont, "?");
-	}else if(resizing){
-		resize(Dx(im->r), Dy(im->r));
-	}
-	if(im->r.min.x > 0 || im->r.min.y > 0) {
-		tmp = xallocimage(display, Rect(0, 0, Dx(im->r), Dy(im->r)), im->chan, 0, DNofill);
-		if(tmp == nil) {
-			fprint(2, "out of memory during showpage: %r\n");
-			wexits("memory");
+		if(im->r.min.x > 0 || im->r.min.y > 0) {
+			tmp = xallocimage(display, Rect(0, 0, Dx(im->r), Dy(im->r)), im->chan, 0, DNofill);
+			if(tmp == nil) {
+				fprint(2, "out of memory during showpage: %r\n");
+				wexits("memory");
+			}
+			drawop(tmp, tmp->r, im, nil, im->r.min, S);
+			freeimage(im);
+			im = tmp;
 		}
-		drawop(tmp, tmp->r, im, nil, im->r.min, S);
-		freeimage(im);
-		im = tmp;
-	}
-
-	switch(angle){
-	case 90:
-		im = rot90(im);
-		break;
-	case 180:
-		rot180(im);
-		break;
-	case 270:
-		im = rot270(im);
-		break;
+	
+		switch(angle){
+		case 90:
+			im = rot90(im);
+			break;
+		case 180:
+			rot180(im);
+			break;
+		case 270:
+			im = rot270(im);
+			break;
+		}
+		cacheadd(page, angle, im);	/* add a copy of the rendered page to the cache */
 	}
 
 	esetcursor(nil);
@@ -397,9 +474,15 @@ viewer(Document *dd)
 				if(im==nil)
 					break;
 				esetcursor(&reading);
-				rot180(im);
-				esetcursor(nil);
 				angle = (angle+180) % 360;
+				if((tmp = cachefind(page, angle)) == nil) {
+					rot180(im);
+					cacheadd(page, angle, im);
+				} else {
+					freeimage(im);
+					im = tmp;
+				}
+				esetcursor(nil);
 				redraw(screen);
 				flushimage(display, 1);
 				break;
@@ -596,9 +679,15 @@ viewer(Document *dd)
 					}
 				case Rot:	/* rotate 90 */
 					esetcursor(&reading);
-					im = rot90(im);
-					esetcursor(nil);
 					angle = (angle+90) % 360;
+					if((tmp = cachefind(page, angle)) == nil) {
+						im = rot90(im);
+						cacheadd(page, angle, im);
+					} else {
+						freeimage(im);
+						im = tmp;
+					}
+					esetcursor(nil);
 					redraw(screen);
 					flushimage(display, 1);
 					break;
@@ -606,9 +695,15 @@ viewer(Document *dd)
 					if(im==nil)
 						break;
 					esetcursor(&reading);
-					rot180(im);
-					esetcursor(nil);
 					angle = (angle+180) % 360;
+					if((tmp = cachefind(page, angle)) == nil) {
+						rot180(im);
+						cacheadd(page, angle, im);
+					} else {
+						freeimage(im);
+						im = tmp;
+					}
+					esetcursor(nil);
 					redraw(screen);
 					flushimage(display, 1);
 					break;
