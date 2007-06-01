@@ -299,6 +299,7 @@ enum {					/* Rctl */
 	Bsize1024	= 0x00010000,	/* Bsex = 0 */
 	Bsize512	= 0x00020000,	/* Bsex = 0 */
 	Bsize256	= 0x00030000,	/* Bsex = 0 */
+	Bsize8192	= 0x00020000,
 	Bsize16384	= 0x00010000,	/* Bsex = 1 */
 	Vfe		= 0x00040000,	/* VLAN Filter Enable */
 	Cfien		= 0x00080000,	/* Canonical Form Indicator Enable */
@@ -436,8 +437,10 @@ enum {					/* Td status */
 enum {
 	Nrd		= 256,		/* multiple of 8 */
 	Ntd		= 64,		/* multiple of 8 */
-	Nrb		= 1024,		/* private receive buffers per Ctlr */
-	Rbsz		= 2048,
+//	Nrb		= 1024,		/* private receive buffers per Ctlr */
+	Nrb		= 512,
+	Rbsz		= 8192,
+	Rbsize		= Bsize8192|Bsex|Lpe,
 };
 
 typedef struct Ctlr Ctlr;
@@ -760,14 +763,12 @@ igberballoc(void)
 }
 
 static void
-igberbfree(Block* bp)
+igberbfree(Block* b)
 {
-	bp->rp = bp->lim - Rbsz;
-	bp->wp = bp->rp;
-
+	b->rp = b->wp = (uchar*)PGROUND((uintptr)b->base);
 	ilock(&igberblock);
-	bp->next = igberbpool;
-	igberbpool = bp;
+	b->next = igberbpool;
+	igberbpool = b;
 	iunlock(&igberblock);
 }
 
@@ -808,9 +809,11 @@ igbelproc(void* arg)
 		 *
 		 *	MiiPhy.speed, etc. should be in Mii.
 		 */
-		if(miistatus(ctlr->mii) < 0)
-			//continue;
+		if(miistatus(ctlr->mii) < 0){
+			edev->link = 0;
 			goto enable;
+		}
+		edev->link = 1;
 
 		phy = ctlr->mii->curphy;
 		ctrl = csr32r(ctlr, Ctrl);
@@ -1036,7 +1039,7 @@ igberxinit(Ctlr* ctlr)
 	int i;
 	Block *bp;
 
-	csr32w(ctlr, Rctl, Dpf|Bsize2048|Bam|RdtmsHALF);
+	csr32w(ctlr, Rctl, Dpf|Rbsize|Bam|RdtmsHALF);
 
 	csr32w(ctlr, Rdbal, PCIWADDR(ctlr->rdba));
 	csr32w(ctlr, Rdbah, 0);
@@ -1146,6 +1149,7 @@ igberproc(void* arg)
 					bp->checksum = rd->checksum;
 					bp->flag |= Bpktck;
 				}
+				bp->lim = bp->wp;	// lie like a dog.
 				etheriq(edev, bp, 1);
 			}
 			else if(ctlr->rb[rdh] != nil){
@@ -1211,11 +1215,13 @@ igbeattach(Ether* edev)
 	}
 
 	for(ctlr->nrb = 0; ctlr->nrb < Nrb; ctlr->nrb++){
-		if((bp = allocb(Rbsz)) == nil)
+		if((bp = allocb(Rbsz+BY2PG)) == nil)
 			break;
 		bp->free = igberbfree;
 		freeb(bp);
 	}
+
+	edev->maxmtu = Rbsz;
 
 	snprint(name, KNAMELEN, "#l%dlproc", edev->ctlrno);
 	kproc(name, igbelproc, edev);
