@@ -4,7 +4,6 @@
 #include "dat.h"
 #include "fns.h"
 #include "io.h"
-#include "pool.h"
 #include "ureg.h"
 #include "../port/error.h"
 #include "../port/netif.h"
@@ -263,11 +262,11 @@ etherwrite(Chan* chan, void* buf, long n, vlong)
 		free(cb);
 		if(ether->ctl!=nil)
 			return ether->ctl(ether,buf,n);
-
+			
 		error(Ebadctl);
 	}
 
-	if(n > ether->maxmtu)
+	if(n > ether->mtu)
 		error(Etoobig);
 	if(n < ether->minmtu)
 		error(Etoosmall);
@@ -304,7 +303,7 @@ etherbwrite(Chan* chan, Block* bp, ulong)
 	}
 	ether = etherxx[chan->dev];
 
-	if(n > ether->maxmtu){
+	if(n > ether->mtu){
 		freeb(bp);
 		error(Etoobig);
 	}
@@ -359,8 +358,7 @@ parseether(uchar *to, char *from)
 static Ether*
 etherprobe(int cardno, int ctlrno)
 {
-	int i, lg;
-	ulong mb, bsz;
+	int i, j;
 	Ether *ether;
 	char buf[128], name[32];
 
@@ -370,6 +368,7 @@ etherprobe(int cardno, int ctlrno)
 	ether->tbdf = BUSUNKNOWN;
 	ether->mbps = 10;
 	ether->minmtu = ETHERMINTU;
+	ether->mtu = ETHERMAXTU;
 	ether->maxmtu = ETHERMAXTU;
 
 	if(cardno < 0){
@@ -415,8 +414,8 @@ etherprobe(int cardno, int ctlrno)
 	if(ether->irq >= 0)
 		intrenable(ether->irq, ether->interrupt, ether, ether->tbdf, name);
 
-	i = sprint(buf, "#l%d: %s: %dMbps port 0x%luX irq %d",
-		ctlrno, cards[cardno].type, ether->mbps, ether->port, ether->irq);
+	i = sprint(buf, "#l%d: %s: %dMbps port 0x%luX irq %d tu %d",
+		ctlrno, cards[cardno].type, ether->mbps, ether->port, ether->irq, ether->mtu);
 	if(ether->mem)
 		i += sprint(buf+i, " addr 0x%luX", ether->mem);
 	if(ether->size)
@@ -427,25 +426,16 @@ etherprobe(int cardno, int ctlrno)
 	sprint(buf+i, "\n");
 	print(buf);
 
-	/* compute log10(ether->mbps) into lg */
-	for(lg = 0, mb = ether->mbps; mb >= 10; lg++)
-		mb /= 10;
-	if (lg > 0)
-		lg--;
-	if (lg > 14)			/* 2^(14+17) = 2⁳ⁱ */
-		lg = 14;
-	/* allocate larger output queues for higher-speed interfaces */
-	bsz = 1UL << (lg + 17);		/* 2ⁱ⁷ = 128K, bsz = 2ⁿ × 128K */
-	while (bsz > mainmem->maxsize && bsz >= 128*1024)
-		bsz /= 2;
-
-	netifinit(ether, name, Ntypes, bsz);
-	while (ether->oq == nil && bsz >= 128*1024) {
-		bsz /= 2;
-		ether->oq = qopen(bsz, Qmsg, 0, 0);
-		ether->limit = bsz;
-	}
-	if(ether->oq == nil)
+	j = ether->mbps;
+	for(i = 0; j >= 10; i++)
+		j /= 10;
+	if(i > 0)
+		i--;
+	i = (128<<i)*1024;
+	netifinit(ether, name, Ntypes, i);
+	if(ether->oq == 0)
+		ether->oq = qopen(i, Qmsg, 0, 0);
+	if(ether->oq == 0)
 		panic("etherreset %s", name);
 	ether->alen = Eaddrlen;
 	memmove(ether->addr, ether->ea, Eaddrlen);
