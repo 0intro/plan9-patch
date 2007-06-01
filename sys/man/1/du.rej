@@ -1,0 +1,30 @@
+--- sys/man/1/du	Sun Feb 24 00:53:38 2008
++++ sys/man/1/du	Sun Feb 24 00:53:38 2008
+@@ -4,25 +4,10 @@
+ .SH SYNOPSIS
+ .B du
+ [
+-.B -a
++.B -asfntuq
+ ]
+ [
+-.B -f
+-]
+-[
+-.B -n
+-]
+-[
+-.B -q
+-]
+-[
+-.B -s
+-]
+-[
+-.B -t
+-]
+-[
+-.B -u
++.B -m time
+ ]
+ [
+ .BI -b size

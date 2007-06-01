@@ -1,0 +1,58 @@
+--- sys/src/cmd/du.c	Sun Feb 24 00:53:38 2008
++++ sys/src/cmd/du.c	Sun Feb 24 00:53:38 2008
+@@ -15,10 +15,18 @@
+ int	tflag;
+ int	uflag;
+ int	qflag;
++ulong	mtime;
+ char	*fmt = "%llud\t%q\n";
+ vlong	blocksize = 1024LL;
+ 
+ void
++usage(void)
++{
++	fprint(2, "usage: %s [-asfntuq] [-m time] [-b bsz] [file...]\n", argv0);
++	exits("usage");
++}
++
++void
+ main(int argc, char *argv[])
+ {
+ 	int i;
+@@ -58,7 +72,7 @@
+ 		qflag = 1;
+ 		break;
+ 	case 'b':	/* block size */
+-		s = ARGF();
++		s = EARGF(usage());
+ 		if(s) {
+ 			blocksize = strtoul(s, &ss, 0);
+ 			if(s == ss)
+@@ -67,6 +81,8 @@
+ 				blocksize *= 1024;
+ 		}
+ 		break;
++	default:
++		usage();
+ 	} ARGEND
+ 	if(argc==0)
+ 		print(fmt, du(".", dirstat(".")), ".");
+@@ -101,7 +117,8 @@
+ 				if((d->qid.type&QTDIR) == 0) {
+ 					t = k(d->length);
+ 					nk += t;
+-					if(aflag) {
++					if(aflag)
++					if(!mtime || d->mtime >= mtime){
+ 						file = s_copy(name);
+ 						s_append(file, "/");
+ 						s_append(file, d->name);
+@@ -120,6 +137,8 @@
+ 				if(strcmp(d->name, ".") == 0 ||
+ 				   strcmp(d->name, "..") == 0 ||
+ 				   seen(d))
++					continue;
++				if (mtime && d->mtime < mtime)
+ 					continue;
+ 				file = s_copy(name);
+ 				s_append(file, "/");

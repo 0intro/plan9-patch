@@ -17,10 +17,10 @@
  * these are in the order they appear in the manual, not numeric order.
  * It was too hard to find them in the book. Ref 21489, rev 2.6
  */
-
+ 
 enum {
 	/* General */
-
+	
 	Ctrl		= 0x00000000,	/* Device Control */
 	Status		= 0x00000008,	/* Device Status */
 	Eec		= 0x00000010,	/* EEPROM/Flash Control/Data */
@@ -39,74 +39,74 @@ enum {
 	Rxcw		= 0x00000180,	/* Receive Configuration Word */
 	Ledctl		= 0x00000E00,	/* LED control */
 	Pba		= 0x00001000,	/* Packet Buffer Allocation */
-
+	
 	/* Interrupt */
-
+	
 	Icr		= 0x000000C0,	/* Interrupt Cause Read */
 	Ics		= 0x000000C8,	/* Interrupt Cause Set */
 	Ims		= 0x000000D0,	/* Interrupt Mask Set/Read */
 	Imc		= 0x000000D8,	/* Interrupt mask Clear */
 	Iam		= 0x000000E0,	/* Interrupt acknowledge Auto Mask */
-
+	
 	/* Receive */
-
-	Rctl		= 0x00000100,	/* Control */
+	
+	Rctl		= 0x00000100,	/* Receive Control */
 	Ert		= 0x00002008,	/* Early Receive Threshold (573[EVL] only) */
 	Fcrtl		= 0x00002160,	/* Flow Control RX Threshold Low */
 	Fcrth		= 0x00002168,	/* Flow Control Rx Threshold High */
 	Psrctl		= 0x00002170,	/* Packet Split Receive Control */
 	Rdbal		= 0x00002800,	/* Rdesc Base Address Low Queue 0 */
 	Rdbah		= 0x00002804,	/* Rdesc Base Address High Queue 0 */
-	Rdlen		= 0x00002808,	/* Descriptor Length Queue 0 */
-	Rdh		= 0x00002810,	/* Descriptor Head Queue 0 */
-	Rdt		= 0x00002818,	/* Descriptor Tail Queue 0 */
-	Rdtr		= 0x00002820,	/* Descriptor Timer Ring */
-	Rxdctl		= 0x00002828,	/* Descriptor Control */
-	Radv		= 0x0000282C,	/* Interrupt Absolute Delay Timer */
+	Rdlen		= 0x00002808,	/* Receive Descriptor Length Queue 0 */
+	Rdh		= 0x00002810,	/* Receive Descriptor Head Queue 0 */
+	Rdt		= 0x00002818,	/* Receive Descriptor Tail Queue 0 */
+	Rdtr		= 0x00002820,	/* Receive Descriptor Timer Ring */
+	Rxdctl		= 0x00002828,	/* Receive Descriptor Control */
+	Radv		= 0x0000282C,	/* Receive Interrupt Absolute Delay Timer */
 	Rdbal1		= 0x00002900,	/* Rdesc Base Address Low Queue 1 */
 	Rdbah1		= 0x00002804,	/* Rdesc Base Address High Queue 1 */
-	Rdlen1		= 0x00002908,	/* Descriptor Length Queue 1 */
-	Rdh1		= 0x00002910,	/* Descriptor Head Queue 1 */
-	Rdt1		= 0x00002918,	/* Descriptor Tail Queue 1 */
-	Rxdctl1		= 0x00002928,	/* Descriptor Control Queue 1 */
-	Rsrpd		= 0x00002c00,	/* Small Packet Detect */
-	Raid		= 0x00002c08,	/* ACK interrupt delay */
+	Rdlen1		= 0x00002908,	/* Receive Descriptor Length Queue 1 */
+	Rdh1		= 0x00002910,	/* Receive Descriptor Head Queue 1 */
+	Rdt1		= 0x00002918,	/* Receive Descriptor Tail Queue 1 */
+	Rxdctl1		= 0x00002928,	/* Receive Descriptor Control Queue 1 */
+	Rsrpd		= 0x00002c00,	/* Receive Small Packet Detect */
+	Raid		= 0x00002c08,	/* Receive ACK interrupt delay */
 	Cpuvec		= 0x00002c10,	/* CPU Vector */
-	Rxcsum		= 0x00005000,	/* Checksum Control */
-	Rfctl		= 0x00005008,	/* Filter Control */
+	Rxcsum		= 0x00005000,	/* Receive Checksum Control */
+	Rfctl		= 0x00005008,	/* Receive Filter Control */
 	Mta		= 0x00005200,	/* Multicast Table Array */
-	Ral		= 0x00005400,	/* Address Low */
-	Rah		= 0x00005404,	/* Address High */
+	Ral		= 0x00005400,	/* Receive Address Low */
+	Rah		= 0x00005404,	/* Receive Address High */
 	Vfta		= 0x00005600,	/* VLAN Filter Table Array */
 	Mrqc		= 0x00005818,	/* Multiple Receive Queues Command */
 	Rssim		= 0x00005864,	/* RSS Interrupt Mask */
 	Rssir		= 0x00005868,	/* RSS Interrupt Request */
 	Reta		= 0x00005c00,	/* Redirection Table */
 	Rssrk		= 0x00005c80,	/* RSS Random Key */
-
+	
 	/* Transmit */
-
-	Tctl		= 0x00000400,	/* Control */
-	Tipg		= 0x00000410,	/* IPG */
+	
+	Tctl		= 0x00000400,	/* Transmit Control */
+	Tipg		= 0x00000410,	/* Transmit IPG */
 	Tdbal		= 0x00003800,	/* Tdesc Base Address Low */
 	Tdbah		= 0x00003804,	/* Tdesc Base Address High */
-	Tdlen		= 0x00003808,	/* Descriptor Length */
-	Tdh		= 0x00003810,	/* Descriptor Head */
-	Tdt		= 0x00003818,	/* Descriptor Tail */
-	Tidv		= 0x00003820,	/* Interrupt Delay Value */
-	Txdctl		= 0x00003828,	/* Descriptor Control */
-	Tadv		= 0x0000382C,	/* Interrupt Absolute Delay Timer */
-	Tarc0		= 0x00003840,	/* Arbitration Counter Queue 0 */
-	Tdbal1		= 0x00003900,	/* Descriptor Base Low Queue 1 */
-	Tdbah1		= 0x00003904,	/* Descriptor Base High Queue 1 */
-	Tdlen1		= 0x00003908,	/* Descriptor Length Queue 1 */
-	Tdh1		= 0x00003910,	/* Descriptor Head Queue 1 */
-	Tdt1		= 0x00003918,	/* Descriptor Tail Queue 1 */
-	Txdctl1		= 0x00003928,	/* Descriptor Control 1 */
-	Tarc1		= 0x00003940,	/* Arbitration Counter Queue 1 */
+	Tdlen		= 0x00003808,	/* Transmit Descriptor Length */
+	Tdh		= 0x00003810,	/* Transmit Descriptor Head */
+	Tdt		= 0x00003818,	/* Transmit Descriptor Tail */
+	Tidv		= 0x00003820,	/* Transmit Interrupt Delay Value */
+	Txdctl		= 0x00003828,	/* Transmit Descriptor Control */
+	Tadv		= 0x0000382C,	/* Transmit Interrupt Absolute Delay Timer */
+	Tarc0		= 0x00003840,	/* Transmit Arbitration Counter Queue 0 */
+	Tdbal1		= 0x00003900,	/* Transmit Descriptor Base Low Queue 1 */
+	Tdbah1		= 0x00003904,	/* Transmit Descriptor Base High Queue 1 */
+	Tdlen1		= 0x00003908,	/* Transmit Descriptor Length Queue 1 */
+	Tdh1		= 0x00003910,	/* Transmit Descriptor Head Queue 1 */
+	Tdt1		= 0x00003918,	/* Transmit Descriptor Tail Queue 1 */
+	Txdctl1		= 0x00003928,	/* Transmit Descriptor Control 1 */
+	Tarc1		= 0x00003940,	/* Transmit Arbitration Counter Queue 1 */
 
 	/* Statistics */
-
+	
 	Statistics	= 0x00004000,	/* Start of Statistics Area */
 	Gorcl		= 0x88/4,	/* Good Octets Received Count */
 	Gotcl		= 0x90/4,	/* Good Octets Transmitted Count */
@@ -204,6 +204,13 @@ enum {					/* Mdic */
 	MDIready	= 0x10000000,	/* End of Transaction */
 	MDIie		= 0x20000000,	/* Interrupt Enable */
 	MDIe		= 0x40000000,	/* Error */
+};
+
+enum{					/* Mdic secondary status register */
+	Physsr		= 17,		/* phy secondary status register */
+	Phyier		= 18,		/* phy interrupt enable register */
+	Rtlink		= 1<<10,	/* realtime link status */
+	Phyan		= 1<<11,	/* phy has autonegotiated */
 };
 
 enum {					/* Icr, Ics, Ims, Imc */
@@ -399,8 +406,6 @@ struct Ctlr {
 	Rendez	lrendez;
 	int	lim;
 
-	int	link;
-
 	QLock	slock;
 	uint	statistics[Nstatistics];
 	uint	lsleep;
@@ -412,6 +417,7 @@ struct Ctlr {
 	uint	ixsm;
 	uint	ipcs;
 	uint	tcpcs;
+	uint	speeds[4];
 
 	uchar	ra[Eaddrlen];		/* receive address */
 	ulong	mta[128];		/* multicast table array */
@@ -424,7 +430,7 @@ struct Ctlr {
 	int	rdh;			/* receive descriptor head */
 	int	rdt;			/* receive descriptor tail */
 	int	rdtr;			/* receive delay timer ring value */
-	int	radv;			/* receive interrupt absolute delay timer */
+	int	radv;			/* recieve interrupt absolute delay timer */
 
 	Lock	tlock;
 	int	tbusy;
@@ -444,8 +450,8 @@ enum{
 	Maxmac	= 16,
 };
 
-#define csr32r(c, r)	(*((c)->nic+((r)/4)))
-#define csr32w(c, r, v)	(*((c)->nic+((r)/4)) = (v))
+#define Get(c, r)	(*((c)->nic+((r)/4)))
+#define Set(c, r, v)	(*((c)->nic+((r)/4)) = (v))
 
 static Ctlr* i82563ctlrhead;
 static Ctlr* i82563ctlrtail;
@@ -524,17 +530,18 @@ static long
 i82563ifstat(Ether* edev, void* a, long n, ulong offset)
 {
 	Ctlr *ctlr;
-	char *p, *s;
-	int i, l, r;
+	char *s, *p, *e, *stat;
+	int i, r;
 	uvlong tuvl, ruvl;
 
 	ctlr = edev->ctlr;
 	qlock(&ctlr->slock);
-	p = malloc(2*READSTR);
-	l = 0;
+	p = s = malloc(2*READSTR);
+	e = p+2*READSTR;
+
 	for(i = 0; i < Nstatistics; i++){
-		r = csr32r(ctlr, Statistics+i*4);
-		if((s = statistics[i]) == nil)
+		r = Get(ctlr, Statistics+i*4);
+		if((stat = statistics[i]) == nil)
 			continue;
 		switch(i){
 		case Gorcl:
@@ -542,7 +549,7 @@ i82563ifstat(Ether* edev, void* a, long n, ulong offset)
 		case Torl:
 		case Totl:
 			ruvl = r;
-			ruvl += ((uvlong)csr32r(ctlr, Statistics+(i+1)*4))<<32;
+			ruvl += ((uvlong)Get(ctlr, Statistics+(i+1)*4))<<32;
 			tuvl = ruvl;
 			tuvl += ctlr->statistics[i];
 			tuvl += ((uvlong)ctlr->statistics[i+1])<<32;
@@ -550,8 +557,7 @@ i82563ifstat(Ether* edev, void* a, long n, ulong offset)
 				continue;
 			ctlr->statistics[i] = tuvl;
 			ctlr->statistics[i+1] = tuvl>>32;
-			l += snprint(p+l, 2*READSTR-l, "%s: %llud %llud\n",
-				s, tuvl, ruvl);
+			p = seprint(p, e, "%s: %llud %llud\n", stat, tuvl, ruvl);
 			i++;
 			break;
 
@@ -559,33 +565,32 @@ i82563ifstat(Ether* edev, void* a, long n, ulong offset)
 			ctlr->statistics[i] += r;
 			if(ctlr->statistics[i] == 0)
 				continue;
-			l += snprint(p+l, 2*READSTR-l, "%s: %ud %ud\n",
-				s, ctlr->statistics[i], r);
+			p = seprint(p, e,  "%s: %ud %ud\n", stat, ctlr->statistics[i], r);
 			break;
 		}
 	}
 
-	l += snprint(p+l, 2*READSTR-l, "lintr: %ud %ud\n",
-		ctlr->lintr, ctlr->lsleep);
-	l += snprint(p+l, 2*READSTR-l, "rintr: %ud %ud\n",
-		ctlr->rintr, ctlr->rsleep);
-	l += snprint(p+l, 2*READSTR-l, "tintr: %ud %ud\n",
-		ctlr->tintr, ctlr->txdw);
-	l += snprint(p+l, 2*READSTR-l, "ixcs: %ud %ud %ud\n",
-		ctlr->ixsm, ctlr->ipcs, ctlr->tcpcs);
-	l += snprint(p+l, 2*READSTR-l, "rdtr: %ud\n", ctlr->rdtr);
-	l += snprint(p+l, 2*READSTR-l, "radv: %ud\n", ctlr->radv);
-	l += snprint(p+l, 2*READSTR-l, "Ctrlext: %08x\n", csr32r(ctlr, Ctrlext));
+	p = seprint(p, e, "lintr: %ud %ud\n", ctlr->lintr, ctlr->lsleep);
+	p = seprint(p, e, "rintr: %ud %ud\n", ctlr->rintr, ctlr->rsleep);
+	p = seprint(p, e, "tintr: %ud %ud\n", ctlr->tintr, ctlr->txdw);
+	p = seprint(p, e, "ixcs: %ud %ud %ud\n", ctlr->ixsm, ctlr->ipcs, ctlr->tcpcs);
+	p = seprint(p, e, "rdtr: %ud\n", ctlr->rdtr);
+	p = seprint(p, e, "radv: %ud\n", ctlr->radv);
+	p = seprint(p, e, "Ctrlext: %08x\n", Get(ctlr, Ctrlext));
 
-	l += snprint(p+l, 2*READSTR-l, "eeprom:");
-	for(i = 0; i < 0x40; i++){
-		if(i && ((i & 0x07) == 0))
-			l += snprint(p+l, 2*READSTR-l, "\n       ");
-		l += snprint(p+l, 2*READSTR-l, " %4.4uX", ctlr->eeprom[i]);
-	}
-	snprint(p+l, 2*READSTR-l, "\n");
-	n = readstr(offset, a, n, p);
-	free(p);
+	p = seprint(p, e, "speeds: 10:%ud 100:%ud 1000:%ud ?:%ud\n",
+		ctlr->speeds[0], ctlr->speeds[1], ctlr->speeds[2], ctlr->speeds[3]);
+
+//	p = seprint(p, e, "eeprom:");
+//	for(i = 0; i < 0x40; i++){
+//		if(i && ((i & 0x07) == 0))
+//			p = seprint(p, e, "\n       ");
+//		p = seprint(p, e, " %4.4ux", ctlr->eeprom[i]);
+//	}
+//	p = seprint(p, e, "\n");
+	USED(p);
+	n = readstr(offset, a, n, s);
+	free(s);
 	qunlock(&ctlr->slock);
 
 	return n;
@@ -606,13 +611,13 @@ i82563ctl(Ether* edev, void* buf, long n)
 {
 	int v;
 	char *p;
-	Ctlr *ctlr;
+	Ctlr *ctlr;	
 	Cmdbuf *cb;
 	Cmdtab *ct;
 
 	if((ctlr = edev->ctlr) == nil)
 		error(Enonexist);
-
+	
 	cb = parsecmd(buf, n);
 	if(waserror()){
 		free(cb);
@@ -626,14 +631,14 @@ i82563ctl(Ether* edev, void* buf, long n)
 		if(v < 0 || p == cb->f[1] || v > 0xFFFF)
 			error(Ebadarg);
 		ctlr->rdtr = v;
-		csr32w(ctlr, Rdtr, Fpd|v);
+		Set(ctlr, Rdtr, Fpd|v);
 		break;
 	case CMradv:
 		v = strtol(cb->f[1], &p, 0);
 		if(v < 0 || p == cb->f[1] || v > 0xFFFF)
 			error(Ebadarg);
 		ctlr->radv = v;
-		csr32w(ctlr, Radv, v);
+		Set(ctlr, Radv, v);
 	}
 	free(cb);
 	poperror();
@@ -651,13 +656,13 @@ i82563promiscuous(void* arg, int on)
 	edev = arg;
 	ctlr = edev->ctlr;
 
-	rctl = csr32r(ctlr, Rctl);
+	rctl = Get(ctlr, Rctl);
 	rctl &= ~MoMASK;
 	if(on)
 		rctl |= Upe|Mpe;
 	else
 		rctl &= ~(Upe|Mpe);
-	csr32w(ctlr, Rctl, rctl);
+	Set(ctlr, Rctl, rctl);
 }
 
 static void
@@ -676,8 +681,8 @@ i82563multicast(void* arg, uchar* addr, int on)
 		ctlr->mta[x] |= 1<<bit;
 	else
 		ctlr->mta[x] &= ~(1<<bit);
-
-	csr32w(ctlr, Mta+x*4, ctlr->mta[x]);
+	
+	Set(ctlr, Mta+x*4, ctlr->mta[x]);
 }
 
 static Block*
@@ -712,7 +717,7 @@ i82563im(Ctlr* ctlr, int im)
 {
 	ilock(&ctlr->imlock);
 	ctlr->im |= im;
-	csr32w(ctlr, Ims, ctlr->im);
+	Set(ctlr, Ims, ctlr->im);
 	iunlock(&ctlr->imlock);
 }
 
@@ -722,15 +727,15 @@ i82563txinit(Ctlr* ctlr)
 	int i, r;
 	Block *bp;
 
-	csr32w(ctlr, Tctl, (0x0F<<CtSHIFT)|Psp|(66<<ColdSHIFT));
-	csr32w(ctlr, Tipg, (6<<20)|(8<<10)|8);
-	csr32w(ctlr, Tdbal, PCIWADDR(ctlr->tdba));
-	csr32w(ctlr, Tdbah, 0);
-	csr32w(ctlr, Tdlen, ctlr->ntd*sizeof(Td));
+	Set(ctlr, Tctl, (0x0F<<CtSHIFT)|Psp|(66<<ColdSHIFT));
+	Set(ctlr, Tipg, (6<<20)|(8<<10)|8);
+	Set(ctlr, Tdbal, PCIWADDR(ctlr->tdba));
+	Set(ctlr, Tdbah, 0);
+	Set(ctlr, Tdlen, ctlr->ntd*sizeof(Td));
 	ctlr->tdh = PREV(0, ctlr->ntd);
-	csr32w(ctlr, Tdh, 0);
+	Set(ctlr, Tdh, 0);
 	ctlr->tdt = 0;
-	csr32w(ctlr, Tdt, 0);
+	Set(ctlr, Tdt, 0);
 	for(i = 0; i < ctlr->ntd; i++){
 		if((bp = ctlr->tb[i]) != nil){
 			ctlr->tb[i] = nil;
@@ -739,15 +744,15 @@ i82563txinit(Ctlr* ctlr)
 		memset(&ctlr->tdba[i], 0, sizeof(Td));
 	}
 	ctlr->tdfree = ctlr->ntd;
-	csr32w(ctlr, Tidv, 128);
-	r = csr32r(ctlr, Txdctl);
+	Set(ctlr, Tidv, 128);
+	r = Get(ctlr, Txdctl);
 	r &= ~WthreshMASK;
 	r |= Gran|(4<<WthreshSHIFT);
-	csr32w(ctlr, Tadv, 64);
-	csr32w(ctlr, Txdctl, r);
-	r = csr32r(ctlr, Tctl);
+	Set(ctlr, Tadv, 64);
+	Set(ctlr, Txdctl, r);
+	r = Get(ctlr, Tctl);
 	r |= Ten;
-	csr32w(ctlr, Tctl, r);
+	Set(ctlr, Tctl, r);
 }
 
 static void
@@ -766,7 +771,7 @@ i82563transmit(Ether* edev)
 	 * Free any completed packets
 	 */
 	tdh = ctlr->tdh;
-	ctdh = csr32r(ctlr, Tdh);
+	ctdh = Get(ctlr, Tdh);
 	while(NEXT(tdh, ctlr->ntd) != ctdh){
 		if((bp = ctlr->tb[tdh]) != nil){
 			ctlr->tb[tdh] = nil;
@@ -798,7 +803,7 @@ i82563transmit(Ether* edev)
 			break;
 		}
 	}
-	csr32w(ctlr, Tdt, tdt);
+	Set(ctlr, Tdt, tdt);
 	iunlock(&ctlr->tlock);
 }
 
@@ -827,7 +832,7 @@ i82563replenish(Ctlr* ctlr)
 		ctlr->rdfree++;
 	}
 	ctlr->rdt = rdt;
-	csr32w(ctlr, Rdt, rdt);
+	Set(ctlr, Rdt, rdt);
 }
 
 static void
@@ -836,21 +841,21 @@ i82563rxinit(Ctlr* ctlr)
 	int i;
 	Block *bp;
 
-//	csr32w(ctlr, Rctl, Dpf|Bsize2048|Bam|RdtmsHALF);
-//	csr32w(ctlr, Rctl, Lpe|Dpf|Bsize16384|Bam|RdtmsHALF|Bsex|Secrc);
-	csr32w(ctlr, Rctl, Lpe|Dpf|Bsize8192|Bam|RdtmsHALF|Bsex|Secrc);
+//	Set(ctlr, Rctl, Dpf|Bsize2048|Bam|RdtmsHALF);
+//	Set(ctlr, Rctl, Lpe|Dpf|Bsize16384|Bam|RdtmsHALF|Bsex|Secrc);
+	Set(ctlr, Rctl, Lpe|Dpf|Bsize8192|Bam|RdtmsHALF|Bsex|Secrc);
 
-	csr32w(ctlr, Rdbal, PCIWADDR(ctlr->rdba));
-	csr32w(ctlr, Rdbah, 0);
-	csr32w(ctlr, Rdlen, ctlr->nrd*sizeof(Rd));
+	Set(ctlr, Rdbal, PCIWADDR(ctlr->rdba));
+	Set(ctlr, Rdbah, 0);
+	Set(ctlr, Rdlen, ctlr->nrd*sizeof(Rd));
 	ctlr->rdh = 0;
-	csr32w(ctlr, Rdh, 0);
+	Set(ctlr, Rdh, 0);
 	ctlr->rdt = 0;
-	csr32w(ctlr, Rdt, 0);
+	Set(ctlr, Rdt, 0);
 	ctlr->rdtr = 0;
 	ctlr->radv = 0;
-	csr32w(ctlr, Rdtr, Fpd|0);
-	csr32w(ctlr, Radv, 0);
+	Set(ctlr, Rdtr, Fpd|0);
+	Set(ctlr, Radv, 0);
 
 	for(i = 0; i < ctlr->nrd; i++){
 		if((bp = ctlr->rb[i]) != nil){
@@ -859,15 +864,15 @@ i82563rxinit(Ctlr* ctlr)
 		}
 	}
 	i82563replenish(ctlr);
-	csr32w(ctlr, Radv, 64);
-//	csr32w(ctlr, Rxdctl, (8<<WthreshSHIFT)|(8<<HthreshSHIFT)|4);
-//	csr32w(ctlr, Rxdctl, (0<<WthreshSHIFT)|(0<<HthreshSHIFT)|0);
-	csr32w(ctlr, Rxdctl, (1<<16)|(1<<24));
+	Set(ctlr, Radv, 64);
+//	Set(ctlr, Rxdctl, (8<<WthreshSHIFT)|(8<<HthreshSHIFT)|4);
+//	Set(ctlr, Rxdctl, (0<<WthreshSHIFT)|(0<<HthreshSHIFT)|0);
+	Set(ctlr, Rxdctl, (1<<16)|(1<<24));
 
 	/*
 	 * Enable checksum offload.
 	 */
-	csr32w(ctlr, Rxcsum, Tuofl|Ipofl|(ETHERHDRSIZE<<PcssSHIFT));
+	Set(ctlr, Rxcsum, Tuofl|Ipofl|(ETHERHDRSIZE<<PcssSHIFT));
 }
 
 static void
@@ -951,9 +956,9 @@ i82563rproc(void* arg)
 	ctlr = edev->ctlr;
 
 	i82563rxinit(ctlr);
-	r = csr32r(ctlr, Rctl);
+	r = Get(ctlr, Rctl);
 	r |= Ren;
-	csr32w(ctlr, Rctl, r);
+	Set(ctlr, Rctl, r);
 
 	for(;;){
 		i82563im(ctlr, Rxt0|Rxo|Rxdmt0|Rxseq);
@@ -968,7 +973,7 @@ i82563rproc(void* arg)
 			ctlr->rim = 0;
 			if(!(rd->status & Rdd))
 				break;
-
+	
 			/*
 			 * Accept eop packets with no errors.
 			 * With no errors and the Ixsm bit set,
@@ -1013,6 +1018,90 @@ i82563rproc(void* arg)
 			if(ctlr->rdfree < (ctlr->nrd/4)*3 || (rim & Rxdmt0))
 				i82563replenish(ctlr);
 		}
+	}
+}
+
+static int
+i82563lim(void* c)
+{
+	return ((Ctlr*)c)->lim != 0;
+}
+
+
+static int speedtab[] = {
+	10, 100, 1000, 0
+};
+
+static uint
+phyread(Ctlr *c, int reg)
+{
+	uint phy, i;
+
+	Set(c, Mdic, MDIrop|(reg<<MDIrSHIFT));
+	phy = 0;
+	for(i = 0; i < 64; i++){
+		phy = Get(c, Mdic);
+		if(phy&(MDIe|MDIready))
+			break;
+		microdelay(1);
+	}
+	if((phy&(MDIe|MDIready)) != MDIready)
+		return ~0;
+	return phy&0xffff;
+}
+
+static uint
+phywrite(Ctlr *c, int reg, ushort val)
+{
+	uint phy, i;
+
+	Set(c, Mdic, MDIwop|(reg<<MDIrSHIFT)|val);
+	phy = 0;
+	for(i = 0; i < 64; i++){
+		phy = Get(c, Mdic);
+		if(phy&(MDIe|MDIready))
+			break;
+		microdelay(1);
+	}
+	if((phy&(MDIe|MDIready)) != MDIready)
+		return ~0;
+	return 0;
+}
+
+static void
+i82563lproc(void *v)
+{
+	Ether *e;
+	Ctlr *c;
+	uint phy, i;
+
+	e = v;
+	c = e->ctlr;
+
+	phy = phyread(c, Phyier);
+	if(phy != ~0){
+		phy |= 1<<14;
+		phywrite(c, Phyier, phy);
+	}
+
+	for(;;){
+		phy = phyread(c, Physsr);
+		if(phy == ~0)
+			goto next;
+		if(phy&Rtlink)
+			e->link = 1;
+		else
+			e->link = 0;
+		if((phy&Phyan) == 0)
+			goto next;
+		i = (phy>>14)&3;
+		c->speeds[i]++;
+		e->mbps = speedtab[i];
+	next:
+		c->lim = 0;
+		i82563im(c, Lsc);
+		c->lsleep++;
+		sleep(&c->lrendez, i82563lim, c);
 	}
 }
 
@@ -1075,6 +1164,9 @@ i82563attach(Ether* edev)
 	}
 	freeblist(fbp);
 
+	snprint(name, KNAMELEN, "#l%dlproc", edev->ctlrno);
+	kproc(name, i82563lproc, edev);
+
 	snprint(name, KNAMELEN, "#l%drproc", edev->ctlrno);
 	kproc(name, i82563rproc, edev);
 
@@ -1095,11 +1187,11 @@ i82563interrupt(Ureg*, void* arg)
 	ctlr = edev->ctlr;
 
 	ilock(&ctlr->imlock);
-	csr32w(ctlr, Imc, ~0);
+	Set(ctlr, Imc, ~0);
 	im = ctlr->im;
 	txdw = 0;
 
-	while(icr = csr32r(ctlr, Icr) & ctlr->im){
+	while(icr = Get(ctlr, Icr) & ctlr->im){
 		if(icr & Lsc){
 			im &= ~Lsc;
 			ctlr->lim = icr & Lsc;
@@ -1121,7 +1213,7 @@ i82563interrupt(Ureg*, void* arg)
 	}
 
 	ctlr->im = im;
-	csr32w(ctlr, Ims, im);
+	Set(ctlr, Ims, im);
 	iunlock(&ctlr->imlock);
 
 	if(txdw)
@@ -1138,40 +1230,40 @@ i82563detach(Ctlr* ctlr)
 	 * power-on state, followed by an EEPROM reset to read
 	 * the defaults for some internal registers.
 	 */
-	csr32w(ctlr, Imc, ~0);
-	csr32w(ctlr, Rctl, 0);
-	csr32w(ctlr, Tctl, 0);
+	Set(ctlr, Imc, ~0);
+	Set(ctlr, Rctl, 0);
+	Set(ctlr, Tctl, 0);
 
 	delay(10);
 
-	csr32w(ctlr, Ctrl, Devrst);
+	Set(ctlr, Ctrl, Devrst);
 	delay(1);
 	for(timeo = 0; timeo < 1000; timeo++){
-		if(!(csr32r(ctlr, Ctrl) & Devrst))
+		if(!(Get(ctlr, Ctrl) & Devrst))
 			break;
 		delay(1);
 	}
-	if(csr32r(ctlr, Ctrl) & Devrst)
+	if(Get(ctlr, Ctrl) & Devrst)
 		return -1;
-	r = csr32r(ctlr, Ctrlext);
-	csr32w(ctlr, Ctrlext, r|Eerst);
+	r = Get(ctlr, Ctrlext);
+	Set(ctlr, Ctrlext, r|Eerst);
 	delay(1);
 	for(timeo = 0; timeo < 1000; timeo++){
-		if(!(csr32r(ctlr, Ctrlext) & Eerst))
+		if(!(Get(ctlr, Ctrlext) & Eerst))
 			break;
 		delay(1);
 	}
-	if(csr32r(ctlr, Ctrlext) & Eerst)
+	if(Get(ctlr, Ctrlext) & Eerst)
 		return -1;
 
-	csr32w(ctlr, Imc, ~0);
+	Set(ctlr, Imc, ~0);
 	delay(1);
 	for(timeo = 0; timeo < 1000; timeo++){
-		if(!csr32r(ctlr, Icr))
+		if(!Get(ctlr, Icr))
 			break;
 		delay(1);
 	}
-	if(csr32r(ctlr, Icr))
+	if(Get(ctlr, Icr))
 		return -1;
 
 	return 0;
@@ -1186,10 +1278,10 @@ i82563shutdown(Ether* ether)
 static ushort
 eeread(Ctlr* ctlr, int adr)
 {
-	csr32w(ctlr, Eerd, ee_start | adr << 2);
-	while ((csr32r(ctlr, Eerd) & ee_done) == 0)
+	Set(ctlr, Eerd, ee_start | adr << 2);
+	while ((Get(ctlr, Eerd) & ee_done) == 0)
 		;
-	return csr32r(ctlr, Eerd) >> 16;
+	return Get(ctlr, Eerd) >> 16;
 }
 
 static int
@@ -1197,7 +1289,7 @@ eeload(Ctlr* ctlr)
 {
 	ushort sum;
 	int data, adr;
-
+	
 	sum = 0;
 	for (adr = 0; adr < 0x40; adr++) {
 		data = eeread(ctlr, adr);
@@ -1207,10 +1299,7 @@ eeload(Ctlr* ctlr)
 	return sum;
 }
 
-/*
- * kind of unnecessary;
- * but just in case they add 4 or 16 macs to the same ctlr.
- */
+// kind of unnecessiary; but just in case they add 4 or 16 macs to the same ctlr.
 static uchar*
 etheradd(uchar *u, uint n)
 {
@@ -1219,7 +1308,7 @@ etheradd(uchar *u, uint n)
 
 	for(i = 5; n != 0 && i >= 0; i--){
 		j = n+u[i];
-		u[i] = j;
+		u[i] = j&0xff;
 		n = j>>8;
 	}
 	return u;
@@ -1239,11 +1328,12 @@ nthether(uchar *ea)
 	int i;
 
 	for(i = 0; i < nelem(btab); i++)
-		if(btab[i].n == 0 || memcmp(btab[i].ea, ea, Easize) == 0) {
-			memmove(btab[i].ea, ea, Easize);
-			return btab[i].n++;
-		}
+		if(btab[i].n == 0 || memcmp(btab[i].ea, ea, Easize) == 0)
+			goto found;
 	return -1;
+found:
+	memmove(btab[i].ea, ea, Easize);
+	return btab[i].n++;
 }
 
 static int
@@ -1265,22 +1355,22 @@ i82563reset(Ctlr* ctlr)
 	}
 	etheradd(ctlr->ra, nthether(ctlr->ra));
 	r = (ctlr->ra[3]<<24)|(ctlr->ra[2]<<16)|(ctlr->ra[1]<<8)|ctlr->ra[0];
-	csr32w(ctlr, Ral, r);
+	Set(ctlr, Ral, r);
 	r = 0x80000000|(ctlr->ra[5]<<8)|ctlr->ra[4];
-	csr32w(ctlr, Rah, r);
+	Set(ctlr, Rah, r);
 	for(i = 1; i < 16; i++){
-		csr32w(ctlr, Ral+i*8, 0);
-		csr32w(ctlr, Rah+i*8, 0);
+		Set(ctlr, Ral+i*8, 0);
+		Set(ctlr, Rah+i*8, 0);
 	}
 	memset(ctlr->mta, 0, sizeof(ctlr->mta));
 	for(i = 0; i < 128; i++)
-		csr32w(ctlr, Mta+i*4, 0);
-	csr32w(ctlr, Fcal, 0x00C28001);
-	csr32w(ctlr, Fcah, 0x00000100);
-	csr32w(ctlr, Fct, 0x00008808);
-	csr32w(ctlr, Fcttv, 0x00000100);
-	csr32w(ctlr, Fcrtl, ctlr->fcrtl);
-	csr32w(ctlr, Fcrth, ctlr->fcrth);
+		Set(ctlr, Mta+i*4, 0);
+	Set(ctlr, Fcal, 0x00C28001);
+	Set(ctlr, Fcah, 0x00000100);
+	Set(ctlr, Fct, 0x00008808);
+	Set(ctlr, Fcttv, 0x00000100);
+	Set(ctlr, Fcrtl, ctlr->fcrtl);
+	Set(ctlr, Fcrth, ctlr->fcrth);
 	return 0;
 }
 
@@ -1295,9 +1385,11 @@ i82563pci(void)
 
 	p = nil;
 	while(p = pcimatch(p, 0, 0)){
-		if(p->ccrb != Pcibcnet || p->ccru != 0)
+		if(p->ccrb != 0x02 || p->ccru != 0)
 			continue;
-		if (p->vid != 0x8086 || p->did != 0x1096)
+		if (p->vid != 0x8086)
+			continue;
+		if (p->did != 0x1096)
 			continue;
 
 		io = p->mem[0].bar & ~0x0F;
@@ -1352,13 +1444,14 @@ i82563pnp(Ether* edev)
 	 * Any adapter matches if no edev->port is supplied,
 	 * otherwise the ports must match.
 	 */
-	for(ctlr = i82563ctlrhead; ctlr != nil; ctlr = ctlr->next)
+	for(ctlr = i82563ctlrhead; ctlr != nil; ctlr = ctlr->next){
 		if(ctlr->active)
 			continue;
-		else if(edev->port == 0 || edev->port == ctlr->port){
+		if(edev->port == 0 || edev->port == ctlr->port){
 			ctlr->active = 1;
 			break;
 		}
+	}
 	if(ctlr == nil)
 		return -1;
 
