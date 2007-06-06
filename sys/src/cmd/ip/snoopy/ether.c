@@ -24,6 +24,8 @@ static Mux p_mux[] =
 	{"pppoe_disc",	0x8863, },
 	{"pppoe_sess",	0x8864, },
 	{"eapol",	0x888e, },
+	{"aoe",		0x88a2, } ,
+	{"cec",		0xbcbc, } ,
 	{0}
 };
 
