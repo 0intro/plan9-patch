@@ -62,8 +62,6 @@ cmd		: error
 			{ noop(); }
 		| 'q' 'u' 'i' 't' CRLF
 			{ quit(); }
-		| 't' 'u' 'r' 'n' CRLF
-			{ turn(); }
 		| 's' 't' 'a' 'r' 't' 't' 'l' 's' CRLF
 			{ starttls(); }
 		| 'a' 'u' 't' 'h' spaces name spaces string CRLF
@@ -71,7 +69,7 @@ cmd		: error
 		| 'a' 'u' 't' 'h' spaces name CRLF
 			{ auth($6.s, nil); }
 		| CRLF
-			{ reply("501 illegal command or bad syntax\r\n"); }
+			{ reply("500 5.5.1 illegal command or bad syntax\r\n"); }
 		;
 path		: '<' '>'			={ $$ = anonymous(); }
 		| '<' mailbox '>'		={ $$ = $2; }
