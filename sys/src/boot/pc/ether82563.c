@@ -1,6 +1,6 @@
 /*
  * bootstrap driver for
- * Intel 82563 Gigabit Ethernet Controller
+ * Intel 82563, 82571, 82573 Gigabit Ethernet Controllers
  */
 #include "u.h"
 #include "lib.h"
@@ -32,10 +32,10 @@ enum
  * these are in the order they appear in the manual, not numeric order.
  * It was too hard to find them in the book. Ref 21489, rev 2.6
  */
-
+ 
 enum {
 	/* General */
-
+	
 	Ctrl		= 0x00000000,	/* Device Control */
 	Status		= 0x00000008,	/* Device Status */
 	Eec		= 0x00000010,	/* EEPROM/Flash Control/Data */
@@ -54,17 +54,17 @@ enum {
 	Rxcw		= 0x00000180,	/* Receive Configuration Word */
 	Ledctl		= 0x00000E00,	/* LED control */
 	Pba		= 0x00001000,	/* Packet Buffer Allocation */
-
+	
 	/* Interrupt */
-
+	
 	Icr		= 0x000000C0,	/* Interrupt Cause Read */
 	Ics		= 0x000000C8,	/* Interrupt Cause Set */
 	Ims		= 0x000000D0,	/* Interrupt Mask Set/Read */
 	Imc		= 0x000000D8,	/* Interrupt mask Clear */
 	Iam		= 0x000000E0,	/* Interrupt acknowledge Auto Mask */
-
+	
 	/* Receive */
-
+	
 	Rctl		= 0x00000100,	/* Receive Control */
 	Ert		= 0x00002008,	/* Early Receive Threshold (573[EVL] only) */
 	Fcrtl		= 0x00002160,	/* Flow Control RX Threshold Low */
@@ -98,9 +98,9 @@ enum {
 	Rssir		= 0x00005868,	/* RSS Interrupt Request */
 	Reta		= 0x00005c00,	/* Redirection Table */
 	Rssrk		= 0x00005c80,	/* RSS Random Key */
-
+	
 	/* Transmit */
-
+	
 	Tctl		= 0x00000400,	/* Transmit Control */
 	Tipg		= 0x00000410,	/* Transmit IPG */
 	Tdbal		= 0x00003800,	/* Tdesc Base Address Low */
@@ -121,7 +121,7 @@ enum {
 	Tarc1		= 0x00003940,	/* Transmit Arbitration Counter Queue 1 */
 
 	/* Statistics */
-
+	
 	Statistics	= 0x00004000,	/* Start of Statistics Area */
 	Gorcl		= 0x88/4,	/* Good Octets Received Count */
 	Gotcl		= 0x90/4,	/* Good Octets Transmitted Count */
@@ -235,6 +235,7 @@ enum {					/* Icr, Ics, Ims, Imc */
 	Gpi1		= 0x00001000,
 	Gpi2		= 0x00002000,
 	Gpi3		= 0x00004000,
+	Ack		= 0x00020000,	/* receive ACK frame */
 };
 
 enum {					/* Txcw */
@@ -287,6 +288,7 @@ enum {					/* Tctl */
 	Trst		= 0x00000001,	/* Transmitter Software Reset */
 	Ten		= 0x00000002,	/* Transmit Enable */
 	Psp		= 0x00000008,	/* Pad Short Packets */
+	Mulr		= 0x10000000,	/* Allow multiple concurrent requests */
 	CtMASK		= 0x00000FF0,	/* Collision Threshold */
 	CtSHIFT		= 4,
 	ColdMASK	= 0x003FF000,	/* Collision Distance */
@@ -380,14 +382,29 @@ enum {
 	Ntdesc		= 128,		/* multiple of 8 */
 };
 
+enum{
+	i82563,
+	i82571,
+	i82573,
+};
+
+static char *tname[] = {
+	"i82563",
+	"i82571",
+	"i82573",
+};
+#define Type	tname[ctlr->type]
+
 typedef struct Ctlr Ctlr;
 struct Ctlr {
 	int	port;
-	Pcidev*	pcidev;
-	Ctlr*	next;
+	Pcidev	*pcidev;
+	Ctlr	*next;
 	int	active;
 	int	cls;
 	ushort	eeprom[0x40];
+	uchar	ra[Eaddrlen];
+	int	type;
 
 	int*	nic;
 	Lock	imlock;
@@ -396,17 +413,14 @@ struct Ctlr {
 	Lock	slock;
 	uint	statistics[Nstatistics];
 
-	uchar	ra[Eaddrlen];		/* receive address */
-	ulong	mta[128];		/* multicast table array */
-
-	Rdesc*	rdba;			/* receive descriptor base address */
-	Block**	rb;			/* receive buffers */
+	Rdesc	*rdba;			/* receive descriptor base address */
+	Block	**rb;			/* receive buffers */
 	int	rdh;			/* receive descriptor head */
 	int	rdt;			/* receive descriptor tail */
 
-	Tdesc*	tdba;			/* transmit descriptor base address */
+	Tdesc	*tdba;			/* transmit descriptor base address */
 	Lock	tdlock;
-	Block**	tb;			/* transmit buffers */
+	Block	**tb;			/* transmit buffers */
 	int	tdh;			/* transmit descriptor head */
 	int	tdt;			/* transmit descriptor tail */
 
@@ -415,22 +429,22 @@ struct Ctlr {
 	int	fcrth;
 
 	/* bootstrap goo */
-	Block*	bqhead;	/* transmission queue */
-	Block*	bqtail;
+	Block	*bqhead;	/* transmission queue */
+	Block	*bqtail;
 };
 
-static Ctlr* ctlrhead;
-static Ctlr* ctlrtail;
+static Ctlr	*ctlrhead;
+static Ctlr	*ctlrtail;
 
-#define csr32r(c, r)	(*((c)->nic+((r)/4)))
-#define csr32w(c, r, v)	(*((c)->nic+((r)/4)) = (v))
+#define Get(c, r)	(*((c)->nic+((r)/4)))
+#define Set(c, r, v)	(*((c)->nic+((r)/4)) = (v))
 
 static void
 i82563im(Ctlr* ctlr, int im)
 {
 	ilock(&ctlr->imlock);
 	ctlr->im |= im;
-	csr32w(ctlr, Ims, ctlr->im);
+	Set(ctlr, Ims, ctlr->im);
 	iunlock(&ctlr->imlock);
 }
 
@@ -442,17 +456,17 @@ i82563attach(Ether* edev)
 
 	ctlr = edev->ctlr;
 	i82563im(ctlr, 0);
-	ctl = csr32r(ctlr, Rctl)|Ren;
-	csr32w(ctlr, Rctl, ctl);
-	ctl = csr32r(ctlr, Tctl)|Ten;
-	csr32w(ctlr, Tctl, ctl);
+	ctl = Get(ctlr, Rctl)|Ren;
+	Set(ctlr, Rctl, ctl);
+	ctl = Get(ctlr, Tctl)|Ten;
+	Set(ctlr, Tctl, ctl);
 }
 
 
 static void
 txstart(Ether *edev)
 {
-	int tdh, tdt, len, olen;
+	int tdh, tdt;
 	Ctlr *ctlr = edev->ctlr;
 	Block *bp;
 	Tdesc *tdesc;
@@ -463,40 +477,22 @@ txstart(Ether *edev)
 	tdh = PREV(ctlr->tdh, Ntdesc);
 	for(tdt = ctlr->tdt; tdt != tdh; tdt = NEXT(tdt, Ntdesc)){
 		/* pull off the head of the transmission queue */
-		if((bp = ctlr->bqhead) == nil)		/* was qget(edev->oq) */
+		if((bp = ctlr->bqhead) == nil)
 			break;
 		ctlr->bqhead = bp->next;
 		if (ctlr->bqtail == bp)
 			ctlr->bqtail = nil;
-		len = olen = BLEN(bp);
-
-		/*
-		 * if packet is too short, make it longer rather than relying
-		 * on ethernet interface to pad it and complain so the caller
-		 * will get fixed.  I don't think Psp is working right, or it's
-		 * getting cleared.
-		 */
-		if (len < ETHERMINTU) {
-			if (bp->rp + ETHERMINTU <= bp->lim)
-				bp->wp = bp->rp + ETHERMINTU;
-			else
-				bp->wp = bp->lim;
-			len = BLEN(bp);
-			print("txstart: extended short pkt %d -> %d bytes\n",
-				olen, len);
-		}
 
 		/* set up a descriptor for it */
 		tdesc = &ctlr->tdba[tdt];
 		tdesc->addr[0] = PCIWADDR(bp->rp);
 		tdesc->addr[1] = 0;
-		tdesc->control = /* Ide| */ Rs|Dext|Ifcs|Teop|DtypeDD|len;
-		tdesc->status = 0;
+		tdesc->control = Rs|Ifcs|Teop|BLEN(bp);
 
 		ctlr->tb[tdt] = bp;
 	}
 	ctlr->tdt = tdt;
-	csr32w(ctlr, Tdt, tdt);
+	Set(ctlr, Tdt, tdt);
 	i82563im(ctlr, Txdw);
 }
 
@@ -536,11 +532,11 @@ i82563transmit(Ether* edev)
 		tdesc = &ctlr->tdba[tdh];
 		if(!(tdesc->status & Tdd))
 			break;
-		tdesc->status = 0;
 		if(ctlr->tb[tdh] != nil){
 			freeb(ctlr->tb[tdh]);
 			ctlr->tb[tdh] = nil;
 		}
+		tdesc->status = 0;
 		tdh = NEXT(tdh, Ntdesc);
 	}
 	ctlr->tdh = tdh;
@@ -548,6 +544,7 @@ i82563transmit(Ether* edev)
 	/* copy packets from the software RingBuf to the transmission q */
 	while((tb = &edev->tb[edev->ti])->owner == Interface){
 		bp = fromringbuf(edev);
+//print("%d: tx %d %E %E\n", edev->ctlrno, edev->ti, bp->rp, bp->rp+6);
 
 		if(ctlr->bqhead)
 			ctlr->bqtail->next = bp;
@@ -587,7 +584,7 @@ i82563replenish(Ctlr* ctlr)
 		rdt = NEXT(rdt, Nrdesc);
 	}
 	ctlr->rdt = rdt;
-	csr32w(ctlr, Rdt, rdt);
+	Set(ctlr, Rdt, rdt);
 }
 
 static void
@@ -599,9 +596,10 @@ toringbuf(Ether *ether, Block *bp)
 		rb->len = BLEN(bp);
 		memmove(rb->pkt, bp->rp, rb->len);
 		rb->owner = Host;
+//print("%d: toringbuf: %d %p\n", ether->ctlrno, ether->ri, ether);
 		ether->ri = NEXT(ether->ri, ether->nrb);
-	}
-	/* else no one is expecting packets from the network */
+	}else
+		print("%d: toringbuf: dropping packets @ %d\n", ether->ctlrno, ether->ri);
 }
 
 static void
@@ -617,10 +615,10 @@ i82563interrupt(Ureg*, void* arg)
 	ctlr = edev->ctlr;
 
 	ilock(&ctlr->imlock);
-	csr32w(ctlr, Imc, ~0);
+	Set(ctlr, Imc, ~0);
 	im = ctlr->im;
 
-	for(icr = csr32r(ctlr, Icr); icr & ctlr->im; icr = csr32r(ctlr, Icr)){
+	for(icr = Get(ctlr, Icr); icr & ctlr->im; icr = Get(ctlr, Icr)){
 		if(icr & (Rxseq|Lsc)){
 		}
 
@@ -631,13 +629,15 @@ i82563interrupt(Ureg*, void* arg)
 				break;
 			if ((rdesc->status & Reop) && rdesc->errors == 0) {
 				bp = ctlr->rb[rdh];
+//if(memcmp(bp->rp, broadcast, 6) != 0)
+//	print("%d: rx %d %E %E %d\n", edev->ctlrno, rdh, bp->rp, bp->rp+6, rdesc->length);
 				ctlr->rb[rdh] = nil;
 				bp->wp += rdesc->length;
 				toringbuf(edev, bp);
 				freeb(bp);
 			} else if ((rdesc->status & Reop) && rdesc->errors)
-				print("i82563: input packet error 0x%ux\n",
-					rdesc->errors);
+				print("%s: input packet error 0x%ux\n",
+					Type, rdesc->errors);
 			rdesc->status = 0;
 			rdh = NEXT(rdh, Nrdesc);
 		}
@@ -650,7 +650,7 @@ i82563interrupt(Ureg*, void* arg)
 		}
 	}
 	ctlr->im = im;
-	csr32w(ctlr, Ims, im);
+	Set(ctlr, Ims, im);
 	iunlock(&ctlr->imlock);
 	if(txdw)
 		i82563transmit(edev);
@@ -664,58 +664,62 @@ i82563init(Ether* edev)
 
 	ctlr = edev->ctlr;
 	csr = (edev->ea[3]<<24)|(edev->ea[2]<<16)|(edev->ea[1]<<8)|edev->ea[0];
-	csr32w(ctlr, Ral, csr);
+	Set(ctlr, Ral, csr);
 	csr = 0x80000000|(edev->ea[5]<<8)|edev->ea[4];
-	csr32w(ctlr, Rah, csr);
+	Set(ctlr, Rah, csr);
 	for (i = 1; i < 16; i++) {
-		csr32w(ctlr, Ral+i*8, 0);
-		csr32w(ctlr, Rah+i*8, 0);
+		Set(ctlr, Ral+i*8, 0);
+		Set(ctlr, Rah+i*8, 0);
 	}
 	for(i = 0; i < 128; i++)
-		csr32w(ctlr, Mta+i*4, 0);
-	csr32w(ctlr, Rctl, 0);
-	ctlr->rdba = xspanalloc(Nrdesc*sizeof(Rdesc), 128 /* was 16 */, 0);
-	csr32w(ctlr, Rdbal, PCIWADDR(ctlr->rdba));
-	csr32w(ctlr, Rdbah, 0);
-	csr32w(ctlr, Rdlen, Nrdesc*sizeof(Rdesc));
+		Set(ctlr, Mta+i*4, 0);
+	Set(ctlr, Rctl, 0);
+	ctlr->rdba = xspanalloc(Nrdesc*sizeof(Rdesc), 256, 0);
+	Set(ctlr, Rdbal, PCIWADDR(ctlr->rdba));
+	Set(ctlr, Rdbah, 0);
+	Set(ctlr, Rdlen, Nrdesc*sizeof(Rdesc));
 	ctlr->rdh = 0;
-	csr32w(ctlr, Rdh, ctlr->rdh);
+	Set(ctlr, Rdh, ctlr->rdh);
 	ctlr->rdt = 0;
-	csr32w(ctlr, Rdt, ctlr->rdt);
+	Set(ctlr, Rdt, ctlr->rdt);
 	ctlr->rb = malloc(sizeof(Block*)*Nrdesc);
 	i82563replenish(ctlr);
-	csr32w(ctlr, Rdtr, 0);
-	csr32w(ctlr, Rctl, Dpf|Bsize2048|Bam);
-	i82563im(ctlr, Rxt0|Rxo|Rxdmt0|Rxseq);
+	Set(ctlr, Rdtr, 0);
+	Set(ctlr, Rctl, Dpf|Bsize2048|Bam|RdtmsHALF);
+	i82563im(ctlr, Rxt0|Rxo|Rxdmt0|Rxseq|Ack);
+	
+	Set(ctlr, Tctl, (0x0F<<CtSHIFT)|Psp|(0x3f<<ColdSHIFT)|Mulr);
+	Set(ctlr, Tipg, (6<<20)|(8<<10)|8);
+	Set(ctlr, Tidv, 1);
 
-	csr32w(ctlr, Tctl, (0x0F<<CtSHIFT)|Psp|(0x3f<<ColdSHIFT));	/* Fd */
-	csr32w(ctlr, Tipg, (7<<20)|(8<<10)|9);
-	csr32w(ctlr, Tidv, 1);
-	ctlr->tdba = xspanalloc(Ntdesc*sizeof(Tdesc), 128 /* was 16 */, 0);
-	csr32w(ctlr, Tdbal, PCIWADDR(ctlr->tdba));
-	csr32w(ctlr, Tdbah, 0);
-	csr32w(ctlr, Tdlen, Ntdesc*sizeof(Tdesc));
+	ctlr->tdba = xspanalloc(Ntdesc*sizeof(Tdesc), 256, 0);
+	memset(ctlr->tdba, 0, Ntdesc*sizeof(Tdesc));
+	Set(ctlr, Tdbal, PCIWADDR(ctlr->tdba));
+
+	Set(ctlr, Tdbah, 0);
+	Set(ctlr, Tdlen, Ntdesc*sizeof(Tdesc));
 	ctlr->tdh = 0;
-	csr32w(ctlr, Tdh, ctlr->tdh);
+	Set(ctlr, Tdh, ctlr->tdh);
 	ctlr->tdt = 0;
-	csr32w(ctlr, Tdt, ctlr->tdt);
+	Set(ctlr, Tdt, ctlr->tdt);
 	ctlr->tb = malloc(sizeof(Block*)*Ntdesc);
 
-	r = (4<<WthreshSHIFT)|(4<<HthreshSHIFT)|(8<<PthreshSHIFT);
-	csr32w(ctlr, Txdctl, r);
-	r = csr32r(ctlr, Tctl);
+//	r = (4<<WthreshSHIFT)|(4<<HthreshSHIFT)|(8<<PthreshSHIFT);
+//	Set(ctlr, Txdctl, r);
+	Set(ctlr, Rxcsum, Tuofl|Ipofl|(ETHERHDRSIZE<<PcssSHIFT));
+	r = Get(ctlr, Tctl);
 	r |= Ten;
-	csr32w(ctlr, Tctl, r);
+	Set(ctlr, Tctl, r);
 }
 
 
 static ushort
 eeread(Ctlr* ctlr, int adr)
 {
-	csr32w(ctlr, Eerd, ee_start | adr << 2);
-	while ((csr32r(ctlr, Eerd) & ee_done) == 0)
+	Set(ctlr, Eerd, ee_start | adr << 2);
+	while ((Get(ctlr, Eerd) & ee_done) == 0)
 		;
-	return csr32r(ctlr, Eerd) >> 16;
+	return Get(ctlr, Eerd) >> 16;
 }
 
 static int
@@ -723,7 +727,7 @@ eeload(Ctlr* ctlr)
 {
 	ushort sum;
 	int data, adr;
-
+	
 	sum = 0;
 	for (adr = 0; adr < 0x40; adr++) {
 		data = eeread(ctlr, adr);
@@ -737,26 +741,34 @@ eeload(Ctlr* ctlr)
 static void
 detach(Ctlr *ctlr)
 {
-	csr32w(ctlr, Imc, ~0);
-	csr32w(ctlr, Rctl, 0);
-	csr32w(ctlr, Tctl, 0);
+	int r;
+
+	Set(ctlr, Imc, ~0);
+	Set(ctlr, Rctl, 0);
+	Set(ctlr, Tctl, 0);
 
 	delay(10);
 
-	csr32w(ctlr, Ctrl, Devrst);
+	r= Get(ctlr, Ctrl);
+	Set(ctlr, Ctrl, Devrst|r);
 	/* apparently needed on multi-GHz processors to avoid infinite loops */
 	delay(1);
-	while(csr32r(ctlr, Ctrl) & Devrst)
+	while(Get(ctlr, Ctrl) & Devrst)
 		;
 
-	csr32w(ctlr, Ctrlext, Eerst | csr32r(ctlr, Ctrlext));
+//	if(ctlr->type != i82563){
+	r = Get(ctlr, Ctrl);
+	Set(ctlr, Ctrl, Slu|r);
+//	}
+
+	Set(ctlr, Ctrlext, Eerst | Get(ctlr, Ctrlext));
 	delay(1);
-	while(csr32r(ctlr, Ctrlext) & Eerst)
+	while(Get(ctlr, Ctrlext) & Eerst)
 		;
 
-	csr32w(ctlr, Imc, ~0);
+	Set(ctlr, Imc, ~0);
 	delay(1);
-	while(csr32r(ctlr, Icr))
+	while(Get(ctlr, Icr))
 		;
 }
 
@@ -781,7 +793,7 @@ i82563reset(Ctlr* ctlr)
 
 	r = eeload(ctlr);
 	if (r != 0 && r != 0xBABA){
-		print("i82563: bad EEPROM checksum - 0x%4.4uX\n", r);
+		print("%s: bad EEPROM checksum - 0x%4.4ux\n", Type, r);
 		return -1;
 	}
 
@@ -789,39 +801,42 @@ i82563reset(Ctlr* ctlr)
 		ctlr->ra[2*i] = ctlr->eeprom[i];
 		ctlr->ra[2*i+1] = ctlr->eeprom[i]>>8;
 	}
+	r = Get(ctlr, Status)>>2;
+	ctlr->ra[5] += r&3;		// ea ctlr[1] = ea ctlr[0]+1.
+
 	r = (ctlr->ra[3]<<24)|(ctlr->ra[2]<<16)|(ctlr->ra[1]<<8)|ctlr->ra[0];
-	csr32w(ctlr, Ral, r);
+	Set(ctlr, Ral, r);
 	r = 0x80000000|(ctlr->ra[5]<<8)|ctlr->ra[4];
-	csr32w(ctlr, Rah, r);
+	Set(ctlr, Rah, r);
 	for(i = 1; i < 16; i++){
-		csr32w(ctlr, Ral+i*8, 0);
-		csr32w(ctlr, Rah+i*8, 0);
+		Set(ctlr, Ral+i*8, 0);
+		Set(ctlr, Rah+i*8, 0);
 	}
 
-	memset(ctlr->mta, 0, sizeof(ctlr->mta));
 	for(i = 0; i < 128; i++)
-		csr32w(ctlr, Mta+i*4, 0);
+		Set(ctlr, Mta+i*4, 0);
 
-	csr32w(ctlr, Fcal, 0x00C28001);
-	csr32w(ctlr, Fcah, 0x00000100);
-	csr32w(ctlr, Fct, 0x00008808);
-	csr32w(ctlr, Fcttv, 0x00000100);
+	Set(ctlr, Fcal, 0x00C28001);
+	Set(ctlr, Fcah, 0x00000100);
+	Set(ctlr, Fct, 0x00008808);
+	Set(ctlr, Fcttv, 0x00000100);
 
-	csr32w(ctlr, Fcrtl, ctlr->fcrtl);
-	csr32w(ctlr, Fcrth, ctlr->fcrth);
+	Set(ctlr, Fcrtl, ctlr->fcrtl);
+	Set(ctlr, Fcrth, ctlr->fcrth);
 
 	ilock(&ctlr->imlock);
-	csr32w(ctlr, Imc, ~0);
-	ctlr->im = Lsc;
-	csr32w(ctlr, Ims, ctlr->im);
+	Set(ctlr, Imc, ~0);
+	ctlr->im = 0; //Lsc;
+	Set(ctlr, Ims, ctlr->im);
 	iunlock(&ctlr->imlock);
+
 	return 0;
 }
 
 static void
 i82563pci(void)
 {
-	int port, cls;
+	int port, type, cls;
 	Pcidev *p;
 	Ctlr *ctlr;
 	static int first = 1;
@@ -832,17 +847,22 @@ i82563pci(void)
 		return;
 
 	p = nil;
-	while(p = pcimatch(p, 0, 0)){
-		if(p->ccrb != 0x02 || p->ccru != 0)
+	while(p = pcimatch(p, 0x8086, 0)){
+		switch(p->did){
+		case 0x1096:
+			type = i82563;
+			break;
+		case 0x108c:
+		case 0x109a:
+			type = i82573;
+			break;
+		default:
 			continue;
-		if (p->did != 0x1096)
-			continue;
-		if (p->vid != 0x8086)
-			continue;
+		}
 
 		port = upamalloc(p->mem[0].bar & ~0x0F, p->mem[0].size, 0);
 		if(port == 0){
-			print("i82563: can't map %d @ 0x%8.8luX\n",
+			print("%s: can't map %d @ 0x%8.8lux\n", tname[type],
 				p->mem[0].size, p->mem[0].bar);
 			continue;
 		}
@@ -856,14 +876,14 @@ i82563pci(void)
 		cls = pcicfgr8(p, PciCLS);
 		switch(cls){
 		default:
-			print("i82563: unexpected CLS - %d bytes\n",
-				cls*sizeof(long));
+			print("%s: unexpected CLS - %d bytes\n",
+				tname[type], cls*sizeof(long));
 			break;
 		case 0x00:
 		case 0xFF:
 			/* alphapc 164lx returns 0 */
-			print("i82563: unusable PciCLS: %d, using %d longs\n",
-				cls, CACHELINESZ/sizeof(long));
+			print("%s: unusable PciCLS: %d, using %d longs\n",
+				tname[type], cls, CACHELINESZ/sizeof(long));
 			cls = CACHELINESZ/sizeof(long);
 			pcicfgw8(p, PciCLS, cls);
 			break;
@@ -876,6 +896,7 @@ i82563pci(void)
 		ctlr->port = port;
 		ctlr->pcidev = p;
 		ctlr->cls = cls*4;
+		ctlr->type = type;
 		ctlr->nic = KADDR(ctlr->port);
 		if(i82563reset(ctlr)){
 			free(ctlr);
@@ -891,12 +912,12 @@ i82563pci(void)
 	}
 }
 
+static uchar nilea[Eaddrlen];
+
 int
 i82563pnp(Ether* edev)
 {
-	int i;
 	Ctlr *ctlr;
-	uchar ea[Eaddrlen];
 
 	if(ctlrhead == nil)
 		i82563pci();
@@ -922,18 +943,8 @@ i82563pnp(Ether* edev)
 	edev->tbdf = ctlr->pcidev->tbdf;
 //	edev->mbps = 1000;
 
-	/*
-	 * Check if the adapter's station address is to be overridden.
-	 * If not, read it from the EEPROM and set in ether->ea prior to
-	 * loading the station address in the hardware.
-	 */
-	memset(ea, 0, Eaddrlen);
-	if(memcmp(ea, edev->ea, Eaddrlen) == 0){
-		for(i = 0; i < Eaddrlen/2; i++){
-			edev->ea[2*i] = ctlr->eeprom[i];
-			edev->ea[2*i+1] = ctlr->eeprom[i]>>8;
-		}
-	}
+	if(memcmp(edev->ea, nilea, Eaddrlen) == 0)
+		memmove(edev->ea, ctlr->ra, Eaddrlen);
 	i82563init(edev);
 
 	/*
@@ -943,6 +954,16 @@ i82563pnp(Ether* edev)
 	edev->transmit = i82563transmit;
 	edev->interrupt = i82563interrupt;
 	edev->detach = i82563detach;
+
+	// with the current structure, there is no right place for this.
+	// ideally, we recognize the interface, note it's down and move on.
+	// currently either we can skip the interface or note it is down,
+	// but not both.
+
+	if((Get(ctlr, Status)&Lu) == 0){
+		print("ether#%d: 82563 (%s): link down\n", edev->ctlrno, Type);
+		return -1;
+	}
 
 	return 0;
 }
