@@ -216,7 +216,10 @@ probe(int type, int flag, int dev)
 	char **partp;
 
 	for(tp = types; tp->type != Tnil; tp++){
-		if(type != Tany && type != tp->type)
+		if(type == Tnoether){
+			if(tp->type == Tether)
+				continue;
+		}else if(type != Tany && type != tp->type)
 			continue;
 
 		if(flag != Fnone){
@@ -288,6 +291,8 @@ main(void)
 
 	i8042a20();
 	memset(m, 0, sizeof(Mach));
+	if(pxe != 0 && debug != 0)
+		consinit("0", 0);
 	trapinit();
 	clockinit();
 	alarminit();
@@ -320,7 +325,10 @@ main(void)
 	 * because we have to collect the partition tables and
 	 * have boot devices for parse.
 	 */
-	probe(Tany, Fnone, Dany);
+	if(pxe)
+		probe(Tnoether, Fnone, Dany);		// don't switch horses midstream.
+	else
+		probe(Tany, Fnone, Dany);
 	tried = 0;
 	mode = Mauto;
 	

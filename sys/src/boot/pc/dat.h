@@ -134,7 +134,8 @@ enum {					/* type */
 	Tether		= 0x03,
 	Tcd		= 0x04,
 
-	Tany		= -1,
+	Tnoether	= 5,
+	Tany		= 6,
 };
 
 enum {					/* name and flag */
