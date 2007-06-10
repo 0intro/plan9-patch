@@ -725,9 +725,6 @@ igbeinterrupt(Ureg*, void* arg)
 		 * Link status changed.
 		 */
 		if(icr & (Rxseq|Lsc)){
-			/*
-			 * More here...
-			 */
 		}
 
 		/*
@@ -1180,7 +1177,7 @@ igbemii(Ctlr* ctlr)
 		ctlr->mii = nil;
 		return -1;
 	}
-	print("oui %X phyno %d\n", phy->oui, phy->phyno);
+//	print("oui %X phyno %d\n", phy->oui, phy->phyno);
 
 	/*
 	 * 8254X-specific PHY registers not in 802.3:
@@ -1357,11 +1354,11 @@ at93c46r(Ctlr* ctlr)
 		ctlr->eeprom[addr] = data;
 		sum += data;
 
-		if(addr && ((addr & 0x07) == 0))
-			print("\n");
-		print(" %4.4ux", data);
+//		if(addr && ((addr & 0x07) == 0))
+//			print("\n");
+//		print(" %4.4ux", data);
 	}
-	print("\n");
+//	print("\n");
 
 release:
 	if(areq)
@@ -1462,6 +1459,9 @@ if(i == Ea && ctlr->id == i82541gi && ctlr->eeprom[i] == 0xFFFF)
 		ctlr->ra[2*i] = ctlr->eeprom[i];
 		ctlr->ra[2*i+1] = ctlr->eeprom[i]>>8;
 	}
+	r = csr32r(ctlr, Status)>>2;
+	ctlr->ra[5] += r&3;		// ea ctlr[1] = ea ctlr[0]+1.
+
 	r = (ctlr->ra[3]<<24)|(ctlr->ra[2]<<16)|(ctlr->ra[1]<<8)|ctlr->ra[0];
 	csr32w(ctlr, Ral, r);
 	r = 0x80000000|(ctlr->ra[5]<<8)|ctlr->ra[4];
@@ -1547,7 +1547,7 @@ if(i == Ea && ctlr->id == i82541gi && ctlr->eeprom[i] == 0xFFFF)
 
 	ilock(&ctlr->imlock);
 	csr32w(ctlr, Imc, ~0);
-	ctlr->im = Lsc;
+	ctlr->im = 0; //Lsc;
 	csr32w(ctlr, Ims, ctlr->im);
 	iunlock(&ctlr->imlock);
 
@@ -1641,12 +1641,12 @@ igbepci(void)
 		ctlr->id = (p->did<<16)|p->vid;
 		ctlr->cls = cls*4;
 		ctlr->nic = KADDR(ctlr->port);
-print("status0 %8.8uX\n", csr32r(ctlr, Status));
+//print("status0 %8.8uX\n", csr32r(ctlr, Status));
 		if(igbereset(ctlr)){
 			free(ctlr);
 			continue;
 		}
-print("status1 %8.8uX\n", csr32r(ctlr, Status));
+//print("status1 %8.8uX\n", csr32r(ctlr, Status));
 		pcisetbme(p);
 
 		if(ctlrhead != nil)
