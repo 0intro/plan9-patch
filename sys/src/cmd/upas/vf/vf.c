@@ -159,7 +159,7 @@ void
 refuse(char *reason)
 {
 	static char msg[] =
-		"mail refused: we don't accept executable attachments";
+		"mail refused:";
 
 	postnote(PNGROUP, getpid(), smprint("%s: %s", msg, reason));
 	exits(msg);
@@ -224,7 +224,7 @@ part(Part *pp)
 						p->filename?s_to_c(p->filename):"?");
 					fprint(2, "The mail contained an executable attachment.\n");
 					fprint(2, "We refuse all mail containing such.\n");
-					refuse(nil);
+					refuse("Executable attachment");
 				}
 				np = problemchild(p);
 				if(np != p)
@@ -365,19 +365,14 @@ passbody(Part *p, int dobound)
  *  save the message somewhere
  */
 static vlong bodyoff;	/* clumsy hack */
-static int
-save(Part *p, char *file)
+static int 
+savefd(Part *p, int fd)
 {
-	int fd;
 	char *cp;
 
+	seek(fd, 0, 2);
 	Bterm(&out);
 	memset(&out, 0, sizeof(out));
-
-	fd = open(file, OWRITE);
-	if(fd < 0)
-		return -1;
-	seek(fd, 0, 2);
 	Binit(&out, fd, OWRITE);
 	cp = ctime(time(0));
 	cp[28] = 0;
@@ -394,37 +389,53 @@ save(Part *p, char *file)
 	return 0;
 }
 
+static int
+save(Part *p, char *file)
+{
+	int fd;
+
+	fd = open(file, OWRITE);
+	if(fd < 0)
+		return -1;
+
+	return savefd(p, fd);
+
+}
+
 /*
  * write to a file but save the fd for passbody.
  */
 static char*
 savetmp(Part *p)
 {
-	char *name;
+	char *buf, *name, *retname;
 	int fd;
 
-	name = mktemp(smprint("%s/vf.XXXXXXXXXXX", UPASTMP));
+	buf = smprint("%s/vf.XXXXXXXXXXX", UPASTMP);
+	name = mktemp(buf);
 	if((fd = create(name, OWRITE|OEXCL, 0666)) < 0){
-		fprint(2, "%s: error creating temporary file: %r\n", argv0);
+		fprint(2, "%s(buf=%s): error creating temporary file: %r\n", name, buf);
 		refuse("can't create temporary file");
 	}
-	close(fd);
-	if(save(p, name) < 0){
-		fprint(2, "%s: error saving temporary file: %r\n", argv0);
+	if(savefd(p, fd) < 0){
+		fprint(2, "%s: error saving temporary file: %r\n", name);
 		refuse("can't write temporary file");
 	}
+	close(fd);
 	if(p->tmpbuf){
 		fprint(2, "%s: error in savetmp: already have tmp file!\n",
-			argv0);
+			name);
 		refuse("already have temporary file");
 	}
 	p->tmpbuf = Bopen(name, OREAD|ORCLOSE);
 	if(p->tmpbuf == nil){
-		fprint(2, "%s: error reading temporary file: %r\n", argv0);
+		fprint(2, "%s: error reading temporary file: %r\n", name);
 		refuse("error reading temporary file");
 	}
 	Bseek(p->tmpbuf, bodyoff, 0);
-	return name;
+	retname =  strdup(name);
+	free(buf);
+	return retname;
 }
 
 /*
