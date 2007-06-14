@@ -225,8 +225,6 @@ _groupRemMember(Ubox* box, User* g, char* member)
 			g->group[i] = g->group[i+1];
 			i++;
 		}
-		/*FALLTHROUGH*/
-	case 1:
 		g->group = vtMemRealloc(g->group, (g->ngroup)*sizeof(char*));
 		break;
 	}
