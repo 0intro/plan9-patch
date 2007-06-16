@@ -472,7 +472,7 @@ bootpopen(int ctlrno, char *file, Bootp *rep, int dotftpopen)
 	myaddr.port = BPportsrc;
 	memmove(myaddr.ea, ea, Eaddrlen);
 
-	etherrxflush(ctlrno);
+//	etherrxflush(ctlrno);
 	for(i = 0; i < 10; i++) {
 		server.ip = Bcastip;
 		server.port = BPportdst;
