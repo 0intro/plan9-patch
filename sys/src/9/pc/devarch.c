@@ -578,6 +578,7 @@ static X86type x86intel[] =
 	{ 6,	7,	16,	"PentiumIII/Xeon", },
 	{ 6,	8,	16,	"PentiumIII/Xeon", },
 	{ 6,	0xB,	16,	"PentiumIII/Xeon", },
+	{ 6,	0xF,	16,	"Xeon5000-series", },
 	{ 0xF,	1,	16,	"P4", },	/* P4 */
 	{ 0xF,	2,	16,	"PentiumIV/Xeon", },
 
@@ -802,6 +803,8 @@ archctlread(Chan*, void *a, long nn, vlong offset)
 		n += snprint(buf+n, sizeof buf-n, "mb386\n");
 	else if(coherence == mb586)
 		n += snprint(buf+n, sizeof buf-n, "mb586\n");
+	else if(coherence == mfence)
+		n += snprint(buf+n, sizeof buf-n, "mfence\n");
 	else if(coherence == nop)
 		n += snprint(buf+n, sizeof buf-n, "nop\n");
 	else
@@ -862,8 +865,11 @@ archctlwrite(Chan*, void *a, long n, vlong)
 			if(X86FAMILY(m->cpuidax) < 5)
 				error("invalid coherence ctl on this cpu family");
 			coherence = mb586;
-		}
-		else if(strcmp(cb->f[1], "nop") == 0){
+		}else if(strcmp(cb->f[1], "mfence") == 0){
+			if((m->cpuiddx&Mmx) == 0)
+				error("invalid coherence ctl on this cpu family");
+			coherence = mfence;
+		}else if(strcmp(cb->f[1], "nop") == 0){
 			/* only safe on vmware */
 			if(conf.nmach > 1)
 				error("cannot disable coherence on a multiprocessor");
@@ -928,6 +934,9 @@ archinit(void)
 
 	if(X86FAMILY(m->cpuidax) >= 5)
 		coherence = mb586;
+
+	if(m->cpuiddx&Mmx)
+		coherence = mfence;
 
 	addarchfile("cputype", 0444, cputyperead, nil);
 	addarchfile("archctl", 0664, archctlread, archctlwrite);
