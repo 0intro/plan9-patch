@@ -66,7 +66,7 @@ netifgen(Chan *c, char*, Dirtab *vp, int, int i, Dir *dp)
 
 	/* second level contains clone plus all the conversations */
 	t = NETTYPE(c->qid.path);
-	if(t == N2ndqid || t == Ncloneqid || t == Naddrqid){
+	if(t == N2ndqid || t == Ncloneqid || t == Naddrqid || t == Nmtuqid){
 		switch(i) {
 		case DEVDOTDOT:
 			q.type = QTDIR;
@@ -89,8 +89,12 @@ netifgen(Chan *c, char*, Dirtab *vp, int, int i, Dir *dp)
 			q.path = Nifstatqid;
 			devdir(c, q, "ifstats", 0, eve, 0444, dp);
 			break;
+		case 4:
+			q.path = Nmtuqid;
+			devdir(c, q, "mtu", 0, eve, 0444, dp);
+			break;
 		default:
-			i -= 4;
+			i -= 5;
 			if(i >= nif->nfile)
 				return -1;
 			if(nif->f[i] == 0)
@@ -244,6 +248,9 @@ netifread(Netif *nif, Chan *c, void *a, long n, ulong offset)
 		return readnum(offset, a, n, f->type, NUMSIZE);
 	case Nifstatqid:
 		return 0;
+	case Nmtuqid:
+		snprint(up->genbuf, sizeof up->genbuf, "%11.ud %11.ud %11.ud\n", nif->minmtu, nif->mtu, nif->maxmtu);
+		return readstr(offset, a, n, up->genbuf);
 	}
 	error(Ebadarg);
 	return -1;	/* not reached */
@@ -287,7 +294,7 @@ long
 netifwrite(Netif *nif, Chan *c, void *a, long n)
 {
 	Netfile *f;
-	int type;
+	int type, mtu;
 	char *p, buf[64];
 	uchar binaddr[Nmaxaddr];
 
@@ -331,6 +338,16 @@ netifwrite(Netif *nif, Chan *c, void *a, long n)
 			f->scan = type;
 			nif->scan++;
 		}
+	} else if((p = matchtoken(buf, "mtu")) != 0){
+		mtu = atoi(p);
+		// zero resets default.
+		if(mtu != 0)
+		if(mtu < nif->minmtu || mtu > nif->maxmtu)
+			error(Ebadarg);
+		if(nif->hwmtu)
+			nif->mtu = nif->hwmtu(nif->arg, mtu);
+		else
+			nif->mtu = mtu;
 	} else if(matchtoken(buf, "bridge")){
 		f->bridge = 1;
 	} else if(matchtoken(buf, "headersonly")){
@@ -558,7 +575,7 @@ matchtoken(char *p, char *token)
 }
 
 void
-hnputv(void *p, uvlong v)
+hnputv(void *p, vlong v)
 {
 	uchar *a;
 
@@ -568,7 +585,7 @@ hnputv(void *p, uvlong v)
 }
 
 void
-hnputl(void *p, uint v)
+hnputl(void *p, ulong v)
 {
 	uchar *a;
 
@@ -589,7 +606,7 @@ hnputs(void *p, ushort v)
 	a[1] = v;
 }
 
-uvlong
+vlong
 nhgetv(void *p)
 {
 	uchar *a;
@@ -598,7 +615,7 @@ nhgetv(void *p)
 	return ((vlong)nhgetl(a) << 32) | nhgetl(a+4);
 }
 
-uint
+ulong
 nhgetl(void *p)
 {
 	uchar *a;

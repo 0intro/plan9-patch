@@ -4,7 +4,6 @@
 #include "dat.h"
 #include "fns.h"
 #include "io.h"
-#include "pool.h"
 #include "ureg.h"
 #include "../port/error.h"
 #include "../port/netif.h"
@@ -267,7 +266,7 @@ etherwrite(Chan* chan, void* buf, long n, vlong)
 		error(Ebadctl);
 	}
 
-	if(n > ether->maxmtu)
+	if(n > ether->mtu)
 		error(Etoobig);
 	if(n < ether->minmtu)
 		error(Etoosmall);
@@ -304,7 +303,7 @@ etherbwrite(Chan* chan, Block* bp, ulong)
 	}
 	ether = etherxx[chan->dev];
 
-	if(n > ether->maxmtu){
+	if(n > ether->mtu){
 		freeb(bp);
 		error(Etoobig);
 	}
@@ -370,6 +369,7 @@ etherprobe(int cardno, int ctlrno)
 	ether->tbdf = BUSUNKNOWN;
 	ether->mbps = 10;
 	ether->minmtu = ETHERMINTU;
+	ether->mtu = ETHERMAXTU;
 	ether->maxmtu = ETHERMAXTU;
 
 	if(cardno < 0){
@@ -415,8 +415,8 @@ etherprobe(int cardno, int ctlrno)
 	if(ether->irq >= 0)
 		intrenable(ether->irq, ether->interrupt, ether, ether->tbdf, name);
 
-	i = sprint(buf, "#l%d: %s: %dMbps port 0x%luX irq %d",
-		ctlrno, cards[cardno].type, ether->mbps, ether->port, ether->irq);
+	i = sprint(buf, "#l%d: %s: %dMbps port 0x%luX irq %d tu %d",
+		ctlrno, cards[cardno].type, ether->mbps, ether->port, ether->irq, ether->mtu);
 	if(ether->mem)
 		i += sprint(buf+i, " addr 0x%luX", ether->mem);
 	if(ether->size)
