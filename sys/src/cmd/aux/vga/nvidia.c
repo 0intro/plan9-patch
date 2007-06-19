@@ -206,6 +206,7 @@ snarf(Vga* vga, Ctlr* ctlr)
 		case 0x0090:
 		case 0x0210:
 		case 0x0290:	/* nvidia 7950*/
+		case 0x0390:
 			nv->arch = 40;
 			break;
 		default:
