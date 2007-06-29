@@ -170,6 +170,8 @@ main(int argc, char *argv[])
 				cflag |= SYNC;
 				goto cloop;
 			}
+			fprint(2, "dd: bad conv %s\n", argv[c]);
+			exits("arg");
 		}
 		fprint(2, "dd: bad arg: %s\n", key);
 		exits("arg");
