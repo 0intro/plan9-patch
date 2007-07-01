@@ -235,11 +235,17 @@ void
 mountinit(char *server, char *mountpoint)
 {
 	int p[2];
+	int err, noauth = 0;
 
 	/*
 	 *  grab a channel and call up the file server
 	 */
-	s.fd[0] = s.fd[1] = dial(netmkaddr(server, 0, "9fs"), 0, 0, 0);
+	if (strncmp(server, "/srv/", 5) == 0) {
+		s.fd[0] = s.fd[1] = open(server, ORDWR);
+		noauth = 1;
+	} else {
+		s.fd[0] = s.fd[1] = dial(netmkaddr(server, 0, "9fs"), 0, 0, 0);
+	}
 	if(s.fd[0] < 0)
 		error("opening data");
 
@@ -252,7 +258,11 @@ mountinit(char *server, char *mountpoint)
 	case 0:
 		break;
 	default:
-		if(amount(p[1], mountpoint, MREPL|MCREATE, "") < 0)
+		if (noauth)
+			err = mount(p[1], -1, mountpoint, MREPL|MCREATE, "");
+		else
+			err = amount(p[1], mountpoint, MREPL|MCREATE, "");
+		if (err < 0)
 			error("mount failed");
 		exits(0);
 	case -1:

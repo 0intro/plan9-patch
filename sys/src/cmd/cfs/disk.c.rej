@@ -1,0 +1,11 @@
+--- sys/src/cmd/cfs/disk.c	Thu Mar  1 16:20:31 2007
++++ sys/src/cmd/cfs/disk.c	Tue Nov 28 01:01:39 2006
+@@ -356,7 +363,7 @@
+ 	/*
+ 	 *  then all the pages it points to
+ 	 *
+-	 *	DANGER: this algorithm may fail if their are more
++	 *	DANGER: this algorithm may fail if there are more
+ 	 *		allocation blocks than block buffers
+ 	 */
+ 	b = bcread(d, bno);
