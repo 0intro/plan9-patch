@@ -331,23 +331,23 @@ main(int argc, char **argv)
 			fatal("write error");
 		s_free(hdrstring);
 		hdrstring = nil;
+	}
 
-		/* read user's standard headers */
-		file = s_new();
-		mboxpath("headers", user, file, 0);
-		b = Bopen(s_to_c(file), OREAD);
-		if(b != nil){
-			switch(readheaders(b, &flags, &hdrstring, nil, 0)){
-			case Error:			/* error */
-				fatal("reading");
-			}
-			Bterm(b);
-			if(Bwrite(&out, s_to_c(hdrstring), s_len(hdrstring)) !=
-			    s_len(hdrstring))
-				fatal("write error");
-			s_free(hdrstring);
-			hdrstring = nil;
+	/* read user's standard headers */
+	file = s_new();
+	mboxpath("headers", user, file, 0);
+	b = Bopen(s_to_c(file), OREAD);
+	if(b != nil){
+		switch(readheaders(b, &flags, &hdrstring, nil, 0)){
+		case Error:			/* error */
+			fatal("reading");
 		}
+		Bterm(b);
+		if(Bwrite(&out, s_to_c(hdrstring), s_len(hdrstring)) !=
+		    s_len(hdrstring))
+			fatal("write error");
+		s_free(hdrstring);
+		hdrstring = nil;
 	}
 
 	/* add any headers we need */
