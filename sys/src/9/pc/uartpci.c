@@ -11,7 +11,7 @@ extern PhysUart pciphysuart;
 extern void* i8250alloc(int, int, int);
 
 static Uart*
-uartpci(int ctlrno, Pcidev* p, int barno, int n, int freq, char* name)
+uartpci(int ctlrno, Pcidev* p, int barno, int n, int freq, char* name, int iosize)
 {
 	int i, io;
 	void *ctlr;
@@ -29,7 +29,7 @@ uartpci(int ctlrno, Pcidev* p, int barno, int n, int freq, char* name)
 
 	for(i = 0; i < n; i++){
 		ctlr = i8250alloc(io, p->intl, p->tbdf);
-		io += 8;
+		io += iosize;
 		if(ctlr == nil)
 			continue;
 
@@ -46,12 +46,28 @@ uartpci(int ctlrno, Pcidev* p, int barno, int n, int freq, char* name)
 	return head;
 }
 
+static void
+ultraport16si(Pcidev *p)
+{
+	int io, i;
+	
+	io = p->mem[4].bar & ~1;
+	if (ioalloc(io, p->mem[4].size, 0, "Ultraport16si") < 0) {
+		print("Can't get space to set Ultraport16si to rs-232\n");
+		return;
+	}
+	for (i = 0; i < 16; i++) {
+		outb(io, i << 4);
+		outb(io, (i << 4) +1);	/* set to RS232 mode  (Don't ask!) */
+	}
+}
+
 static Uart*
 uartpcipnp(void)
 {
 	Pcidev *p;
 	char *name;
-	int ctlrno, n, subid;
+	int ctlrno, n, subid, freq, iosize;
 	Uart *head, *tail, *uart;
 
 	/*
@@ -70,10 +86,10 @@ uartpcipnp(void)
 		default:
 			continue;
 		case (0x9835<<16)|0x9710:	/* StarTech PCI2S550 */
-			uart = uartpci(ctlrno, p, 0, 1, 1843200, "PCI2S550-0");
+			uart = uartpci(ctlrno, p, 0, 1, 1843200, "PCI2S550-0", 8);
 			if(uart == nil)
 				continue;
-			uart->next = uartpci(ctlrno, p, 1, 1, 1843200, "PCI2S550-1");
+			uart->next = uartpci(ctlrno, p, 1, 1, 1843200, "PCI2S550-1", 8);
 			break;
 		case (0x950A<<16)|0x1415:	/* Oxford Semi OX16PCI954 */
 			/*
@@ -88,7 +104,7 @@ uartpcipnp(void)
 			default:
 				continue;
 			case (0x2000<<16)|0x131F:/* SIIG CyberSerial PCIe */
-				uart = uartpci(ctlrno, p, 0, 1, 18432000, "CyberSerial-1S");
+				uart = uartpci(ctlrno, p, 0, 1, 18432000, "CyberSerial-1S", 8);
 					if(uart == nil)
 						continue;
 				break;
@@ -104,29 +120,58 @@ uartpcipnp(void)
 			 */
 			subid = pcicfgr16(p, PciSVID);
 			subid |= pcicfgr16(p, PciSID)<<16;
+			freq = 7372800;
+			iosize = 8;
 			switch(subid){
 			default:
 				continue;
 			case (0x0011<<16)|0x12E0:	/* Perle PCI-Fast16 */
 				n = 16;
 				name = "PCI-Fast16";
+				uart = uartpci(ctlrno, p, 2, n, freq, name, iosize);
+				if(uart == nil)
+					continue;
 				break;
 			case (0x0021<<16)|0x12E0:	/* Perle PCI-Fast8 */
 				n = 8;
 				name = "PCI-Fast8";
+				uart = uartpci(ctlrno, p, 2, n, freq, name, iosize);
+				if(uart == nil)
+					continue;
 				break;
 			case (0x0031<<16)|0x12E0:	/* Perle PCI-Fast4 */
 				n = 4;
 				name = "PCI-Fast4";
+				uart = uartpci(ctlrno, p, 2, n, freq, name, iosize);
+				if(uart == nil)
+					continue;
 				break;
 			case (0x0021<<16)|0x155F:	/* Perle Ultraport8 */
 				n = 8;
 				name = "Ultraport8";	/* 16C754 UARTs */
+				uart = uartpci(ctlrno, p, 2, n, freq, name, iosize);
+				if(uart == nil)
+					continue;
+				break;
+			case (0x0241<<16)|0x155F:	/* Perle Ultraport16 */
+				name = "Ultraport16si";	/* 16L788 UARTs */
+				freq *= 4;
+				iosize = 16;
+				ultraport16si(p);
+				uart = uartpci(ctlrno, p, 2, 8, freq, name, iosize);
+				if(uart == nil)
+					continue;
+				if(head != nil)
+					tail->next = uart;
+				else
+					head = uart;
+				for(tail = uart; tail->next != nil; tail = tail->next)
+					;
+				uart = uartpci(ctlrno, p, 3, 8, freq, name, iosize);
+				if(uart == nil)
+					continue;
 				break;
 			}
-			uart = uartpci(ctlrno, p, 2, n, 7372800, name);
-			if(uart == nil)
-				continue;
 			break;
 		}
 
