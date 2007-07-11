@@ -45,6 +45,7 @@ char *sys_errlist[] = {
 	"Srch",
 	"Cross-device link",
 	"Not a socket",
+	"Protocol wrong type for socket",
 	"Protocol not supported",
 	"Connection refused",
 	"Address family not supported",
