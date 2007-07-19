@@ -21,9 +21,13 @@ search(Ndb *db, char *attr, char *val, char *rattr)
 	Ndbtuple *t, *nt;
 
 	if(rattr){
-		p = ndbgetvalue(db, &s, attr, val, rattr, nil);
+		p = ndbgetvalue(db, &s, attr, val, rattr, &nt);
+		for(t = nt; t; t = t->entry){
+			if(strcmp(t->attr, rattr) == 0)
+				print("%s\n", t->val);
+		}
 		if(p){
-			print("%s\n", p);
+			ndbfree(nt);
 			free(p);
 		}
 		return;
