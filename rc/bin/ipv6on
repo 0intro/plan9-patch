@@ -29,10 +29,14 @@ if not {
 	xdir=(-x $netdir)
 }
 
-fn nonnil {	# name ip
-	if (~ $#2 0) {
+fn nonnil {
+	if (~ $#$1 0) {
 		echo no ip for $1
 		exit no-ip
+	}
+	if (! ~ $#$1 1) {
+		echo multiple ips for $1
+		exit multiple-ips
 	}
 }
 
@@ -48,7 +52,7 @@ mev4=`{ndb/query -f $ndbf sys $sysname ip}
 
 # for testing
 mylnk=`{ip/linklocal `{cat $netdir/ether?/addr}}
-nonnil mylnk $mylnk
+nonnil mylnk
 
 if (~ $#gw 1) {
 	if (~ $gw [0-9]*.[0-9]*.[0-9]*.[0-9]*)
@@ -64,12 +68,12 @@ if (~ $#gw 1) {
 		sleep 3					# wait for ping
 
 		gweth=`{grep '* '^$gwv4^' ' $netdir/arp | awk '{print $4}' }
-		nonnil gweth $gweth
+		nonnil gweth
 		gwlnk=`{ip/linklocal $gweth}
-		nonnil gwlnk $gwlnk
+		nonnil gwlnk
 	}
 }
-nonnil mev6 $mev6
+nonnil mev6
 #
 # configure my global v6 addresses
 #
@@ -79,7 +83,7 @@ ip/ipconfig $xdir loopback /dev/null	add $mev6 /128
 if (~ $#gw 1) {
 	if (~ $#gwv6 0 || ~ $gwv6 '')
 		gwv6=`{ip/linklocal $gweth}
-	nonnil gwv6 $gwv6
+	nonnil gwv6
 	#
 	# add default v6 route to v6 addr of v4 gw
 	#
