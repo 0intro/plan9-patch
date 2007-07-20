@@ -518,8 +518,9 @@ _dumpstack(Ureg *ureg)
 	uintptr l, v, i, estack;
 	extern ulong etext;
 	int x;
+	char *s;
 
-	if(getconf("*nodumpstack")){
+	if((s = getconf("*nodumpstack")) != 0 && strcmp(s, "0") != 0){
 		iprint("dumpstack disabled\n");
 		return;
 	}
