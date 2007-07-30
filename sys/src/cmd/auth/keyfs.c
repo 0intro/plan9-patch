@@ -773,6 +773,70 @@ writeusers(void)
 	close(fd);
 }
 
+#pragma	varargck	type	"W"	char*
+
+int
+wierdfmt(Fmt *f)
+{
+	char *s, buf[ANAMELEN*4+1];
+	int i, j, n;
+	Rune r;
+
+	s = va_arg(f->args, char*);
+
+	j = 0;
+	for(i = 0; i < ANAMELEN; i += n){
+		n = chartorune(&r, s+i);
+		if(r == Runeerror)
+			j += sprint(buf+j, "[%.2x]", buf[i]);
+		else if(r < ' ')
+			j += sprint(buf+j, "[%.2x]", r);
+		else if(r == ' ' || r == '/')
+			j += sprint(buf+j, "[%c]", r);
+		else
+			j += sprint(buf+j, "%C", r);
+	}
+	return fmtstrcpy(f, buf);
+}
+
+int
+checkuser(char *user, int nu)
+{
+	char buf[ANAMELEN+1];
+	int i, n, rv;
+	Rune r;
+
+	fmtinstall('W', wierdfmt);
+	memset(buf, 0, sizeof buf);
+	memcpy(buf, user, ANAMELEN);
+
+	if(buf[ANAMELEN-1] != 0){
+		fprint(2, "keyfs: %d no termination: %W\n", nu, buf);
+		return -1;
+	}
+
+	rv = 0;
+	for(i = 0; buf[i]; i += n){
+		n = chartorune(&r, buf+i);
+		if(r == Runeerror){
+//			fprint(2, "name %W bad rune byte %d\n", buf, i);
+			rv = -1;
+		}
+		if(r <= ' ' || r == '/'){
+//			fprint(2, "name %W bad char %C\n", buf, r);
+			rv = -1;
+		}
+	}
+
+	if(i == 0){
+		fprint(2, "nil name\n");
+		return -1;
+	}
+	if(rv == -1)
+		fprint(2, "keyfs: %d bad: %W\n", nu, buf);
+	return rv;
+}
+
 int
 readusers(void)
 {
@@ -812,6 +876,8 @@ readusers(void)
 	nu = 0;
 	for(i = KEYDBOFF; i < n; i += KEYDBLEN){
 		ep = buf + i;
+		if(checkuser((char*)ep, i/KEYDBLEN))
+			continue;
 		u = finduser((char*)ep);
 		if(u == 0)
 			u = installuser((char*)ep);
