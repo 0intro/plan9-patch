@@ -1,0 +1,13 @@
+--- sys/src/9/port/devsd.c	Mon May  7 16:31:18 2007
++++ sys/src/9/port/devsd.c	Mon May  7 16:31:09 2007
+@@ -1318,7 +1314,10 @@
+ 			error(Ebadusefd);
+ 
+ 		case Rawdata:
++			if(unit->state != Rawdata)
++				error(Ebadusefd);
+ 			unit->state = Rawstatus;
++
+ 			unit->req->write = 1;
+ 			n = sdrio(unit->req, a, n);
+ 		}

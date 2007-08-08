@@ -215,8 +215,10 @@ scsionline(SDunit* unit)
 			break;
 		case 0:
 			unit->sectors = (p[0]<<24)|(p[1]<<16)|(p[2]<<8)|p[3];
-			if(unit->sectors == 0)
-				continue;
+			if(unit->sectors == 0){
+				ok = 1;
+				break;
+			}
 			/*
 			 * Read-capacity returns the LBA of the last sector,
 			 * therefore the number of sectors must be incremented.
@@ -300,8 +302,60 @@ scsiexec(SDunit* unit, int write, uchar* cmd, int clen, void* data, int* dlen)
 	return status;
 }
 
+static void
+scsifmt10(SDreq *r, int write, int lun, ulong nb, uvlong bno)
+{
+	uchar *c;
+
+	c = r->cmd;
+	if(write == 0)
+		c[0] = 0x28;
+	else
+		c[0] = 0x2A;
+	c[1] = lun<<5;
+	c[2] = bno>>24;
+	c[3] = bno>>16;
+	c[4] = bno>>8;
+	c[5] = bno;
+	c[6] = 0;
+	c[7] = nb>>8;
+	c[8] = nb;
+	c[9] = 0;
+
+	r->clen = 10;
+}
+
+static void
+scsifmt16(SDreq *r, int write, int lun, ulong nb, uvlong bno)
+{
+	uchar *c;
+
+	c = r->cmd;
+	if(write == 0)
+		c[0] = 0x88;
+	else
+		c[0] = 0x8A;
+	c[1] = lun<<5;		/* so wrong */
+	c[2] = bno>>56;
+	c[3] = bno>>48;
+	c[4] = bno>>40;
+	c[5] = bno>>32;
+	c[6] = bno>>24;
+	c[7] = bno>>16;
+	c[8] = bno>>8;
+	c[9] = bno;
+	c[10] = nb>>24;
+	c[11] = nb>>16;
+	c[12] = nb>>8;
+	c[13] = nb;
+	c[14] = 0;
+	c[15] = 0;
+
+	r->clen = 16;
+}
+
 long
-scsibio(SDunit* unit, int lun, int write, void* data, long nb, long bno)
+scsibio(SDunit* unit, int lun, int write, void* data, long nb, uvlong bno)
 {
 	SDreq *r;
 	long rlen;
@@ -312,20 +366,10 @@ scsibio(SDunit* unit, int lun, int write, void* data, long nb, long bno)
 	r->lun = lun;
 again:
 	r->write = write;
-	if(write == 0)
-		r->cmd[0] = 0x28;
+	if(bno > 0xffffffff)
+		scsifmt16(r, write, lun, nb, bno);
 	else
-		r->cmd[0] = 0x2A;
-	r->cmd[1] = (lun<<5);
-	r->cmd[2] = bno>>24;
-	r->cmd[3] = bno>>16;
-	r->cmd[4] = bno>>8;
-	r->cmd[5] = bno;
-	r->cmd[6] = 0;
-	r->cmd[7] = nb>>8;
-	r->cmd[8] = nb;
-	r->cmd[9] = 0;
-	r->clen = 10;
+		scsifmt10(r, write, lun, nb, bno);
 	r->data = data;
 	r->dlen = nb*unit->secsize;
 	r->flags = 0;
@@ -346,7 +390,7 @@ again:
 		default:
 			break;
 		case 0x01:		/* recovered error */
-			print("%s: recovered error at sector %ld\n",
+			print("%s: recovered error at sector %ulld\n",
 				unit->name, bno);
 			rlen = r->rlen;
 			break;
