@@ -2,6 +2,7 @@
 #include <libc.h>
 
 #define	BIG	2147483647
+#define VBIG	(1LL<<62)
 #define	LCASE	(1<<0)
 #define	UCASE	(1<<1)
 #define	SWAB	(1<<2)
@@ -44,7 +45,7 @@ int	quiet;
 
 void	flsh(void);
 int	match(char *s);
-vlong	number(long big);
+vlong	number(vlong big);
 void	cnull(int cc);
 void	null(int c);
 void	ascii(int cc);
@@ -106,19 +107,19 @@ main(int argc, char *argv[])
 			continue;
 		}
 		if(iskey("skip")) {
-			skip = number(BIG);
+			skip = number(VBIG);
 			continue;
 		}
 		if(iskey("seek") || iskey("oseek")) {
-			oseekn = number(BIG);
+			oseekn = number(VBIG);
 			continue;
 		}
 		if(iskey("iseek")) {
-			iseekn = number(BIG);
+			iseekn = number(VBIG);
 			continue;
 		}
 		if(iskey("count")) {
-			count = number(BIG);
+			count = number(VBIG);
 			continue;
 		}
 		if(iskey("files")) {
@@ -334,7 +335,7 @@ true:
 }
 
 vlong
-number(long big)
+number(vlong big)
 {
 	char *cs;
 	vlong n;
@@ -362,11 +363,11 @@ number(long big)
 /*	case '*':*/
 	case 'x':
 		string = cs;
-		n *= number(BIG);
+		n *= number(VBIG);
 
 	case '\0':
 		if(n>=big || n<0) {
-			fprint(2, "dd: argument %lld out of range\n", n);
+/			fprint(2, "dd: argument %lld out of range\n", n);
 			exits("range");
 		}
 		return n;
