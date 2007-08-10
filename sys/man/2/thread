@@ -223,6 +223,7 @@ in a round-robin fashion.
 A thread must explicitly relinquish control of the processor
 before another thread in the same proc is run.
 Calls that do this are
+.IR qlock ,
 .IR yield ,
 .IR proccreate ,
 .IR procexec ,
