@@ -9,7 +9,7 @@ listen, listen1, tcp7, tcp9, tcp19, tcp21, tcp22, tcp23, tcp25, tcp53, tcp110, t
 .RB [ -t
 .IR trustsrvdir ]
 .RB [ -n
-.IR namespace ]
+.IR nsfile ]
 .RI [ net ]
 .PP
 .B aux/listen1
@@ -45,17 +45,17 @@ are executed as user
 .BR none ;
 services found in
 .I trustsrvdir
-as executed as the user who started
+are executed as the user who started
 .IR listen .
+When the user becomes
+.BR none ,
+a new name space is created using
+.BR /lib/namespace ,
+or optionally
+.IR nsfile .
 Option
 .B -q
-suppresses affirmative log information;
-option
-.B -n
-sets an alternate
-.I namespace
-file (default
-.BR /lib/namespace ).
+suppresses affirmative log information.
 .PP
 Service names are made by concatenating the name of
 the network with the name of the service or port.
