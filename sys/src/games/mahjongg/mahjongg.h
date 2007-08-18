@@ -22,6 +22,7 @@ enum {
 	TileDxy = 6,	/* tile displacement when on a higher level */
 	Lx = 32,
 	Ly = 16,
+	Bord = Depth*TileDxy,
 };
 enum {
 	/* the size of a complete tile */
@@ -35,32 +36,43 @@ enum {
 	/* and the entire window, giving room for 5*6 = 30 pixels
 	 * that are needed for the higher tiles
 	 */
-	Sizex = 16*Facex + 2*Depth*TileDxy,
-	Sizey = 8*Facey + 2*Depth*TileDxy,
+	Sizex = Lx*Facex/2 + 2*Bord,
+	Sizey = Ly*Facey/2 + 2*Bord,
 };
 
+/* which part of a tile */
+typedef enum {
+	None,
+	TL,	/* main brick */
+	TR,
+	BR,
+	BL,
+} Which;
 
 typedef struct {
-	Point start;	/* where do we draw here */
+	Point start;	/* where is this brick in the tileset */
 	int clicked;
-	int which;		/* 0 ↔ 4 */
+	Which which;
 	int type;
+	int redraw;
 } Brick;
 
 typedef struct {
 	int d;
-	Point p;
+	int x;
+	int y;
 } Click;
 
 typedef struct {
-	Brick 	board[Depth][Lx][Ly];
-	Click		c; 		/* player has a brick selected */
-	Click		l; 		/* mouse-over-brick indicator */
-	int			done;
+	Brick 	board[Depth][Lx][Ly];	/* grid of quarter tiles */
+	Click		c; 					/* player has a brick selected */
+	Click		l; 					/* mouse-over-brick indicator */
+	int		done;
+	Click		hist[Tiles];
 	int 		remaining;
 } Level;
 
-Level level;	/* the level played */
+Level level;		/* the level played */
 Level orig;		/* same, sans modifications */
 
 Image *img;		/* buffer */
@@ -71,12 +83,24 @@ Image *mask;
 Image *background;
 Image *selected;
 Image *litbrdr;
+Image *textcol;
 Image *gameover;
+
+/* logic.c */
+Click NC;
+Click Cl(int d, int x, int y);
+int eqcl(Click c1, Click c2);
+int isfree(Click c);
+Click cmatch(Click c, int dtop);
+Brick *bmatch(Click c);
+int canmove(void);
 
 /* graphics.c */
 void drawlevel(void);
 void resize(Point);
 void clicked(Point);
+void undo(void);
+void deselect(void);
 void light(Point);
 void hint(void);
 void done(void);

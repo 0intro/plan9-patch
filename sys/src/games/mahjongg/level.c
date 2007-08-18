@@ -143,10 +143,8 @@ generate(uint seed)
 	if(n != orig.remaining)
 		fprint(2, "level improperly generated: %d elements, should have %d\n", n, orig.remaining);
 
-	orig.c.d = -1;
-	orig.c.p = Pt(0, 0);
-	orig.l.d = -1;
-	orig.l.p = Pt(0, 0);
+	orig.c = NC;
+	orig.l = NC;
 	orig.done = 0;
 	level = orig;
 }

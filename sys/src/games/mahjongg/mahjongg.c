@@ -3,6 +3,8 @@
 #include <draw.h>
 #include <event.h>
 
+#include <stdio.h>
+
 #include "mahjongg.h"
 
 char *Border = "/sys/games/lib/mahjongg/images/border.bit";
@@ -16,9 +18,9 @@ ulong defchan;
 
 int trace;
 
-
 char *buttons[] = 
 {
+	"deselect",
 	"new",
 	"restart",
 	"resize",
@@ -78,6 +80,7 @@ allocimages(void)
 	selected = eallocimage(one, 1, RGBA32, setalpha(DPalebluegreen, 0x5f));
 	litbrdr = eallocimage(one, 1, RGBA32, DGreen);
 	img = eallocimage(Rect(0, 0, Sizex, Sizey), 0, defchan ? defchan : screen->chan, DBlack);
+	textcol = eallocimage(one, 1, RGBA32, DWhite);
 
 	background = eloadfile(defbackgr);
 	replclipr(background, 1, img->r);
@@ -103,6 +106,7 @@ main(int argc, char **argv)
 	Mouse m;
 	Event e;
 	int clickety = 0;
+	Point origin = Pt(Bord, Bord);
 
 	ARGBEGIN{
 	case 'h':
@@ -137,6 +141,8 @@ main(int argc, char **argv)
 	einit(Emouse|Ekeyboard);
 
 	allocimages();
+
+	/* resize to the size of the current level */
 	resize(img->r.max);
 
 	generate(time(0));
@@ -152,12 +158,12 @@ main(int argc, char **argv)
 					break;
 				if(!clickety && level.remaining > 0) {
 					clickety = 1;
-					clicked(subpt(m.xy, addpt(screen->r.min, Pt(30, 30))));
+					clicked(subpt(m.xy, addpt(screen->r.min, origin)));
 				}
 			} else {
 				clickety = 0;
 				if(trace)
-					light(subpt(m.xy, addpt(screen->r.min, Pt(30, 30))));
+					light(subpt(m.xy, addpt(screen->r.min, origin)));
 			}
 			if(m.buttons&2) {
 				/* nothing here for the moment */
@@ -165,17 +171,20 @@ main(int argc, char **argv)
 			if(m.buttons&4)
 				switch(emenuhit(3, &m, &menu)) {
 				case 0:
+					deselect();
+					break;
+				case 1:
 					generate(time(0));
 					drawlevel();
 					break;
-				case 1:
+				case 2:
 					level = orig;
 					drawlevel();
 					break;
-				case 2:
+				case 3:
 					resize(img->r.max);
 					break;
-				case 3:
+				case 4:
 					exits(nil);
 				}
 			break;
@@ -194,18 +203,30 @@ main(int argc, char **argv)
 			case 'N':
 				/* new */
 				generate(time(0));
+				drawlevel();
 				break;
 			case 'r':
 			case 'R':
 				level = orig;
+				drawlevel();
 				break;
 			case 'c':
 			case 'C':
-				clearlevel();
+				if(!level.done) {
+					clearlevel();
+					done();
+				}
+				break;
+			case 8:
+			case 'u':
+			case 'U':
+				if(level.done) {
+					level.done = 0;
+					drawlevel();
+				}
+				undo();
 				break;
 			}
-			if(! level.done)
-				drawlevel();
 			break;
 		}
 	}
