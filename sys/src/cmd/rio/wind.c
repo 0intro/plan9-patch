@@ -709,8 +709,11 @@ void
 wrepaint(Window *w)
 {
 	wsetcols(w);
-	if(!w->mouseopen)
-		_frredraw(w, w->Frame.r.min, w->cols[TEXT], nil);
+	if(!w->mouseopen){
+		_frredraw(w, w->Frame.r.min, w->cols[TEXT], w->cols[BACK], w->cols[HIGH]);
+//		_frredraw(w, w->Frame.r.min, w->cols[TEXT], w->cols[BACK]);
+//		frdrawsel(w, frptofchar(w, w->p0), w->p0, w->p1, 1);
+	}
 	if(w == input){
 		wborder(w, Selborder);
 		wsetcursor(w, 0);

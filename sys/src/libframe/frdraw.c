@@ -6,7 +6,7 @@
 #include <frame.h>
 
 void
-_frredraw(Frame *f, Point pt, Image *text, Image *back)
+_frredraw0(Frame *f, Point pt, Image *text, Image *back)
 {
 	Frbox *b;
 	int nb;
@@ -31,6 +31,78 @@ nbytes(char *s0, int nr)
 	while(--nr >= 0)
 		s += chartorune(&r, s);
 	return s-s0;
+}
+
+void
+_frredraw(Frame *f, Point pt, Image *text, Image *back, Image *hiback)
+{
+	Frbox *b;
+	int nb, nr, trim;
+	Point qt, xt;
+	uint p;
+	char *ptr;
+
+	if(f->p0 == f->p1){
+		_frredraw0(f, pt, text, back);
+		return;
+	}
+
+	p = nr = 0;
+	/* draw up to the box with the selection */
+	for(nb=0,b=f->box; nb<f->nbox; nb++, b++){
+		nr = NRUNE(b);
+		_frcklinewrap(f, &pt, b);
+		if(p+nr > f->p0)
+			break;
+		if(b->nrune >= 0)
+			stringbg(f->b, pt, text, ZP, f->font, (char *)b->ptr, back, ZP);
+		pt.x += b->wid;
+		p += nr;
+	}
+
+	qt = pt;
+	ptr = (char*)b->ptr;
+	if(p < f->p0){	/* beginning of region: advance into box */
+		if(b->nrune >= 0){
+			stringnbg(f->b, pt, text, ZP, f->font, ptr, f->p0-p, back, ZP);
+			pt.x += stringnwidth(f->font, ptr, f->p0-p);
+		}
+		ptr += nbytes(ptr, f->p0-p);
+		nr -= (f->p0-p);
+		p = f->p0;
+	}
+
+	for(; nb<f->nbox && p<f->p1; ){
+		trim = 0;
+		if(p+nr > f->p1){	/* end of region: trim box */
+			trim = (p+nr)-f->p1;
+			nr -= trim;
+		}
+		if(b->nrune < 0)
+			goto next;
+		xt = stringnbg(f->b, pt, text, ZP, f->font, ptr, nr, hiback, ZP);
+		if(trim)
+			stringbg(f->b, xt, text, ZP, f->font, ptr+nr, back, ZP);
+	next:
+		pt = qt;
+		pt.x += b->wid;
+		p += nr;
+
+		nb++;
+		b++;
+		ptr = (char*)b->ptr;
+		nr = NRUNE(b);
+		_frcklinewrap(f, &pt, b);
+		qt = pt;
+	}
+
+	for(; nb<f->nbox; nb++, b++){
+		_frcklinewrap(f, &pt, b);
+		if(b->nrune >= 0){
+			stringbg(f->b, pt, text, ZP, f->font, (char *)b->ptr, back, ZP);
+		}
+		pt.x += b->wid;
+	}
 }
 
 void
