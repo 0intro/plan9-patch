@@ -25,7 +25,7 @@ main(int argc, char **argv)
 {
 	Biobuf in;
 	int fd;
-	char *p, *t;
+	char *p, *t, *s;
 	char buf[8192];
 
 	argv0 = argv[0];
@@ -33,6 +33,10 @@ main(int argc, char **argv)
 		fprint(2, "usage: %s console logfile \n", argv0);
 		exits("usage");
 	}
+	if(argc>3)
+		s=argv[3];
+	else
+		s=sysname();
 
 	fd = open(argv[1], OREAD);
 	if(fd < 0){
@@ -48,10 +52,10 @@ main(int argc, char **argv)
 			p[Blinelen(&in)-1] = 0;
 			t = ctime(time(0));
 			t[19] = 0;
-			if(fprint(fd, "%s: %s\n", t, p) < 0){
+			if(fprint(fd, "%s %s: %s\n", s, t, p) < 0){
 				close(fd);
 				fd = openlog(argv[2]);
-				fprint(fd, "%s: %s\n", t, p);
+				fprint(fd, "%s %s: %s\n", s, t, p);
 			}
 		} else if(Blinelen(&in) == 0)	// true eof
 			break;
