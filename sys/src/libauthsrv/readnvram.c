@@ -31,10 +31,14 @@ static struct {
 	"pc", "#S/sdC1/9fat", -1, sizeof(Nvrsafe),
 	"pc", "#S/sdD0/nvram", 0, sizeof(Nvrsafe),
 	"pc", "#S/sdD0/9fat", -1, sizeof(Nvrsafe),
-	"pc", "#S/sdE0/nvram", 0, sizeof(Nvrsafe),
-	"pc", "#S/sdE0/9fat", -1, sizeof(Nvrsafe),
-	"pc", "#S/sdF0/nvram", 0, sizeof(Nvrsafe),
-	"pc", "#S/sdF0/9fat", -1, sizeof(Nvrsafe),
+	"pc", "#S/sdE0/nvram", 0, 512,
+	"pc", "#S/sdE0/9fat", -1, 512,
+	"pc", "#S/sdF0/nvram", 0, 512,
+	"pc", "#S/sdF0/9fat", -1, 512,
+	"pc", "#S/sde0/9fat", -1, 512,
+	"pc", "#S/sde0/nvram", -1, 512,
+	"pc", "#S/sdf0/9fat", -1, 512,
+	"pc", "#S/sdf0/nvram", -1, 512,
 	"pc", "#S/sd00/nvram", 0, sizeof(Nvrsafe),
 	"pc", "#S/sd00/9fat", -1, sizeof(Nvrsafe),
 	"pc", "#S/sd01/nvram", 0, sizeof(Nvrsafe),
@@ -45,7 +49,6 @@ static struct {
 	"power", "#F/flash/flash0", 0x440000, sizeof(Nvrsafe),
 	"power", "#r/nvram", 4352, sizeof(Nvrsafe),	/* OK for MTX-604e */
 	"power", "/nvram", 0, sizeof(Nvrsafe),	/* OK for Ucu */
-	"arm", "#F/flash/flash0", 0x100000, sizeof(Nvrsafe),
 	"debug", "/tmp/nvram", 0, sizeof(Nvrsafe),
 };
 
@@ -135,11 +138,21 @@ findnvram(Nvrwhere *locp)
 	int fd, i, safeoff, safelen;
 
 	nvrfile = getenv("nvram");
+	if(nvrfile && *nvrfile == 0){
+		free(nvrfile);
+		nvrfile = 0;
+	}
 	cputype = getenv("cputype");
+	if(cputype && *cputype == 0){
+		free(cputype);
+		cputype = 0;
+	}
 	if(cputype == nil)
 		cputype = strdup("mips");
-	if(strcmp(cputype, "386")==0 || strcmp(cputype, "alpha")==0)
+	if(strcmp(cputype, "386")==0 || strcmp(cputype, "alpha")==0){
+		free(cputype);
 		cputype = strdup("pc");
+	}
 
 	fd = -1;
 	safeoff = -1;
