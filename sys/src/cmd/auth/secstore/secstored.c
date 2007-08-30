@@ -70,14 +70,14 @@ getfile(SConn *conn, char *id, char *gf)
 	snprint(s, Maxmsg, "%s/store/%s/%s", SECSTORE_DIR, id, gf);
 	gd = open(s, OREAD);
 	if(gd < 0){
-		syslog(0, LOG, "can't open %s: %r\n", s);
+		syslog(0, LOG, "can't open %s: %r", s);
 		free(s);
 		conn->write(conn, (uchar*)"-1", 2);
 		return -1;
 	}
 	st = dirfstat(gd);
 	if(st == nil){
-		syslog(0, LOG, "can't stat %s: %r\n", s);
+		syslog(0, LOG, "can't stat %s: %r", s);
 		free(s);
 		conn->write(conn, (uchar*)"-1", 2);
 		return -1;
@@ -86,13 +86,13 @@ getfile(SConn *conn, char *id, char *gf)
 	len = st->length;
 	free(st);
 	if(mode & DMDIR) {
-		syslog(0, LOG, "%s should be a plain file, not a directory\n", s);
+		syslog(0, LOG, "%s should be a plain file, not a directory", s);
 		free(s);
 		conn->write(conn, (uchar*)"-1", 2);
 		return -1;
 	}
 	if(len < 0 || len > MAXFILESIZE){
-		syslog(0, LOG, "implausible filesize %d for %s\n", len, gf);
+		syslog(0, LOG, "implausible filesize %d for %s", len, gf);
 		free(s);
 		conn->write(conn, (uchar*)"-3", 2);
 		return -1;
@@ -104,7 +104,7 @@ getfile(SConn *conn, char *id, char *gf)
 	while(len > 0){
 		n = read(gd, s, Maxmsg);
 		if(n <= 0){
-			syslog(0, LOG, "read error on %s: %r\n", gf);
+			syslog(0, LOG, "read error on %s: %r", gf);
 			free(s);
 			return -1;
 		}
@@ -126,23 +126,18 @@ putfile(SConn *conn, char *id, char *pf)
 	/* get file size */
 	n = readstr(conn, s);
 	if(n < 0){
-		syslog(0, LOG, "remote: %s: %r\n", s);
+		syslog(0, LOG, "remote: %s: %r", s);
 		return -1;
 	}
 	len = atoi(s);
 	if(len == -1){
-		syslog(0, LOG, "remote file %s does not exist\n", pf);
+		syslog(0, LOG, "remote file %s does not exist", pf);
 		return -1;
 	}else if(len < 0 || len > MAXFILESIZE){
-		syslog(0, LOG, "implausible filesize %ld for %s\n", len, pf);
+		syslog(0, LOG, "implausible filesize %ld for %s", len, pf);
 		return -1;
 	}
 
-	/* get file in Maxmsg chunks */
-	if(strchr(pf,'/') != nil || strcmp(pf,"..")==0){
-		syslog(0, LOG, "no slashes allowed: %s\n", pf);
-		return -1;
-	}
 	snprint(s, Maxmsg, "%s/store/%s/%s", SECSTORE_DIR, id, pf);
 	pd = create(s, OWRITE, 0660);
 	if(pd < 0){
@@ -152,7 +147,7 @@ putfile(SConn *conn, char *id, char *pf)
 	while(len > 0){
 		n = conn->read(conn, (uchar*)s, Maxmsg);
 		if(n <= 0){
-			syslog(0, LOG, "empty file chunk\n");
+			syslog(0, LOG, "empty file chunk");
 			return -1;
 		}
 		nw = write(pd, s, n);
@@ -222,7 +217,7 @@ static int
 dologin(int fd, char *S, int forceSTA)
 {
 	int i, n, rv;
-	char *file, *mess;
+	char *file, *mess, *nl;
 	char msg[Maxmsg+1];
 	PW *pw;
 	SConn *conn;
@@ -262,6 +257,8 @@ dologin(int fd, char *S, int forceSTA)
 
 	// perform operations as asked
 	while((n = readstr(conn, msg)) > 0){
+		if(nl = strchr(msg, '\n'))
+			*nl = 0;
 		syslog(0, LOG, "[%s] %s", pw->id, msg);
 
 		if(strncmp(msg, "GET ", 4) == 0){
@@ -306,7 +303,7 @@ dologin(int fd, char *S, int forceSTA)
 
 	}
 	if(n <= 0)
-		syslog(0, LOG, "%s closed connection without saying goodbye\n", pw->id);
+		syslog(0, LOG, "%s closed connection without saying goodbye", pw->id);
 
 Out:
 	freePW(pw);

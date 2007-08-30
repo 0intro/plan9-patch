@@ -86,19 +86,27 @@ getpassm(char *prompt)
 	}
 }
 
+static char *
+illegal(char *f)
+{
+	syslog(0, LOG, "illegal name: %s", f);
+	return nil;
+}
+
 char *
 validatefile(char *f)
 {
-	char *nl;
+	char *p;
 
 	if(f==nil || *f==0)
 		return nil;
-	if(nl = strchr(f, '\n'))
-		*nl = 0;
-	if(strchr(f,'/') != nil || strcmp(f,"..")==0 || strlen(f) >= 300){
-		syslog(0, LOG, "no slashes allowed: %s\n", f);
-		return nil;
-	}
+	if(strcmp(f,"..")==0)
+		return illegal(f);
+	if(strlen(f)>= 50)
+		return illegal(f);
+	for(p=f; *p; p++)
+		if(*p<040 || *p=='/')
+			return illegal(f);
 	return f;
 }
 
