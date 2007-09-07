@@ -238,13 +238,11 @@ static struct {
 } netlinks;
 
 extern Dev 	aoedevtab;
-
 static Ref 	units;
 static Ref	drivevers;
-
-static int	debug;
-static int	autodiscover	= 1;
-static int	rediscover;
+static int		debug;
+static int		autodiscover	= 1;
+static int		rediscover;
 
 char 	Enotup[] 	= "aoe device is down";
 char	Echange[]	= "media or partition has changed";
