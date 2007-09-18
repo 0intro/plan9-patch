@@ -1,5 +1,5 @@
 /*
- * intel 63[12]?esb ahci sata controller
+ * intel/amd ahci sata controller
  * copyright © 2007 coraid, inc.
  */
 
@@ -31,6 +31,20 @@ enum{
 	Pmap	= 0x90,
 	Ppcs	= 0x91,
 	Prev	= 0xa8,
+};
+
+enum{
+	Tesb,
+	Tich,
+	Tsb600,
+};
+
+#define Intel(x)	((x) == Tesb  || (x) == Tich)
+
+static char *tname[] = {
+	"63xxesb",
+	"ich",
+	"sb600",
 };
 
 enum{
@@ -114,8 +128,7 @@ typedef struct{
 struct Ctlr{
 	Lock;
 
-	int	irq;
-	int	tbdf;
+	int	type;
 	int	enabled;
 	SDev	*sdev;
 	Pcidev	*pci;
@@ -296,6 +309,10 @@ setudmamode(Aportc *pc, uchar f)
 	uchar *c;
 	Actab *t;
 	Alist *l;
+
+	/* hack */
+	if(pc->p->sig>>16 == 0xeb14)
+		return 0;
 
 	t = pc->m->ctab;
 	c = t->cfis;
@@ -1100,7 +1117,6 @@ newdrive(Drive *d)
 	return 0;
 
 lose:
-//	qunlock(&d->portm);		/* shurely shome mishtake */
 	qunlock(c->m);
 	return -1;
 }
@@ -1303,7 +1319,7 @@ iaenable(SDev *s)
 			kproc("iasata", satakproc, 0);
 		pcisetbme(c->pci);
 		snprint(name, sizeof name, "%s (%s)", s->name, s->ifc->name);
-		intrenable(c->irq, iainterrupt, c, c->tbdf, name);
+		intrenable(c->pci->intl, iainterrupt, c, c->pci->tbdf, name);
 		/* supposed to squelch leftover interrupts here. */
 		ahcienable(c->hba);
 	}
@@ -1322,7 +1338,7 @@ iadisable(SDev *s)
 	ilock(c);
 	ahcidisable(c->hba);
 	snprint(name, sizeof name, "%s (%s)", s->name, s->ifc->name);
-	intrdisable(c->irq, iainterrupt, c, c->tbdf, name);
+	intrdisable(c->pci->intl, iainterrupt, c, c->pci->tbdf, name);
 	c->enabled = 0;
 	iunlock(c);
 	return 1;
@@ -1713,16 +1729,14 @@ iasetupahci(Ctlr *c)
 	c->lmmio[0x4/4] |= 1<<31;	/* enable ahci mode (ghc register) */
 	c->lmmio[0xc/4] = (1<<6) - 1;	/* 5 ports. (supposedly ro pi reg.) */
 
-	/* enable ahci mode. */
-//	pcicfgw8(c->pci, 0x90, 0x40);
-//	pcicfgw16(c->pci, 0x90, 1<<6 | 1<<5); /* pedantically proper for ich9 */
-	pcicfgw8(c->pci, 0x90, 1<<6 | 1<<5);  /* pedantically proper for ich9 */
+	/* enable ahci mode; from ich9 datasheet */
+	pcicfgw8(c->pci, 0x90, 1<<6 | 1<<5);
 }
 
 static SDev*
 iapnp(void)
 {
-	int i, n, nunit;
+	int i, n, nunit, type;
 	ulong io;
 	Ctlr *c;
 	Drive *d;
@@ -1736,11 +1750,17 @@ iapnp(void)
 	p = nil;
 	head = tail = nil;
 loop:
-	while((p = pcimatch(p, 0x8086, 0)) != nil){
-		if((p->did & 0xfffc) != 0x2680 && (p->did & 0xfffe) != 0x27c4)
-			continue;		/* !esb && !82801g[bh]m */
+	while((p = pcimatch(p, 0, 0)) != nil){
+		if(p->vid == 0x8086 && (p->did&0xfffc) == 0x2680)
+			type = Tesb;
+		else if(p->vid == 0x8086 && (p->did & 0xfffe) != 0x27c4)
+			type = Tich;		/* 82801g[bh]m */
+		else if(p->vid == 0x1002 && p->did == 0x4380)
+			type = Tsb600;
+		else
+			continue;
 		if(niactlr == NCtlr){
-			print("iapnp: too many controllers\n");
+			print("%spnp: too many controllers\n", tname[type]);
 			break;
 		}
 		c = iactlr + niactlr;
@@ -1750,16 +1770,19 @@ loop:
 		io = p->mem[Abar].bar & ~0xf;
 		c->mmio = vmap(io, p->mem[0].size);
 		if(c->mmio == 0){
-			print("iapnp: address 0x%luX in use did=%x\n",
-				io, p->did);
+			print("%s: address 0x%luX in use did=%x\n",
+				tname[type], io, p->did);
 			continue;
 		}
 		c->lmmio = (ulong*)c->mmio;
 		c->pci = p;
+		c->type = type;
+		if(Intel(c->type))
 		if(p->did != 0x2681)
 			iasetupahci(c);
 		nunit = ahciconf(c);
 		// ahcihbareset((Ahba*)c->mmio);
+		if(Intel(c->type))
 		if(iaahcimode(p) == -1)
 			break;
 		if(nunit < 1){
@@ -1768,15 +1791,13 @@ loop:
 		}
 
 		i = (c->hba->cap>>21) & 1;
-		print("intel 63[12]xesb: sata-%s ports with %d ports\n",
-			"I\0II" + i*2, nunit);
+		print("%s: sata-%s ports with %d ports\n",
+			tname[c->type], "I\0II" + i*2, nunit);
 		s->ifc = &sd63xxesbifc;
 		s->ctlr = c;
 		s->nunit = nunit;
 		s->idno = 'E';
 		c->sdev = s;
-		c->irq = p->intl;
-		c->tbdf = p->tbdf;
 		c->ndrive = nunit;
 
 		/* map the drives -- they don't all need to be enabled. */
@@ -1799,7 +1820,7 @@ loop:
 		}
 		for(i = 0; i < n; i++)
 			if(ahciidle(c->drive[i]->port) == -1){
-				dprint("intel 63[12]xesb: port %d wedged; abort\n", i);
+				dprint("%s: port %d wedged; abort\n", tname[c->type], i);
 				goto loop;
 			}
 		for(i = 0; i < n; i++){
