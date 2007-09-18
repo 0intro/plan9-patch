@@ -25,6 +25,7 @@ vtMemAlloc(int size)
 	p = malloc(size);
 	if(p == 0)
 		vtFatal("vtMemAlloc: out of memory");
+	setmalloctag(p, getcallerpc(&size));
 	return p;
 }
 
