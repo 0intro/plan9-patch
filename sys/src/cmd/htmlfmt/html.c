@@ -52,7 +52,7 @@ runetobyte(Rune *r, int n)
 }
 
 int
-closingpunct(int c)
+closingpunct(char c)
 {
 	return strchr(".,:;'\")]}>!?", c) != nil;
 }
@@ -66,7 +66,7 @@ emitword(Bytes *b, Rune *r, int nr)
 	if(nr == 0)
 		return;
 	s = smprint("%.*S", nr, r);
-	space = (b->n>0) && !isspace(b->b[b->n-1]) && !closingpunct(r[0]);
+	space = (b->n>0) && !isspace(b->b[b->n-1]) && !closingpunct(*s);
 	if(col>0 && col+space+nr > width){
 		growbytes(b, "\n", 1);
 		space = 0;
