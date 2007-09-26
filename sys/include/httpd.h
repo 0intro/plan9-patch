@@ -179,6 +179,7 @@ struct HttpHead
 	HRange		*range;
 	char		*authuser;		/* authorization info */
 	char		*authpass;
+	HSPairs		*cookie;		/* if present, list of cookies */
 
 	/*
 	 * experimental headers

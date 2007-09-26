@@ -46,6 +46,7 @@ static void	mimeagent(Hlex*, char*);
 static void	mimeauthorization(Hlex*, char*);
 static void	mimeconnection(Hlex*, char*);
 static void	mimecontlen(Hlex*, char*);
+static void mimecookie(Hlex*, char*);
 static void	mimeexpect(Hlex*, char*);
 static void	mimefresh(Hlex*, char*);
 static void	mimefrom(Hlex*, char*);
@@ -77,6 +78,7 @@ static MimeHead	mimehead[] =
 	{"authorization",	mimeauthorization},
 	{"connection",		mimeconnection},
 	{"content-length",	mimecontlen},
+	{"cookie",	mimecookie},
 	{"expect",		mimeexpect},
 	{"fresh",		mimefresh},
 	{"from",		mimefrom},
@@ -670,6 +672,32 @@ static void
 mimetransenc(Hlex *h, char *)
 {
 	h->c->head.transenc = mimehfields(h);
+}
+
+static void
+mimecookie(Hlex *h, char *)
+{
+	HSPairs *p;
+	char *s;
+
+	p = nil;
+	for(;;){
+		while(lex(h) != Word)
+			if(h->tok != ';' && h->tok != ',') {
+				goto breakout;
+			}
+
+		s = hstrdup(h->c, h->wordval);
+		while (lex(h) != Word && h->tok != QString) 
+			if (h->tok != '=') {
+				goto breakout;
+			}
+
+		p = hmkspairs(h->c, s, hstrdup(h->c, h->wordval), p);
+	}
+
+breakout:
+	h->c->head.cookie = hrevspairs(p);
 }
 
 static void
