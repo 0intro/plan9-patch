@@ -48,7 +48,8 @@ typedef struct Inner Inner;
 struct Inner
 {
 	char	*iname;		/* inner device name */
-	vlong	isize;		/* size of inner device */
+	vlong	devsize;		/* size of inner device */
+	vlong	isize;		/* virtual " */
 	Chan	*idev;		/* inner device */
 };
 
@@ -57,7 +58,7 @@ struct Fsdev
 {
 	int	type;
 	char	*name;		/* name for this fsdev */
-	vlong	size;		/* min(inner[X].isize) */
+	vlong	size;		/* min(inner[X].isize) <- this comment is wrong */
 	vlong	start;		/* start address (for Fpart) */
 	int	ndevs;		/* number of inner devices */
 	Inner	inner[Ndevs];
@@ -112,46 +113,64 @@ devalloc(void)
 	return &fsdev[i];
 }
 
+static vlong
+mindevsz(Fsdev *f)
+{
+	uvlong v, min;
+	int set, i;
+
+	set = 0;
+	min = 0;
+	for(i = 0; i < f->ndevs; i++){
+		v = f->inner[i].devsize;
+		if(set && v >= min)
+			continue;
+		set = 1;
+		min = v;
+	}
+	return min;
+};
+
 static void
 setdsize(Fsdev* mp)
 {
-	int	i;
-	long	l;
-	uchar	buf[128];	/* old DIRLEN plus a little should be plenty */
-	Dir	d;
-	Inner	*in;
+	int i, l;
+	uvlong v;
+	Inner *in;
+	Dir d;
+	uchar buf[128];
 
-	if (mp->type != Fpart){
-		mp->start= 0;
-		mp->size = 0;
-	}
 	for (i = 0; i < mp->ndevs; i++){
-		in = &mp->inner[i];
+		in = mp->inner+i;
 		l = devtab[in->idev->type]->stat(in->idev, buf, sizeof buf);
 		convM2D(buf, l, &d, nil);
+		in->devsize = d.length;
 		in->isize = d.length;
-		switch(mp->type){
-		case Fmirror:
-			if (mp->size == 0 || mp->size > d.length)
-				mp->size = d.length;
-			break;
-		case Fcat:
-			mp->size += d.length;
-			break;
-		case Finter:
-			/* truncate to multiple of Blksize */
-			d.length &= ~(Blksize-1);
-			in->isize = d.length;
-			mp->size += d.length;
-			break;
-		case Fpart:
-			/* should raise errors here? */
-			if (mp->start > d.length)
-				mp->start = d.length;
-			if (d.length < mp->start + mp->size)
-				mp->size = d.length - mp->start;
-			break;
-		}
+	}
+
+	switch(mp->type){
+	case Finter:
+		v = mindevsz(mp)&~(Blksize-1);
+		for(i = 0; i < mp->ndevs; i++)
+			mp->inner[i].isize = v;
+		mp->size = v*mp->ndevs;
+		break;
+	case Fmirror:
+		mp->size = mindevsz(mp);
+		break;
+	case Fcat:
+		v = 0;
+		for(i = 0; i < mp->ndevs; i++)
+			v += mp->inner[i].isize;
+		mp->size = v;
+		break;
+	case Fpart:
+		v = mp->inner[0].isize;
+		if (mp->start > v)
+			mp->start = v;
+		if (v < mp->start + mp->size)
+			mp->size = v - mp->start;
+		break;
 	}
 }
 
@@ -271,15 +290,11 @@ mconfig(char* a, long n)
 		mp->size = size;
 	}
 	kstrdup(&mp->name, cb->f[0]);
+	/* memory leaks a gogo */
 	for (i = 1; i < cb->nf; i++){
 		inprv = &mp->inner[i-1];
 		kstrdup(&inprv->iname, cb->f[i]);
 		inprv->idev = namec(inprv->iname, Aopen, ORDWR, 0);
-		if (inprv->idev == nil) {
-			free(mp->name);
-			mp->name = nil;		/* free mp */
-			error(Egreg);
-		}
 		mp->ndevs++;
 	}
 	setdsize(mp);
@@ -456,42 +471,29 @@ mclose(Chan*)
 
 
 static long
-io(Fsdev *mp, Inner *in, int isread, void *a, long l, vlong off)
+io(Fsdev *, Inner *in, int isread, void *a, long l, vlong off)
 {
-	long wl;
-	Chan *mc = in->idev;
+	Chan *c;
 
-	if (waserror()) {
-		print("#k: %s: byte %,lld count %ld (of #k/%s): %s error: %s\n",
-			in->iname, off, l, mp->name, (isread? "read": "write"),
-			(up && up->errstr? up->errstr: ""));
-		nexterror();
-	}
-	if (isread) {
-		wl = devtab[mc->type]->read(mc, a, l, off);
-		if (wl != l)
-			error("#k: short read");
-	} else {
-		wl = devtab[mc->type]->write(mc, a, l, off);
-		if (wl != l)
-			error("#k: write error");
-	}
-	poperror();
-	return wl;
+	c = in->idev;
+	if (isread)
+		return devtab[c->type]->read(c, a, l, off);
+	else
+		return devtab[c->type]->write(c, a, l, off);
 }
 
 static long
 catio(Fsdev *mp, int isread, void *a, long n, vlong off)
 {
 	int	i;
-	long	l, wl, res;
+	long	l, res;
 	Inner	*in;
 
 	// print("catio %d %p %ld %lld\n", isread, a, n, off);
 	res = n;
-	for (i = 0; n >= 0 && i < mp->ndevs ; i++){
-		in = &mp->inner[i];
-		if (off > in->isize){
+	for (i = 0; n > 0 && i < mp->ndevs ; i++){
+		in = mp->inner+i;
+		if (off >= in->isize){
 			off -= in->isize;
 			continue;		/* not there yet */
 		}
@@ -501,8 +503,8 @@ catio(Fsdev *mp, int isread, void *a, long n, vlong off)
 			l = n;
 		// print("\tdev %d %p %ld %lld\n", i, a, l, off);
 
-		wl = io(mp, in, isread, a, l, off);
-		assert(wl == l);
+		if(io(mp, in, isread, a, l, off) != l)
+			error(Eio);
 
 		a = (char*)a + l;
 		off = 0;
@@ -526,7 +528,7 @@ interio(Fsdev *mp, int isread, void *a, long n, vlong off)
 	res = n;
 	while(n > 0){
 		mblk = blk / mp->ndevs;
-		i    = blk % mp->ndevs;
+		i = blk % mp->ndevs;
 		woff = mblk*Blksize + boff;
 		if (n > wsz)
 			l = wsz;
@@ -535,7 +537,7 @@ interio(Fsdev *mp, int isread, void *a, long n, vlong off)
 
 		in = &mp->inner[i];
 		wl = io(mp, in, isread, a, l, woff);
-		if (wl != l || l == 0)
+		if (wl != l)
 			error(Eio);
 
 		a = (char*)a + l;
