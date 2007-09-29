@@ -137,9 +137,7 @@ showpage(int page, Menu *m)
 	esetcursor(&reading);
 	delayfreeimage(nil);
 	im = cachedpage(doc, angle, page);
-	if(im == nil)
-		wexits(0);
-	if(resizing)
+	if(im && resizing)
 		resize(Dx(im->r), Dy(im->r));
 
 	esetcursor(nil);
