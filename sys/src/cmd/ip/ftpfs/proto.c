@@ -507,6 +507,7 @@ crackdir(char *p, String **remname)
 	char *field[15];
 	char *dfield[4];
 	char *cp;
+	char *pc = strdup(p);
 	String *s;
 	int dn, n;
 	Dir d, *dp;
@@ -661,6 +662,28 @@ crackdir(char *p, String **remname)
 	case Plan9:
 	default:
 		switch(n){
+		case 1:
+			s = s_copy(field[0]);
+			d.uid = "none";
+			d.gid = d.uid;
+			d.mode = 0777;
+			d.atime = 0;
+			break;
+		case 4:		/* a Windows_NT version */
+			s = s_copy(field[3]);
+			d.uid = "NT";
+			d.gid = d.uid;
+			if(strcmp("<DIR>", field[2]) == 0){
+				d.length = 0;
+				d.mode = DMDIR|0777;
+			} else {
+				d.mode = 0666;
+				d.length = atoi(field[2]);
+			}
+			dn = getfields(field[0], dfield, 4, 1, "/-");
+			if(dn == 3)
+				d.atime = cracktime(dfield[0], dfield[1], dfield[2], field[1]);
+			break;
 		case 8:		/* ls -l */
 			s = s_copy(field[7]);
 			d.uid = field[2];
@@ -683,41 +706,42 @@ crackdir(char *p, String **remname)
 			else
 				d.atime = cracktime(field[5], field[6], field[7], 0);
 			break;
-		case 10:	/* plan 9 */
-			s = s_copy(field[9]);
-			d.uid = field[3];
-			d.gid = field[4];
-			d.mode = crackmode(field[0]);
-			d.length = atoi(field[5]);
-			if(strchr(field[8], ':'))
-				d.atime = cracktime(field[6], field[7], 0, field[8]);
-			else
-				d.atime = cracktime(field[6], field[7], field[8], 0);
-			break;
-		case 4:		/* a Windows_NT version */
-			s = s_copy(field[3]);
-			d.uid = "NT";
-			d.gid = d.uid;
-			if(strcmp("<DIR>", field[2]) == 0){
-				d.length = 0;
-				d.mode = DMDIR|0777;
-			} else {
-				d.mode = 0666;
-				d.length = atoi(field[2]);
+		case 10:
+			if (os == Plan9) {
+				s = s_copy(field[9]);
+				d.uid = field[3];
+				d.gid = field[4];
+				d.mode = crackmode(field[0]);
+				d.length = atoi(field[5]);
+				if(strchr(field[8], ':'))
+					d.atime = cracktime(field[6], field[7], 0, field[8]);
+				else
+					d.atime = cracktime(field[6], field[7], field[8], 0);
 			}
-			dn = getfields(field[0], dfield, 4, 1, "/-");
-			if(dn == 3)
-				d.atime = cracktime(dfield[0], dfield[1], dfield[2], field[1]);
-			break;
-		case 1:
-			s = s_copy(field[0]);
-			d.uid = "none";
-			d.gid = d.uid;
-			d.mode = 0777;
-			d.atime = 0;
-			break;
+			/* Fallthrough; UNIX servers don't encapsulate files with spaces in their names */
 		default:
-			return nil;
+			if (os == Unix && n > 9) {
+				char *t = strstr(pc, field[7]);
+
+				if (t == nil) {
+					write(2, "XXX!!!\n",7);
+					return nil;
+				}
+
+				t += strlen(field[7]) + 1;
+
+				d.uid = field[2];
+				d.gid = field[3];
+				d.mode = crackmode(field[0]);
+				d.length = atoi(field[4]);
+				if(strchr(field[7], ':'))
+					d.atime = cracktime(field[5], field[6], 0, field[7]);
+				else
+					d.atime = cracktime(field[5], field[6], field[7], 0);
+
+ 				s = s_copy(t);
+			} else
+				return nil;
 		}
 	}
 	d.muid = d.uid;
