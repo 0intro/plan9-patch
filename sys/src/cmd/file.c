@@ -188,9 +188,9 @@ int	(*call[])(void) =
 	islimbo,	/* limbo source */
 	isc,		/* c & alef compiler key words */
 	isas,		/* assembler key words */
-	ismung,		/* entropy compressed/encrypted */
 	isp9font,	/* plan 9 font */
 	isp9bit,	/* plan 9 image (as from /dev/window) */
+	ismung,		/* entropy compressed/encrypted */
 	isenglish,	/* char frequency English */
 	isrtf,		/* rich text format */
 	ismsdos,	/* msdos exe (virus file attachement) */
@@ -775,7 +775,6 @@ struct	FILE_STRING
 	"%PDF",			"PDF",				4,	"application/pdf",
 	"<html>\n",		"HTML file",			7,	"text/html",
 	"<HTML>\n",		"HTML file",			7,	"text/html",
-	"compressed\n",		"Compressed image or subfont",	11,	"application/octet-stream",
 	"\111\111\052\000",	"tiff",				4,	"image/tiff",
 	"\115\115\000\052",	"tiff",				4,	"image/tiff",
 	"\377\330\377\340",	"jpeg",				4,	"image/jpeg",
@@ -1231,33 +1230,37 @@ depthof(char *s, int *newp)
 		d += strtoul(s, &s, 10);
 	}
 
-	switch(d){
-	case 32:
-	case 24:
-	case 16:
-	case 8:
+	if(d % 8 == 0 || 8 % d == 0)
 		return d;
-	}
-	return -1;
+	else
+		return -1;
 }
 
 int
 isp9bit(void)
 {
-	int dep, lox, loy, hix, hiy, px, new;
+	int dep, lox, loy, hix, hiy, px, new, cmpr;
 	ulong t;
 	long len;
 	char *newlabel;
+	uchar *cp;
 
+	cp = buf;
+	cmpr = 0;
 	newlabel = "old ";
 
-	dep = depthof((char*)buf + 0*P9BITLEN, &new);
+	if(!memcmp(cp, "compressed\n", 11)) {
+		cmpr = 1;
+		cp = buf + 11;
+	}
+
+	dep = depthof((char*)cp + 0*P9BITLEN, &new);
 	if(new)
 		newlabel = "";
-	lox = p9bitnum(buf + 1*P9BITLEN);
-	loy = p9bitnum(buf + 2*P9BITLEN);
-	hix = p9bitnum(buf + 3*P9BITLEN);
-	hiy = p9bitnum(buf + 4*P9BITLEN);
+	lox = p9bitnum(cp + 1*P9BITLEN);
+	loy = p9bitnum(cp + 2*P9BITLEN);
+	hix = p9bitnum(cp + 3*P9BITLEN);
+	hiy = p9bitnum(cp + 4*P9BITLEN);
 	if(dep < 0 || lox < 0 || loy < 0 || hix < 0 || hiy < 0)
 		return 0;
 
@@ -1277,25 +1280,30 @@ isp9bit(void)
 	len += 5*P9BITLEN;		/* size of initial ascii */
 
 	/*
+	 * for compressed images, don't look any further. otherwise:
 	 * for image file, length is non-zero and must match calculation above
 	 * for /dev/window and /dev/screen the length is always zero
 	 * for subfont, the subfont header should follow immediately.
 	 */
+	if (cmpr) {
+		print(mime ? OCTET : "Compressed %splan 9 image or subfont, depth %d\n", newlabel, dep);
+		return 1;
+	}
 	if (len != 0 && mbuf->length == 0) {
-		print("%splan 9 image\n", newlabel);
+		print(mime ? OCTET : "%splan 9 image, depth %d\n", newlabel, dep);
 		return 1;
 	}
 	if (mbuf->length == len) {
-		print("%splan 9 image\n", newlabel);
+		print(mime ? OCTET : "%splan 9 image, depth %d\n", newlabel, dep);
 		return 1;
 	}
 	/* Ghostscript sometimes produces a little extra on the end */
 	if (mbuf->length < len+P9BITLEN) {
-		print("%splan 9 image\n", newlabel);
+		print(mime ? OCTET : "%splan 9 image, depth %d\n", newlabel, dep);
 		return 1;
 	}
 	if (p9subfont(buf+len)) {
-		print("%ssubfont file\n", newlabel);
+		print(mime ? OCTET : "%ssubfont file, depth %d\n", newlabel, dep);
 		return 1;
 	}
 	return 0;
