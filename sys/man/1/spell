@@ -12,7 +12,18 @@ spell, sprog \- find spelling errors
 ]
 \&...
 .PP
-.B sprog
+.B /acme/bin/aspell
+[
+.I options
+]
+\&...
+[
+.B -f
+.I file
+]
+\&...
+.PP
+.B aux/sprog
 [
 .I options
 ]
@@ -43,13 +54,35 @@ Print all words not literally in the spelling list, with
 derivations.
 .TP
 .B -x
-Print, marked with
+Print on standard error, marked with
 .LR = ,
 every stem as it is looked up in the spelling list,
 along with its affix classes.
 .PP
-As a matter of policy, 
+.I Aspell
+is similar to
 .I spell
+except that it prepends to each line printed the address
+of the first occurrence of the word in the input, in a format
+suitable for plumbing to acme or sam. For compatibility, it
+accepts the same arguments as
+.IR spell ,
+although
+.B -v
+is ignored. It must be run within
+.IR acme (1).
+.PP
+.I Sprog
+is the actual spelling checker. It expects one word
+per line on standard input. It takes the same arguments as
+.I spell
+(which simply passes them through), plus
+.B -a
+to indicate its input will have the acme-style
+addresses prepended.
+.PP
+As a matter of policy, 
+.I sprog
 does not admit multiple spellings of the same word.
 Variants that follow general rules are preferred
 over those that don't, even when the unruly spelling is
@@ -67,12 +100,6 @@ American spelling list
 .TP
 .B /sys/lib/brspell
 British spelling list
-.TP
-.B /bin/aux/sprog
-The actual spelling checker.
-It expects one word per line on standard input,
-and takes the same arguments as
-.IR spell .
 .SH SOURCE
 .TF /sys/src/cmd/spell
 .TP
