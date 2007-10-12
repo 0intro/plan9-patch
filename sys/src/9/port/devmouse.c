@@ -102,7 +102,9 @@ static uchar buttonmap[8] = {
 };
 static int mouseswap;
 static int scrollswap;
-extern	Memimage*	gscreen;
+static ulong mousetime;
+extern Memimage* gscreen;
+extern ulong kerndate;
 
 static void
 mousereset(void)
@@ -123,6 +125,17 @@ mousefromkbd(int buttons)
 	mousetrack(0, 0, 0, TK2MS(MACHP(0)->ticks));
 }
 
+static int
+mousedevgen(Chan *c, char *name, Dirtab *tab, int ntab, int i, Dir *dp)
+{
+	int rc;
+
+	rc = devgen(c, name, tab, ntab, i, dp);
+	if(rc != -1)
+		dp->atime = mousetime;
+	return rc;	
+}
+
 static void
 mouseinit(void)
 {
@@ -133,6 +146,7 @@ mouseinit(void)
 	Cursortocursor(&arrow);
 	cursoron(1);
 	kbdmouse = mousefromkbd;
+	mousetime = seconds();
 }
 
 static Chan*
@@ -148,6 +162,10 @@ mousewalk(Chan *c, Chan *nc, char **name, int nname)
 {
 	Walkqid *wq;
 
+	/*
+	 * We use devgen() and not mousedevgen() here
+	 * see "Ugly problem" in dev.c/devwalk()
+	 */
 	wq = devwalk(c, nc, name, nname, mousedir, nelem(mousedir), devgen);
 	if(wq != nil && wq->clone != c && wq->clone != nil && (wq->clone->qid.type&QTDIR)==0)
 		incref(&mouse);
@@ -157,7 +175,7 @@ mousewalk(Chan *c, Chan *nc, char **name, int nname)
 static int
 mousestat(Chan *c, uchar *db, int n)
 {
-	return devstat(c, db, n, mousedir, nelem(mousedir), devgen);
+	return devstat(c, db, n, mousedir, nelem(mousedir), mousedevgen);
 }
 
 static Chan*
@@ -243,7 +261,7 @@ mouseread(Chan *c, void *va, long n, vlong off)
 	p = va;
 	switch((ulong)c->qid.path){
 	case Qdir:
-		return devdirread(c, va, n, mousedir, nelem(mousedir), devgen);
+		return devdirread(c, va, n, mousedir, nelem(mousedir), mousedevgen);
 
 	case Qcursor:
 		if(offset != 0)
@@ -264,6 +282,7 @@ mouseread(Chan *c, void *va, long n, vlong off)
 			sleep(&mouse.r, mousechanged, 0);
 
 		mouse.qfull = 0;
+		mousetime = seconds();
 
 		/*
 		 * No lock of the indicies is necessary here, because ri is only
