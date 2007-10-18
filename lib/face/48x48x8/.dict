@@ -5,8 +5,8 @@
 acsnet/boyd b/boyd.1
 alcatel-lucent.com/plus p/plus.1
 alcatel-lucent.com/unknown a/alu.1
-alcatel-lucent.fr/unknown a/alu.1
 alcatel-lucent.de/unknown a/alu.1
+alcatel-lucent.fr/unknown a/alu.1
 alcatel-lucent.nl/unknown a/alu.1
 alchar.org/aedil k/kris.1
 aprote.ee/t.lankots t/tiit.1
@@ -100,6 +100,7 @@ no/unknown u/unknown.no
 nz/unknown u/unknown.nz
 pandora.be/z.mccarthy z/zed.1
 picochip.com/unknown p/picochip.1
+pl/unknown u/unknown.pl
 plan9.escet.urjc.es/nemo n/nemo.1
 plan9.jp/chesky c/chesky.1
 planete.net/boyd b/boyd.1
