@@ -414,7 +414,6 @@ mesgsend(Message *m)
 		n -= s-to;
 		switch(h = whichheader(fld[0])){
 		case TO:
-		case FROM:
 			delit = 1;
 			commas(to+strlen(fld[0]), s-1);
 			for(i=1; i<nfld && nto<nelem(tolist); i++)
