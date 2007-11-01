@@ -315,7 +315,7 @@ system calls to produce its output.
 .IP
 .EX
 .ta 6n +6n +6n +6n +6n +6n +6n +6n +6n
-#pragma	varargck	argpos	error	1
+#pragma	varargck	argpos	fatal	1
 
 void fatal(char *fmt, ...)
 {
