@@ -51,7 +51,7 @@ if(! grep -s 127.0.0.1 /net/ipselftab)
 # }
 
 # start listeners if it hasn't already been done (dicey check)
-if(! netstat -n | grep -s 'tcp.*Listen.* (7|9|21|22|23|25|110|113|565|993|17007|17009|17010) .*')
+if(! netstat -n | grep -s 'tcp.*Listen.* (7|9|21|23|25|113|565|993|17007|17009|17010) .*')
 	aux/listen -q tcp
 # we don't use IL, maybe you do
 if(! netstat -n | grep -v 17008 | grep -s il.*Listen)
