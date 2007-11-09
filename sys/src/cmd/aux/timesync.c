@@ -1123,6 +1123,7 @@ openlisten(char *net)
 		sysfatal("open %s: %r", data);
 	return fd;
 }
+
 static void
 ntpserver(char *servenet)
 {
@@ -1144,6 +1145,9 @@ ntpserver(char *servenet)
 		case Utc:
 			Rootid = "UTC";
 			break;
+		case Gps:
+			Rootid = "GPS";
+			break;
 		case Ntp:
 			/* set by the ntp client */
 			break;
@@ -1155,7 +1159,7 @@ ntpserver(char *servenet)
 		n = read(fd, buf, sizeof buf);
 		gettime(&recvts, 0, 0);
 		if(n < 0)
-			return;
+			continue;
 		if(n < Udphdrsize + NTPSIZE)
 			continue;
 
