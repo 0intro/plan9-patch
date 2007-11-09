@@ -379,6 +379,7 @@ lapictimerset(uvlong next)
 void
 lapicclock(Ureg *u, void*)
 {
+	mtrrcheck();
 	timerintr(u, 0);
 }
 

@@ -16,6 +16,7 @@
 #define RDMSR		BYTE $0x0F; BYTE $0x32	/* RDMSR, result in AX/DX (lo/hi) */
 #define HLT		BYTE $0xF4
 #define INVLPG	BYTE $0x0F; BYTE $0x01; BYTE $0x39	/* INVLPG (%ecx) */
+#define WBINVD	BYTE $0x0F; BYTE $0x09
 
 /*
  * Macros for calculating offsets within the page directory base
@@ -605,6 +606,11 @@ TEXT getcr3(SB), $0				/* CR3 - page directory base */
 	MOVL	CR3, AX
 	RET
 
+TEXT putcr0(SB), $0
+	MOVL	cr0+0(FP), AX
+	MOVL	AX, CR0
+	RET
+
 TEXT putcr3(SB), $0
 	MOVL	cr3+0(FP), AX
 	MOVL	AX, CR3
@@ -623,6 +629,10 @@ TEXT invlpg(SB), $0
 	/* 486+ only */
 	MOVL	va+0(FP), CX
 	INVLPG
+	RET
+
+TEXT wbinvd(SB), $0
+	WBINVD
 	RET
 
 TEXT _cycles(SB), $0				/* time stamp counter */
@@ -663,20 +673,17 @@ TEXT wrmsr(SB), $0
  * a 386 (Ac bit can't be set). If it's not a 386 and the Id bit can't be
  * toggled then it's an older 486 of some kind.
  *
- *	cpuid(id[], &ax, &dx);
+ *	cpuid(fun, &ax, &bx, &cx, &dx);
  */
 TEXT cpuid(SB), $0
 	MOVL	$0x240000, AX
 	PUSHL	AX
 	POPFL					/* set Id|Ac */
-
 	PUSHFL
 	POPL	BX				/* retrieve value */
-
 	MOVL	$0, AX
 	PUSHL	AX
 	POPFL					/* clear Id|Ac, EFLAGS initialised */
-
 	PUSHFL
 	POPL	AX				/* retrieve value */
 	XORL	BX, AX
@@ -684,32 +691,43 @@ TEXT cpuid(SB), $0
 	JZ	_cpu386				/* can't set this bit on 386 */
 	TESTL	$0x200000, AX			/* Id */
 	JZ	_cpu486				/* can't toggle this bit on some 486 */
-
-	MOVL	$0, AX
-	CPUID
-	MOVL	id+0(FP), BP
-	MOVL	BX, 0(BP)			/* "Genu" "Auth" "Cyri" */
-	MOVL	DX, 4(BP)			/* "ineI" "enti" "xIns" */
-	MOVL	CX, 8(BP)			/* "ntel" "cAMD" "tead" */
-
-	MOVL	$1, AX
+	MOVL	fn+0(FP), AX
 	CPUID
 	JMP	_cpuid
-
 _cpu486:
 	MOVL	$0x400, AX
-	MOVL	$0, DX
-	JMP	_cpuid
-
+	JMP	_maybezapax
 _cpu386:
 	MOVL	$0x300, AX
-	MOVL	$0, DX
-
+_maybezapax:
+	CMPL	fn+0(FP), $1
+	JE	_zaprest
+	XORL	AX, AX
+_zaprest:
+	XORL	BX, BX
+	XORL	CX, CX
+	XORL	DX, DX
 _cpuid:
-	MOVL	ax+4(FP), BP
-	MOVL	AX, 0(BP)
-	MOVL	dx+8(FP), BP
-	MOVL	DX, 0(BP)
+	MOVL	axp+4(FP), BP
+	CMPL	BP, $0
+	JE	_bx
+	MOVL	AX, (BP)
+_bx:
+	MOVL	bxp+8(FP), BP
+	CMPL	BP, $0
+	JE	_cx
+	MOVL	BX, (BP)
+_cx:
+	MOVL	cxp+12(FP), BP
+	CMPL	BP, $0
+	JE	_dx
+	MOVL	CX, (BP)
+_dx:
+	MOVL	dxp+16(FP), BP
+	CMPL	BP, $0
+	JE	_out
+	MOVL	DX, (BP)
+_out:
 	RET
 
 /*

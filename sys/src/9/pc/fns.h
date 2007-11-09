@@ -13,7 +13,7 @@ void	clockintr(Ureg*, void*);
 int	(*cmpswap)(long*, long, long);
 int	cmpswap486(long*, long, long);
 void	(*coherence)(void);
-void	cpuid(char*, int*, int*);
+void	cpuid(int, void *ax, void *bx, void *cx, void *dx);
 int	cpuidentify(void);
 void	cpuidprint(void);
 void	(*cycles)(uvlong*);
@@ -96,6 +96,9 @@ void	mfence(void);
 #define mmuflushtlb(pdb) putcr3(pdb)
 void	mmuinit(void);
 ulong*	mmuwalk(ulong*, ulong, int, int);
+int	mtrr(uintptr, long, char *);
+void	mtrrcheck(void);
+int	mtrrprint(char *, long);
 uchar	nvramread(int);
 void	nvramwrite(int, uchar);
 void	outb(int, int);
@@ -139,6 +142,7 @@ int	pdbmap(ulong*, ulong, ulong, int);
 void	procrestore(Proc*);
 void	procsave(Proc*);
 void	procsetup(Proc*);
+void	putcr0(ulong);
 void	putcr3(ulong);
 void	putcr4(ulong);
 void*	rampage(void);
@@ -171,6 +175,7 @@ void	wrmsr(int, vlong);
 int	xchgw(ushort*, int);
 
 #define	waserror()	(up->nerrlab++, setlabel(&up->errlab[up->nerrlab-1]))
+void wbinvd(void);
 #define	KADDR(a)	kaddr(a)
 #define PADDR(a)	paddr((void*)(a))
 
