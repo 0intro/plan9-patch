@@ -13,6 +13,9 @@
 #include <cursor.h>
 #include "screen.h"
 
+
+static void *hardscreen;
+
 #define WORD(p) ((p)[0] | ((p)[1]<<8))
 #define LONG(p) ((p)[0] | ((p)[1]<<8) | ((p)[2]<<16) | ((p)[3]<<24))
 #define PWORD(p, v) (p)[0] = (v); (p)[1] = (v)>>8
@@ -127,7 +130,37 @@ vesalinear(VGAscr* scr, int, int)
 		size = ROUND(size, 1024*1024);
 
 havesize:
-	vgalinearaddr(scr, paddr, size);
+	if(size > 16*1024*1024)
+		size = 16*1024*1024;
+	hardscreen = vmap(paddr, size);
+	mtrr(paddr, size, "wc");
+//	vgalinearaddr(scr, paddr, size);
+}
+
+static void
+vesaflush(VGAscr *scr, Rectangle r)
+{
+	ulong *hp, *sp, *esp;
+	int t, w, wid, off;
+
+	if(rectclip(&r, scr->gscreen->r) == 0)
+		return;
+
+	hp = hardscreen;
+	sp = (ulong*)(scr->gscreendata->bdata + scr->gscreen->zero);
+	t = (r.max.x * scr->gscreen->depth + 2*BI2WD-1) / BI2WD;
+	w = (r.min.x * scr->gscreen->depth) / BI2WD;
+	w = (t - w) * BY2WD;
+	wid = scr->gscreen->width;
+	off = r.min.y * wid + (r.min.x * scr->gscreen->depth) / BI2WD;
+	hp += off;
+	sp += off;
+	esp = sp + Dy(r) * wid;
+	while(sp < esp){
+		memmove(hp, sp, w);
+		hp += wid;
+		sp += wid;
+	}
 }
 
 VGAdev vgavesadev = {
@@ -140,6 +173,5 @@ VGAdev vgavesadev = {
 	0,
 	0,
 	0,
-	0,
+	vesaflush,
 };
-
