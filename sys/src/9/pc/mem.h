@@ -59,14 +59,15 @@
 #define	REBOOTADDR	(0x11000)		/* reboot code - physical address */
 #define	CPU0PDB		(KZERO+0x12000)		/* bootstrap processor PDB */
 #define	CPU0PTE		(KZERO+0x13000)		/* bootstrap processor PTE's for 0-4MB */
-#define	CPU0GDT		(KZERO+0x14000)		/* bootstrap processor GDT */
-#define	MACHADDR	(KZERO+0x15000)		/* as seen by current processor */
-#define	CPU0MACH	(KZERO+0x16000)		/* Mach for bootstrap processor */
+#define	CPU0GDT		(KZERO+0x15000)		/* bootstrap processor GDT */
+#define	MACHADDR	(KZERO+0x16000)		/* as seen by current processor */
+#define	CPU0MACH	(KZERO+0x17000)		/* Mach for bootstrap processor */
 #define	MACHSIZE	BY2PG
+#define	CPU0END	(CPU0MACH+MACHSIZE)
 /*
  * N.B.  ramscan knows that CPU0MACH+BY2PG is the end of reserved data
  * N.B.  _startPADDR knows that CPU0PDB is the first reserved page
- * and that there are 5 of them.
+ * and that there are 6 of them.
  */
 
 /*
@@ -151,4 +152,3 @@
 #define	PTX(va)		((((ulong)(va))>>12) & 0x03FF)
 
 #define	getpgcolor(a)	0
-

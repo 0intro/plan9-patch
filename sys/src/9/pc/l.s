@@ -130,22 +130,31 @@ TEXT m0idtptr(SB), $0
 TEXT mode32bit(SB), $0
 	/* At this point, the GDT setup is done. */
 
-	MOVL	$PADDR(CPU0PDB), DI		/* clear 4 pages for the tables etc. */
+	MOVL	$PADDR(CPU0PDB), DI		/* clear 8 pages for the tables etc. */
 	XORL	AX, AX
-	MOVL	$(4*BY2PG), CX
+	MOVL	$(8*BY2PG), CX
 	SHRL	$2, CX
 
 	CLD
 	REP;	STOSL
 
+	/*
+	 * create temporary page tables.  must keep the amount of
+	 * memory mapped here in sync with memory.c:MinMem.
+	 */
 	MOVL	$PADDR(CPU0PDB), AX
 	ADDL	$PDO(KZERO), AX			/* page directory offset for KZERO */
 	MOVL	$PADDR(CPU0PTE), (AX)		/* PTE's for KZERO */
 	MOVL	$(PTEWRITE|PTEVALID), BX	/* page permissions */
 	ORL	BX, (AX)
 
+	ADDL	$4, AX				/* next 4mb */
+	MOVL	$PADDR(CPU0PTE+BY2PG), (AX)	/* PTE's for KZERO */
+	MOVL	$(PTEWRITE|PTEVALID), BX	/* page permissions */
+	ORL	BX, (AX)
+
 	MOVL	$PADDR(CPU0PTE), AX		/* first page of page table */
-	MOVL	$1024, CX			/* 1024 pages in 4MB */
+	MOVL	$2048, CX			/* 2048 pages in 8MB */
 _setpte:
 	MOVL	BX, (AX)
 	ADDL	$(1<<PGSHIFT), BX
