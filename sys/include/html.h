@@ -207,6 +207,7 @@ struct Irule
 	uchar	align;		/* alignment spec */
 	uchar	noshade;	/* if true, don't shade */
 	int	size;		/* size attr (rule height) */
+	int	color;	/* color attr */
 	Dimen	wspec;		/* width spec */
 };
 
