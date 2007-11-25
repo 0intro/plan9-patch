@@ -62,7 +62,6 @@ enum {
 	Fcttv		= 0x00000170,	/* Flow Control Transmit Timer Value */
 	Txcw		= 0x00000178,	/* Transmit Configuration Word */
 	Rxcw		= 0x00000180,	/* Receive Configuration Word */
-	/* on the oldest cards (8254[23]), the Mta register is at 0x200 */
 	Tctl		= 0x00000400,	/* Transmit Control */
 	Tipg		= 0x00000410,	/* Transmit IPG */
 	Tbt		= 0x00000448,	/* Transmit Burst Timer */
@@ -722,11 +721,11 @@ igbepromiscuous(void* arg, int on)
 		rctl |= Upe|Mpe;
 	else
 		rctl &= ~(Upe|Mpe);
-	csr32w(ctlr, Rctl, rctl|Mpe);	/* temporarily keep Mpe on */
+	csr32w(ctlr, Rctl, rctl);
 }
 
 static void
-igbemulticast(void* arg, uchar* addr, int add)
+igbemulticast(void* arg, uchar* addr, int on)
 {
 	int bit, x;
 	Ctlr *ctlr;
@@ -737,17 +736,10 @@ igbemulticast(void* arg, uchar* addr, int add)
 
 	x = addr[5]>>1;
 	bit = ((addr[5] & 1)<<4)|(addr[4]>>4);
-	/*
-	 * multiple ether addresses can hash to the same filter bit,
-	 * so it's never safe to clear a filter bit.
-	 * if we want to clear filter bits, we need to keep track of
-	 * all the multicast addresses in use, clear all the filter bits,
-	 * then set the ones corresponding to in-use addresses.
-	 */
-	if(add)
+	if(on)
 		ctlr->mta[x] |= 1<<bit;
-//	else
-//		ctlr->mta[x] &= ~(1<<bit);
+	else
+		ctlr->mta[x] &= ~(1<<bit);
 
 	csr32w(ctlr, Mta+x*4, ctlr->mta[x]);
 }
@@ -1044,8 +1036,7 @@ igberxinit(Ctlr* ctlr)
 	int i;
 	Block *bp;
 
-	/* temporarily keep Mpe on */
-	csr32w(ctlr, Rctl, Dpf|Bsize2048|Bam|RdtmsHALF|Mpe);
+	csr32w(ctlr, Rctl, Dpf|Bsize2048|Bam|RdtmsHALF);
 
 	csr32w(ctlr, Rdbal, PCIWADDR(ctlr->rdba));
 	csr32w(ctlr, Rdbah, 0);
@@ -1639,6 +1630,7 @@ at93c46r(Ctlr* ctlr)
 	case i82545gmc:
 	case i82546gb:
 	case i82546eb:
+	case i82547ei:
 		areq = 1;
 		csr32w(ctlr, Eecd, eecd|Areq);
 		for(i = 0; i < 1000; i++){
@@ -1772,13 +1764,14 @@ igbereset(Ctlr* ctlr)
 	 * There are 16 addresses. The first should be the MAC address.
 	 * The others are cleared and not marked valid (MS bit of Rah).
 	 */
-	if ((ctlr->id == i82546gb || ctlr->id == i82546eb) &&
-	    BUSFNO(ctlr->pcidev->tbdf) == 1)
-		ctlr->eeprom[Ea+2] += 0x100;		/* second interface */
-	for(i = Ea; i < Eaddrlen/2; i++){
-		ctlr->ra[2*i] = ctlr->eeprom[i];
-		ctlr->ra[2*i+1] = ctlr->eeprom[i]>>8;
+	if(ctlr->id == i82541gi && ctlr->eeprom[Ea] == 0xFFFF)
+		ctlr->eeprom[Ea] = 0xD000;
+	for(i = 0; i < Eaddrlen/2; i++){
+		ctlr->ra[2*i] = ctlr->eeprom[Ea+i];
+		ctlr->ra[2*i+1] = ctlr->eeprom[Ea+i]>>8;
 	}
+	r = csr32r(ctlr, Status)>>2;
+	ctlr->ra[5] += r&3;		/* ea ctlr[1] = ea ctlr[0]+1. */
 	r = (ctlr->ra[3]<<24)|(ctlr->ra[2]<<16)|(ctlr->ra[1]<<8)|ctlr->ra[0];
 	csr32w(ctlr, Ral, r);
 	r = 0x80000000|(ctlr->ra[5]<<8)|ctlr->ra[4];
