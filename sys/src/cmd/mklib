@@ -16,6 +16,9 @@ $LIB:	$LIBOBJ
 %.$O:	%.c
 	$CC $CFLAGS $stem.c
 
+%.$O:	%.C
+	c++/$CC $CFLAGS $stem.C
+
 %.$O:	%.s
 	$AS $AFLAGS $stem.s
 
