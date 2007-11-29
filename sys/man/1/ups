@@ -1,0 +1,15 @@
+.TH UPS 1
+.SH NAME
+ups \- track UPS shipment
+.SH SYNOPSIS
+.B ups 
+.I trackingnumber
+.SH DESCRIPTION
+.I Ups
+writes available shipment details for the given 18-digit
+.I trackingnumber
+on the standard output.
+.SH SOURCE
+.B /rc/bin/ups
+.SH BUGS
+Redesigns of the source website can break this program.
