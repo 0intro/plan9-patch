@@ -1,0 +1,15 @@
+.TH FEDEX 1
+.SH NAME
+fedex \- track FedEx shipment
+.SH SYNOPSIS
+.B fedex 
+.I trackingnumber
+.SH DESCRIPTION
+.I Fedex
+writes available shipment details for the given 12-digit
+.I trackingnumber
+on the standard output.
+.SH SOURCE
+.B /rc/bin/fedex
+.SH BUGS
+Redesigns of the source website can break this program.
