@@ -35,7 +35,7 @@ dom=H.ROOT-SERVERS.NET ip=128.63.2.53
 dom=I.ROOT-SERVERS.NET ip=192.36.148.17
 dom=J.ROOT-SERVERS.NET ip=192.58.128.30
 dom=K.ROOT-SERVERS.NET ip=193.0.14.129
-dom=L.ROOT-SERVERS.NET ip=198.32.64.12
+dom=L.ROOT-SERVERS.NET ip=199.7.83.42
 dom=M.ROOT-SERVERS.NET ip=202.12.27.33
 
 
@@ -101,13 +101,16 @@ ipnet=mysubnetwork ip=10.0.1.0 ipmask=255.255.255.0
 ip=10.0.1.10 ether=0010dc724074 sys=fs
 	dom=myfileserver.myuniversity.edu 
 	bootf=/386/9pcfs
+	proto=il
 
 ip=10.0.1.11 ether=0010dc724075 sys=auth
 	dom=myauthserver.myuniversity.edu
 	bootf=/386/9pccpu
+	proto=il
 
 ip=10.0.1.12 ether=0010dc724076 sys=term
 	dom=myterminal.myuniversity.edu
 	bootf=/386/9pc
+	proto=il
 
 auth=sources.cs.bell-labs.com authdom=outside.plan9.bell-labs.com
