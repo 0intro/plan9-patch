@@ -1,0 +1,37 @@
+.TH WEATHER 1
+.SH NAME
+weather \- know which way the wind blows
+.SH SYNOPSIS
+.B weather
+[
+.I air
+]  [
+.I st
+]
+.SH DESCRIPTION
+.I Weather
+prints on the standard output the current atmospheric conditions and six-day forecast most recently reported at the United States airport designated by the three-letter location identifier
+.IR air .
+.PP
+Given a two-letter
+.SM USPS
+state abbreviation
+.I st
+instead,
+.I weather
+prints a table of available
+.I air
+location identifiers for
+.IR st .
+.PP
+The arguments are mutually exclusive and case-insensitive.
+If neither is given,
+.I air
+defaults to location identifier
+.BR ewr ,
+designating the Newark, NJ, airport near Bell Labs, Murray Hill.
+.SH SOURCE
+.B /rc/bin/weather
+.SH SEE ALSO
+Bob Dylan,
+``Subterranean Homesick Blues''.
