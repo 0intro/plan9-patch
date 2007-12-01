@@ -240,7 +240,7 @@ findendpoints(void)
 void
 usage(void)
 {
-	fprint(2, "usage: usbaudio [-V] [-v volume] [-m mountpoint] [-s srvname] [ctrlno n]\n");
+	fprint(2, "usage: usbaudio [-V] [-v volume] [-m mountpoint] [-s srvname] [m n]\n");
 	threadexitsall("usage");
 }
 

@@ -2,8 +2,9 @@
 .SH NAME
 usbmouse,
 usbaudio,
-usbprint
-\- Universal Serial Bus user level device drivers
+usbprinter,
+usbstart
+\- Universal Serial Bus user\-level device drivers
 .SH SYNOPSIS
 .B usb/usbmouse
 [
@@ -12,7 +13,7 @@ usbprint
 .B -a
 .I accel
 ] [
-.I ctrlno
+.I m
 .I n
 ]
 .PP
@@ -29,66 +30,107 @@ usbprint
 .B -s
 .I srvname
 ] [
-.I ctrlno
+.I m
 .I n
 ]
 .PP
-.B usb/usbprint
+.B usb/usbprinter
+.PP
+.B usbstart
 .SH DESCRIPTION
-These programs implement support for specific USB device classes.
-They should be run after
+These programs implement support for specific 
+.SM USB
+device classes.
+With the exception of
+.IR usbstart ,
+they should be run after
 .IR usbd (4)
-has had a chance to locate the devices in question and provide
-them with device addresses and minimal configuration.
+has located available
+.SM USB
+devices and provided them with device addresses and minimal configuration.
 Dynamic handling of device insertion and removal is currently not supported.
 .SS Mice
-.I Usbmouse
-sends mouse events from a USB mouse to
+Without arguments,
+.I usbmouse
+reads the
+.SM USB
+status files (see
+.IR usb (3))
+to find a mouse, writing events from the first one found to
 .B /dev/mousein
-where the Plan 9 kernel processes them like other mice.
-.PP
-Without arguments, it scans the USB status files to find a mouse
-and uses the first one it finds.  A pair of numeric arguments overrides this search
-with a specific USB controller and device.  The options are
+(see
+.IR mouse (3)).
+Given an argument of 
+.SM USB
+hub number
+.I m
+and slot number
+.IR n ,
+.I usbmouse
+looks for a mouse only at
+.BI /dev/usb m / n /status .
+The options are:
 .TP
 .BI -f
-Run usbmouse in foreground.
+Run in foreground.
 .TP
 .BI -s
-Use the scrollwheel.
+Enable the scrollwheel.
 .TP
 .BI -v
-Verbose mode.
+Produce verbose output on standard error. Often combined with
+.BR -f .
 .TP
 .BI -a " accel"
-Accelerate mouse movements.
+Set the movement acceleration to the number
+.IR accel .
 .SS Audio devices
 .I Usbaudio
-configures and manages a usb audio device.  It implements a file system,
-normally mounted in
-.BI /dev ,
-but this can be changed with the
-.B \-m
-flag, with files
-.BR volume ,
-.BR audioctl ,
+configures and manages a 
+.SM USB
+audio device. With no arguments, it reads the
+.SM USB
+status files to find an audio device, and uses the first one found.
+Given an argument of
+.SM USB
+hub number
+.I m
+and slot number
+.IR n ,
+.I usbaudio
+looks for an audio device only at
+.BI /dev/usb m / n /status .
+.PP
+.I Usbaudio
+serves a one-level file system presenting the files
 .BR audio ,
+.BR audioctl ,
+.BR audioin ,
 and
-.BR audioin .
+.BR volume .
 The names
-.B volume
-and
 .B audio
-maintain backward compatibility with the soundblaster driver.
+and
+.B volume
+maintain compatibility with the soundblaster driver (see
+.IR audio (3)).
+This filesystem is by default mounted on
+.BI /dev ,
+but a
+.I mountpoint
+can be specified with the
+.B \-m
+option.
+The
+.B \-s
+option causes
+.I usbaudio
+to post its service as
+.BI /srv/ srvname .
 .PP
 The
 .B \-V
-flag (verbose) causes usbaudio to print information about the device on startup.
-.PP
-The
-.B \-s
-flag specifies a name for a file descriptor to be posted in
-.CW /srv .
+option produces verbose information about the audio device on standard error.
 .PP
 Reading
 .B volume
@@ -97,7 +139,7 @@ or
 yields the device's settings.  The data format of
 .B volume
 is compatible with the soundblaster and
-produces something like
+produces something like:
 .IP
 .EX
 audio out 65
@@ -106,10 +148,16 @@ bass out 0
 speed out 44100
 .EE
 .PP
-This file can be written using the same syntax.  The keyword
-.I out
-may be omitted.  Settings are given as percentages of the range,
-except for speed which is in Hz.
+This file can be written using the same syntax.
+The keyword
+.B out
+may be omitted.
+Settings are given as percentages of the range, except for speed which is in
+.SM Hz.
+The
+.B -v
+option sets the initial
+.IR volume .
 .PP
 The file
 .B audioctl
@@ -145,16 +193,44 @@ Audio data is written to
 .B audio
 and read from
 .BR audioin .
-The data format is little endian, samples ordered primarily by time and
-secondarily by channel.  Samples occupy the minimum integral number
-of bytes.  Read and write operations of arbitrary size are allowed.
+The audio data is a sequence of little-endian integer samples ordered primarily by time and secondarily by channel.
+Samples occupy the minimum integral number of bytes.
+Read and write operations of arbitrary size are allowed.
 .SS Printers
-.I Usbprint
-is a script that mounts a USB printer on
-.BR /dev/lp .
+.I Usbprinter
+is an
+.IR rc (4)
+script that reads the
+.SM USB
+status files and
+.IR bind s
+the
+.B ep2data
+file of the first printer device it finds to
+.BR /n/lp ,
+which can then be used as an
+.B LPDEST
+(see
+.IR lp (1)).
+.SS Convenience
+The
+.IR rc (1)
+script
+.I usbstart
+starts
+.IR usbd (4),
+then uses
+.I usbmouse
+and
+.I usbaudio
+to configure and manage a mouse and an audio device.
+.I Usbstart
+is similar to the example below.
 .SH EXAMPLE
 .LP
-To use a USB mouse and audio device, put the following in your profile
+To use a
+.SM USB
+mouse, audio device, and printer, put the following in your profile
 (replace
 .I x
 with your favorite initial volume setting):
@@ -165,29 +241,46 @@ if (test -r '#U'/usb0) {
 	usb/usbd
 	usb/usbmouse -a 2
 	usb/usbaudio -v \fIx\fP
-	usb/usbprint
+	usb/usbprinter
 }
 .EE
 .PP
-Alternatively, just put
-.B usbstart
-in your profile.
+.SH FILES
+.TF /dev/usb?/?/status
+.TP
+.B /dev/usb?/?/status
+.SM USB
+device status files
+.TF /n/lp
+.TP
+.B /n/lp
+.I usbprinter
+.IR bind (1)
+location for
+.B ep2data
+file
 .SH SOURCE
 .B /sys/src/cmd/usb
+.br
+.B /rc/bin/usbstart
 .SH "SEE ALSO"
 .IR usb (3),
-.IR usbd (4)
+.IR usbd (4),
+.IR mouse (3),
+.IR audio (3),
+.IR lp (1)
 .SH BUGS
-Usbaudio only works for certain audio devices.
-This is the list of devices known to work with usbaudio:
+.I Usbaudio
+is only known to work with the list of devices below:
 .IP
 .RS
 .TP
 Xitel AN1
-Output only.  Marginally enough to drive headphones.
+Output only.
+Marginally enough to drive headphones.
 Has mute, volume, bass, treble controls.
 .TP
-Philips USB speakers, model DSS 370/17
+Philips DSS 370/17 USB speakers
 Usbaudio acts on the volume
 .L +
 and
@@ -195,7 +288,8 @@ and
 buttons.
 .TP
 Edirol UA-3
-Playback and record.  Playback only at 44.1 KHz, record at 32, 44.1 or 48 KHz.
+Playback and record.
+Playback only at 44.1 KHz, record at 32, 44.1 or 48 KHz.
 Playback volume control and mute control.
 The device only has analog (slider controlled)
 input volume control.
@@ -204,10 +298,11 @@ Edirol UA-1X
 Playback and record.
 Playback only at 32, 44.1 or 48 KHz, record at 8, 16, 22.05, 32, 44.1 or 48 KHz.
 Playback volume control and mute control
-(haven't tested recording, but I believe it'll work).
+(recording not tested).
 .TP
 Xitel Pro HiFi-Link
-Playback only.  48 KHz only.
+Playback only.
+48 KHz only.
 There is a volume control but it isn't connected to the output, so does nothing.
 .TP
 Onkyo WAVIO series MA-500U

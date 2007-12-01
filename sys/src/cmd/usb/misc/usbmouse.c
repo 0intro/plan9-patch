@@ -87,7 +87,7 @@ char maptab[] = {
 void
 usage(void)
 {
-	fprint(2, "usage: %s [-fsv] [-a accel] [ctlrno usbport]\n", argv0);
+	fprint(2, "usage: %s [-fsv] [-a accel] [m n]\n", argv0);
 	threadexitsall("usage");
 }
 
