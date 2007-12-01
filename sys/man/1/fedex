@@ -1,11 +1,14 @@
 .TH FEDEX 1
 .SH NAME
-fedex, ups \- track shipments
+fedex, ups, usps \- track shipments
 .SH SYNOPSIS
 .B fedex 
 .I tracking-number
 .br
 .B ups 
+.I tracking-number
+.br
+.B usps 
 .I tracking-number
 .SH DESCRIPTION
 .I Fedex
@@ -13,9 +16,16 @@ writes available shipment details for the given 12-digit
 .I tracking-number
 on the standard output.
 .I Ups
-is similar, but takes 18-digit
-.IR tracking-number s.
+is similar, but takes an 18-digit
+.IR tracking-number .
+.I Usps
+is again similar, but takes a 20-digit
+.IR tracking-number .
 .SH SOURCE
-.B /rc/bin
+.B /rc/bin/fedex
+.br
+.B /rc/bin/ups
+.br
+.B /rc/bin/usps
 .SH BUGS
 Redesigns of the source website can break these programs.
