@@ -22,10 +22,10 @@ enum{
 	Olen,
 };
 
-static Field p_fields[] =
+static Field p_fields[] = 
 {
-	{"type",	Fnum,	Otype,		"type",	},
-	{"conn",	Fnum,	Oconn,		"conn",	},
+	{"type",		Fnum,	Otype,		"type",	},
+	{"conn",		Fnum,	Oconn,		"conn",	},
 	{"seq",		Fnum,	Oseq,		"seq",	},
 	{"len",		Fnum,	Olen,		"len",	},
 	{0}
@@ -46,7 +46,7 @@ p_filter(Filter *f, Msg *m)
 {
 	Hdr *h;
 
-	if(m->pe - m->ps < Hsize)
+	if(m->pe-m->ps < Hsize)
 		return 0;
 
 	h = (Hdr*)m->ps;
@@ -79,10 +79,10 @@ static char* ttab[] = {
 static int
 p_seprint(Msg *m)
 {
-	char *s, buf[4];
 	Hdr *h;
+	char *s, *p, buf[4];
 
-	if(m->pe - m->ps < Hsize)
+	if(m->pe-m->ps < Hsize)
 		return 0;
 
 	h = (Hdr*)m->ps;
@@ -97,8 +97,10 @@ p_seprint(Msg *m)
 		s = buf;
 	}
 
+	p = (char*)m->ps;
 	m->p = seprint(m->p, m->e, "type=%s conn=%d seq=%d len=%d %.*s",
-		s, h->conn, h->seq, h->len, h->len, (char*)m->ps);
+		s, h->conn, h->seq, h->len,
+		(int)utfnlen(p, h->len), p);
 	return 0;
 }
 
