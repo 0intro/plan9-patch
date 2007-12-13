@@ -171,53 +171,6 @@ is locked by
 .IR ftpd;
 see
 .IR httpd (8).
-.PP
-.I Imap4d
-provides access to a user's mailboxes via the IMAP4rev1 protocol.
-Only files rooted in
-.BI /mail/box/ username /
-are accessible.
-The list of subscribed mailboxes is contained in
-.BI /mail/box/ username /imap.subscribed ,
-and initially contains only
-.BR INBOX ,
-IMAP's name for the user's mailbox.
-A shadow file,
-.IB mailbox .imp ,
-is created for each mailbox examined.
-.PP
-The options are:
-.TP
-.B a
-Assume the user is already authenticated.
-By default, the user must authenticate using
-CRAM-MD5 or
-.IR securenet (8)
-challenge/response authentication.
-.TP
-.B p
-Allow login authentication.  This option
-should only be enabled for servers using
-an encrypted connection, such as SSL,
-and when enabled, all non-encrypted connections should be disallowed.
-.I Imap4d
-does not enforce this policy.
-.TP
-.B s
-The server's name.
-If none is provided,
-.B cs
-(see
-.IR ndb (8))
-is queried or
-.B /env/sysname
-is used.
-.TP
-.B d
-The local mail domain.
-Defaults to the server
-.B /env/site
-in the mail server's domain.
 .SH FILES
 .B /lib/namepace
 .br
@@ -226,12 +179,6 @@ in the mail server's domain.
 .B /lib/namespace.world
 .br
 .B /lib/namespace.ftp
-.br
-.BI /mail/box/ username / mailbox
-.br
-.BI /mail/box/ username / mailbox .imp
-.br
-.BI /mail/box/ username /imap.subscribed
 .SH SOURCE
 .B /sys/src/cmd/ip/telnetd.c
 .br
@@ -241,7 +188,6 @@ in the mail server's domain.
 .br
 .B /sys/src/cmd/ip/ftpd.c
 .br
-.B /sys/src/cmd/ip/imap4d/
-.br
 .SH "SEE ALSO"
-.IR ftpfs (4)
+.IR ftpfs (4),
+.IR pop3 (8)
