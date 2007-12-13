@@ -1,0 +1,12 @@
+--- sys/src/cmd/venti/srv/venti.c	Fri Nov 30 00:57:27 2007
++++ sys/src/cmd/venti/srv/venti.c	Fri Nov 30 00:57:27 2007
+@@ -186,7 +186,8 @@
+ 		ventiserver(nil);
+ 	else
+ 		vtproc(ventiserver, nil);
+-	exits(0);
++	
++	threadexits(nil);
+ }
+ 
+ static void

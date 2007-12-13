@@ -1,0 +1,11 @@
+--- sys/src/cmd/venti/srv/icachewrite.c	Fri Nov 30 00:57:27 2007
++++ sys/src/cmd/venti/srv/icachewrite.c	Fri Nov 30 00:57:27 2007
+@@ -251,8 +251,6 @@
+ 		as = icachestate();
+ 		if(as.arena==iwrite.as.arena && as.aa==iwrite.as.aa){
+ 			/* will not be able to do anything more than last flush - kick disk */
+-			if(0)
+-				fprint(2, "icache: nothing to do - kick dcache\n");
+ 			trace(TraceProc, "icachewritecoord kick dcache");
+ 			kickdcache();
+ 			trace(TraceProc, "icachewritecoord kicked dcache");
