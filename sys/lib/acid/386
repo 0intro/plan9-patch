@@ -156,7 +156,6 @@ Ureg(addr) {
 	print("	cs	", addr.cs, "\n");
 	print("	flags	", addr.flags, "\n");
 	print("	sp	", addr.sp, "\n");
-	print("}\n");
 	print("	ss	", addr.ss, "\n");
 };
 sizeofUreg = 76;
