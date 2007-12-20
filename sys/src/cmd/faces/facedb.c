@@ -238,12 +238,36 @@ estrstrdup(char *a, char *b)
 	return t;
 }
 
+static int
+fcmp(void *p, void *q)
+{
+	char *a, *b;
+	int i, j, d;
+
+	a = *(char**)p;
+	b = *(char**)q;
+	for(;;){
+//print("[%s] [%s]\n", a, b);
+		i = strtoul(a, &a, 10);
+		j = strtoul(b, &b, 10);
+//print("  [%s] [%s]\n", a, b);
+		if(i == 0 || j == 0)
+			return strcmp(a, b);
+		if(d = i-j)
+			return -d;
+		if(*a != 'x' || *b != 'x')
+			return strcmp(a, b);
+		a++;
+		b++;
+	}
+}
+
 static char*
 tryfindfiledir(char *dom, char *user, char *dir)
 {
-	char *dict, *ndir, *x;
+	char *dict, ndir[0xff], *x, **tab;
 	int fd;
-	int i, n;
+	int i, j, n;
 	Dir *d;
 	
 	/*
@@ -268,47 +292,35 @@ tryfindfiledir(char *dom, char *user, char *dir)
 	/*
 	 * If not, recurse into subdirectories.
 	 * Ignore 512x512 directories.
-	 * Save 48x48 directories for later.
 	 */
+	x = 0;
 	if((fd = open(dir, OREAD)) < 0)
 		return nil;
-	while((n = dirread(fd, &d)) > 0){
-		for(i=0; i<n; i++){
-			if((d[i].mode&DMDIR)
-			&& strncmp(d[i].name, "512x", 4) != 0
-			&& strncmp(d[i].name, "48x48x", 6) != 0){
-				ndir = emalloc(strlen(dir)+1+strlen(d[i].name)+1);
-				strcpy(ndir, dir);
-				strcat(ndir, "/");
-				strcat(ndir, d[i].name);
-				if((x = tryfindfiledir(dom, user, ndir)) != nil){
-					free(ndir);
-					free(d);
-					close(fd);
-					free(dom);
-					return x;
-				}
-			}
-		}
-		free(d);
+	n = dirreadall(fd, &d);
+	if(n < 1)
+		goto esc;
+	tab = emalloc(n*sizeof *tab);
+	j = 0;
+	for(i = 0; i < n; i++){
+		if(d[i].mode&DMDIR)
+		if(strncmp(d[i].name, "512x", 4) != 0)
+			tab[j++] = estrdup(d[i].name);
 	}
+	qsort(tab, j, sizeof *tab, fcmp);
+	for(i = 0; i < j; i++){
+		snprint(ndir, sizeof ndir, "%s/%s", dir, tab[i]);
+		if(x = tryfindfiledir(dom, user, ndir))
+			break;
+	}
+	for(i = 0; i < j; i++)
+		free(tab[i]);
+	free(tab);
+esc:
+	free(d);
 	close(fd);
-	
-	/*
-	 * Handle 48x48 directories in the right order.
-	 */
-	ndir = estrstrdup(dir, "/48x48x8");
-	for(i=8; i>0; i>>=1){
-		ndir[strlen(ndir)-1] = i+'0';
-		if(access(ndir, AEXIST) >= 0 && (x = tryfindfiledir(dom, user, ndir)) != nil){
-			free(ndir);
-			free(dom);
-			return x;
-		}
-	}
-	free(ndir);
 	free(dom);
-	return nil;
+	
+	return x;
 }
 
 static char*
