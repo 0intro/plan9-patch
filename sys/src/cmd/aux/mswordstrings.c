@@ -80,7 +80,7 @@ readFibhdr(Fibhdr *s, uchar *v, int nv)
 void
 usage(void)
 {
-	fprint(2, "usage: wordtext /mnt/doc/WordDocument\n");
+	fprint(2, "usage: mswordstrings /mnt/doc/WordDocument\n");
 	exits("usage");
 }
 

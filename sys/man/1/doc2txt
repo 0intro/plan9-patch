@@ -1,7 +1,12 @@
 .TH DOC2TXT 1
 .SH NAME
-doc2txt, wdoc2txt, xls2txt, olefs, mswordstrings, msexceltable \- extract printable strings from Microsoft Office documents
+doc2ps, doc2txt, wdoc2txt, xls2txt, antiword, msexceltables, mswordstrings, olefs \- read Microsoft Office documents
 .SH SYNOPSIS
+.B doc2ps
+[
+.I file.doc
+]
+.br
 .B doc2txt
 [
 .I file.doc
@@ -17,109 +22,209 @@ doc2txt, wdoc2txt, xls2txt, olefs, mswordstrings, msexceltable \- extract printa
 .I file.xls
 ]
 .br
+.B aux/antiword
+[
+.I options
+]
+.I file.doc ...
+.br
+.B aux/msexceltables
+[
+.B -Dant
+]
+[
+.B -d
+.I delim
+]
+[
+.B -w
+.I worksheets
+]
+.I /mnt/doc/Workbook
+.br
+.B aux/mswordstrings 
+.I /mnt/doc/WordDocument
+.br
 .B aux/olefs
 [
 .B -m
 .I mtpt
 ]
 .I file.doc
-.br
-.B aux/mswordstrings 
-.I /mnt/doc/WordDocument
-.br
-.B aux/msexceltable
-[
-.B -aDnt
-] [
-.B -d
-.I delim
-]
-.B -w
-.I worksheet-range
-]
-.I /mnt/doc/Workbook
 .SH DESCRIPTION
-.I Doc2txt
-is an
+The
 .IR rc (1)
-script that uses 
+script
+.I doc2txt
+uses
 .I olefs
 and
 .I mswordstrings
-to extract the printable text from the body of a Microsoft Word document and write it on the standard output.
+to extract printable text from the body of a Microsoft Word document and write it to standard output.
 .I Wdoc2txt
-is similar, but uses
-.IR plumb (1)
-to send the output to a new
+plumbs extracted text to a new
 .IR acme (1)
-window instead.
+window.
 .I Xls2txt
-performs a similar function for Microsoft Excel documents.
+writes to standard output the printable text from a Microsoft Excel document.
 .PP
-Microsoft Office documents are stored in OLE (Object Linking and Embedding)
-format, which is a scaled down version of Microsoft's FAT file system.
+Legacy Microsoft Office documents are stored in the Object Linking and Embedding 
+(\c
+.SM OLE\c
+)
+subset of the
+.SM FAT
+file system format.
 .I Olefs
-presents the contents of an Office document as a file system
-on
-.IR mtpt ,
-which defaults to
-.BR /mnt/doc .
+exploits this to present the contents of an Office document as a file system at
+.B /mnt/doc
+(or at
+.I mtpt
+specified with
+.BR -m ).
 .I Mswordstrings
 or
 .I msexceltables
-may then be used to parse the files inside, extracting
-a text stream.
+can extract
+strings from the files there.
 .I Msexceltables
-may be given options to control the formatting of its output.
+takes the options:
+.TF -w worksheets
 .TP
-.B -n
-Disables field padding to colum width.
-.TP
-.B -t
-Truncate fields to the colum width.
+.B -D
+Print verbose debugging on standard output.
 .TP
 .B -a
-Attempt conversion of non-tabular sheets in the workbook. (charts).
+Attempt conversion of non-tabular sheets (e.g., charts and graphs).
 .TP
 .BI -d " delim
-Sets the interfield delimiter to the string
+Set the field delimiter to the string
 .IR delim ,
 by default a single space.
 .TP
-.B -D
-Enables debugging output.
+.B -n
+Do not pad fields to the column width.
 .TP
-.BI -w " worksheet-spec
-Specifies which worksheets to process, by default all tabular sheets are
-output \- suspressed chart pages are always included in the sheet count.
-Arbitary lists of pages or page ranges may be given, individual pages
-are seperated by commas, sheet ranges are seperated by a minus.
+.B -t
+Truncate fields to the column width.
+.TP
+.BI -w " worksheets
+Specify which worksheets to process. By default all tabular sheets are output.
+Lists of pages or page ranges may be given with individual pages separated by commas, ranges by a minus.
+Suppressed pages are always included in the sheet count.
+.PD
+.PP
+.I Doc2ps
+uses
+.I antiword
+to write to standard output a
+.BR letter -sized
+PostScript approximation of the Word document
+.IR file.doc .
+.PP
+.I Antiword
+reads text, formatting, and images from the given Microsoft Word file(s) to write a representation of them to standard output.
+Three major options select among output modes, with sub-options unique to each mode:
+.TF -p paper
+.TP
+.BI -p " paper
+PostScript output sized to
+.IR paper ,
+one of common sheet sizes
+.BR 10x14 ,
+.BR a4 ,
+.BR a5 ,
+.BR b4 ,
+.BR b5 ,
+.BR executive ,
+.BR folio ,
+.BR legal ,
+.BR letter ,
+.BR note ,
+.BR quarto ,
+.BR statement ,
+or
+.BR tabloid .
+Under
+.BR -p ,
+.BI -i " level
+sets the handling of images to
+.IR level ,
+one of
+.B 1
+(no image output),
+.B 2
+(PostScript level 2, the default),
+.B 3
+(PostScript level 3, experimental),
+or
+.B 0
+(incompatible Ghostscript extensions).
+.B -L
+sets landscape output, horizontally oriented.
+.TP
+.B -t
+Text output (the default).
+Under
+.BR -t ,
+.BI -w " width
+breaks output lines after
+.I width
+number of characters.
+.TP
+.BI -x " dtd
+.SM XML
+output according to the Document Type Definition represented by
+.IR dtd .
+Currently
+.BR db ,
+representing DocBook, is the only useful
+.I dtd 
+code.
+.PD
+.PP
+In all modes,
+.BI -s
+prints `hidden' text normally suppressed by Word.
 .SH EXAMPLE
+To print text from selected pages in the Excel document
+.IR file.xls ,
+delimiting unpadded output fields with
+.BR @ :
 .EX
-	aux/olefs report.xls
-	msexceltables -w 1,7,9-14,3-4 -n -d '@' /mnt/doc/Workbook
+	aux/olefs file.xls
+	aux/msexceltables -n -d '@' -w 1,7,9-14,3-4 /mnt/doc/Workbook
 	unmount /mnt/doc
 .EE
+The 
+.I xls2txt
+script performs a similar procedure, modulo
+.I msexceltables
+options.
 .SH SOURCE
-.B /rc/bin/doc2txt
+.B /rc/bin
 .br
-.B /rc/bin/wdoc2txt
+.B /sys/src/cmd/aux
 .br
-.B /rc/bin/xls2txt
-.br
-.B /sys/src/cmd/aux/msexceltables.c
-.br
-.B /sys/src/cmd/aux/mswordstrings.c
-.br
-.B /sys/src/cmd/aux/olefs.c
+.B /sys/src/cmd/aux/antiword
 .SH SEE ALSO
+.IR acme (1),
+.IR gs (1),
+.IR plumb (1),
 .IR strings (1)
+.PP
+Microsoft
+.SM MSDN,
+``Microsoft Word 97 Binary File Format''.
 .br
-``Microsoft Word 97 Binary File Format'',
-available on line at Microsoft's developer home page.
+http://user.cs.tu-berlin.de/~schwartz/pmh/, ``LAOLA Binary Structures''.
 .br
-``LAOLA Binary Structures'', 
-.I http://snake.cs.tu-berlin.de:8081/~schwartz/pmh 
-.br
-``OpenOffice.Org's Excel Documentation'',
-.I http://sc.openoffice.org/excelfileformat.pdf
+http://sc.openoffice.org/excelfileformat.pdf, OpenOffice.Org's Excel format documentation.
+.SH BUGS
+The obscure and mercurial Office document file formats.
+.PP
+This manual page omits
+.IR antiword 's
+.B -m
+character set map option in favor of this pointer to
+.IR tcs (1).

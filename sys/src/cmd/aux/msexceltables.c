@@ -751,7 +751,7 @@ xls2csv(Biobuf *bp)
 void
 usage(void)
 {
-	fprint(2, "usage: %s [-Dant] [-w worksheets] [-d delim] /mnt/doc/Workbook\n", argv0);
+	fprint(2, "usage: %s [-Dant] [-d delim] [-w worksheets] /mnt/doc/Workbook\n", argv0);
 	exits("usage");
 }
 

@@ -489,7 +489,7 @@ main(int argc, char **argv)
 
 	if(argc != 1) {
 	Usage:
-		fprint(2, "usage: olefs file\n");
+		fprint(2, "usage: olefs [-m mtpt] file.doc\n");
 		exits("usage");
 	}
 
