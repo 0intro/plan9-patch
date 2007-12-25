@@ -160,6 +160,7 @@ tcp=9fs port=564
 tcp=whoami port=565
 tcp=guard port=566
 tcp=ticket port=567
+tcp=submission=587
 tcp=fmclient port=729
 tcp=imaps port=993
 tcp=pop3s port=995
