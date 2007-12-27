@@ -8,7 +8,7 @@ int trusted;
 void
 usage(void)
 {
-	fprint(2, "usage: listen1 [-tv] address cmd args...\n");
+	fprint(2, "usage: listen1 [-tv] addr cmd [args ...]\n");
 	exits("usage");
 }
 

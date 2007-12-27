@@ -1,16 +1,26 @@
 .TH LISTEN 8
 .SH NAME
-listen, listen1, tcp7, tcp9, tcp19, tcp21, tcp22, tcp23, tcp25, tcp53, tcp110, tcp113, tcp143, tcp513, tcp515, tcp564, tcp565, tcp566, tcp567, tcp993, tcp1723, tcp17007, tcp17008, tcp17009, tcp17010, tcp17013 \- listen for calls on a network device
+listen, listen1, tcp7, tcp9, tcp19, tcp21, tcp22, tcp23, tcp25, tcp53, tcp110, tcp113, tcp143, tcp513, tcp515, tcp564, tcp565, tcp567, tcp993, tcp995, tcp17007, tcp17009, tcp17010, tcp17013 \- listen for calls on a network device
 .SH SYNOPSIS
 .B aux/listen
-.RB [ -q ]
-.RB [ -d
-.IR srvdir ]
-.RB [ -t
-.IR trustsrvdir ]
-.RB [ -n
-.IR namespace ]
-.RI [ net ]
+[
+.B -q
+]
+[
+.B -d
+.IR srvdir
+]
+[
+.B -t
+.IR trustsrvdir
+]
+[
+.B -n
+.IR namespace
+]
+[
+.I net
+]
 .PP
 .B aux/listen1
 [
@@ -19,15 +29,15 @@ listen, listen1, tcp7, tcp9, tcp19, tcp21, tcp22, tcp23, tcp25, tcp53, tcp110, t
 .I addr
 .I cmd
 [
-.I args...
+.I args ...
 ]
 .SH DESCRIPTION
-.I listen
-listens on a network for inbound calls to local services.
+.I Listen
+listens for and invokes services in response to incoming network calls.
 .I Net
 is the network protocol on which to listen, by default
 .BR /net/tcp .
-The services available are executable, non-empty files in
+Services are executable, non-empty files in
 .I srvdir
 or
 .IR trustsrvdir .
@@ -49,136 +59,134 @@ are executed as the user who started
 .IR listen .
 When changing user to
 .BR none ,
-a new namespace is created,
-usually by executing
+a new name space is created, either that defined in
 .BR /lib/namespace ,
-but
-.B -n
-selects an alternate
-.IR namespace .
+or in the file
+.I namespace
+given to
+.BR -n .
 Option
 .B -q
-suppresses affirmative log information.
+suppresses affirmative logging to standard output.
 .PP
-Service names are made by concatenating the name of
-the network with the name of the service or port.
+Service names concatenate the network protocol with the number of the service port.
 For example,
-an inbound call on the TCP network for port 565 executes service
+an inbound call on the
+.SM TCP
+network for port 565 executes service
 .BR tcp565 .
 .PP
 The following services are available in
-.BR /bin/service .
+.BR /bin/service :
 .TF \ tcp0000
 .TP
+.B tcp7
+Echo any bytes received (bit mirror).
+.TP
+.B tcp9
+Consume any bytes received (bit bucket).
+.TP
+.B tcp19
+Chargen service.
+.TP
+.B tcp21
+.SM FTP
+daemon.
+.TP
+.B tcp23
+Telnet terminal connection.
+.TP
+.B tcp25
+.SM SMTP
+mail delivery.
+.TP
+.B tcp53
+.SM TCP
+port for
+.SM DNS.
+.TP
+.B tcp113
+Ident port (always reports
+.BR none ).
+.TP
+.B tcp143
+.SM IMAP4rev1
+port.
+.TP
+.B tcp513
+Rlogin terminal connection.
+.TP
+.B tcp515
+.SM LP
+daemon; see
+.IR lp (8).
+.TP
 .B tcp564
-serve a piece of the name space using the Plan 9 file system protocol,
+Serve a piece of the name space using the Plan 9 file system protocol,
 with authentication via
 .I Tauth
 (in
 .IR attach (5)),
 no encryption,
-and multiplex multiple users on a single connection
-(used by
+and multiplexing multiple users on a single connection.
+(Used by
 .IR srv (4),
-and also by Unix systems to see Plan 9 files).
+and also by Unix systems to see Plan 9 files.)
+.TP
+.B tcp565
+Echo the destination address and sysname, along with the source address and port, of each incoming call.
+.TP
+.B tcp993
+Secure
+.SM IMAP4rev1
+port.
 .TP
 .B tcp17007
-serve a piece of the name space using the Plan 9 file system protocol,
-with authentication at the start,
-optional SSL encryption,
-and no multiplexing of users
-(typically used by
+Serve a piece of the name space using the Plan 9 file system protocol, with authentication at the start, optional SSL encryption, and no multiplexing of users (typically used by
 .IR cpu (1)
 and
 .IR import (4)).
 Not usable by user
-.IR none .
-.TP
-.B tcp17008
-like
-.BR tcp17007 ,
-but serves the root of the tree,
-forgoing the negotiation for which subtree to serve.
+.BR none .
 .TP
 .B tcp17009
-.I rx
-remote execution.
+.I Rx
+remote execution
+(See
+.IR con (1)).
 .TP
 .B tcp17010
-server for
+Server for
 .IR cpu (1)
 command.
 .TP
 .B tcp17013
-server for old
+Server for old
 .IR cpu (1)
 command for compatibility with old clients.
-.TP
-.B tcp7
-echo any bytes received (bit mirror)
-.TP
-.B tcp9
-consume any bytes received (bit bucket)
-.TP
-.B tcp19
-.B chargen
-service.
-.TP
-.B tcp21
-FTP daemon
+.PD
+.PP
+The following services are available in
+.BR /bin/service.auth :
+.TF \ tcp0000
 .TP
 .B tcp22
-.IR ssh (1)
-`secure shell' encrypted terminal connection or file transfer.
-.TP
-.B tcp23
-.B telnet
-terminal connection.
-.TP
-.B tcp25
-mail delivery.
-.TP
-.B tcp53
-TCP port for DNS.
+`Secure shell' encrypted terminal connection or file transfer (see
+.I sshserve
+in
+.IR ssh (1)).
 .TP
 .B tcp110
-POP3 port.
-.TP
-.B tcp113
-.B Ident
-port (always reports
-.BR none ).
-.TP
-.B tcp143
-IMAP4rev1 port.
-.TP
-.B tcp513
-.B rlogin
-terminal connection.
-.TP
-.B tcp515
-LP daemon; see
-.IR lp (8).
-.TP
-.B tcp565
-report the address of the incoming call.
+.SM POP3
+port.
 .TP
 .B tcp567
 Plan 9 authentication-ticket service.
 .TP
-.B tcp1723
-PPTP (point-to-point tunnelling protocol) service.
-.PD
-.PP
-The following services are available in
-.BR /bin/service.auth .
-.TF \ tcp0000
-.TP
-.B tcp566
-validate a SecureNet box.
-.TP
-.B tcp993
-Secure IMAP4rev1 port.
+.B tcp995
+Secure
+.SM POP3
+port.
 .PD
 .PP
 .I Listen1
@@ -187,14 +195,15 @@ modeled from Inferno's
 .\" write out this way so automatic programs
 .\" don't try to make it into a real man page reference.
 \fIlisten\fR(1).
-announces on
-.IR address ,
-running
+It announces on
+.I addr
+(of the form described in
+.IR dial (2)),
+and on each incoming connection invokes the program
 .I cmd
-.I args...
-for each incoming connection;
-the network directory is passed in the environment
-as 
+with any given options and arguments
+.IR args .
+The network directory is passed in the environment variable
 .BR $net .
 Option
 .B -t
@@ -206,7 +215,7 @@ is to become
 before listening.
 Option
 .B -v
-causes verbose logging on standard output.
+causes verbose logging to standard output.
 See
 .B /rc/bin/tlssrvtunnel
 for an example.
@@ -214,20 +223,26 @@ for an example.
 .TF /env/sysname
 .TP
 .B /net/tcp
-by convention, TCP device bind point
+by convention,
+.SM TCP
+device bind point
 .SH SOURCE
-The sources to
-.I listen
-and
-.I listen1
-are
-.B /sys/src/cmd/aux/listen.c
-and
-.BR /sys/src/cmd/aux/listen1.c .
-The other commands are
-.IR rc (1)
-scripts in
-.BR /rc/bin/service .
+.B /rc/bin/service
+.br
+.B /rc/bin/service.auth
+.br
+.B /sys/src/cmd/aux
 .SH "SEE ALSO"
+.IR attach (5),
 .IR authsrv (6),
-.IR dial (2)
+.IR con (1),
+.IR cpu (1),
+.IR dial (2),
+.IR import (4),
+.IR ipserv (8),
+.IR lp (8),
+.IR pop3 (8),
+.IR smtp (8),
+.IR srv (4),
+.IR ssh (1),
+.IR tlssrv (8)

@@ -43,7 +43,7 @@ char *namespace;
 void
 usage(void)
 {
-	error("usage: aux/listen [-q] [-n namespace] [-d servdir] [-t trustdir] [proto]");
+	error("usage: aux/listen [-q] [-d srvdir] [-t trustsrvdir] [-n namespace] [net]");
 }
 
 /*
