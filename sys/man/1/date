@@ -1,6 +1,6 @@
 .TH DATE 1
 .SH NAME
-date, clock \- date and time
+date, clock, catclock \- date and time
 .SH SYNOPSIS
 .B date
 [
@@ -10,6 +10,11 @@ date, clock \- date and time
 ]
 .br
 .B clock
+.br
+.B games/catclock
+[
+.B -c
+]
 .SH DESCRIPTION
 Print the date, in the format
 .PP
@@ -34,6 +39,22 @@ If the optional argument
 .I seconds
 is present, it is used as the time to convert rather than
 the real time.
+.PP
+.I Clock
+draws a simple analog clock in its window.
+.PP
+.I Catclock
+draws a simple Kit-Cat Klock in its window.
+The
+.B -c
+option will cause the cat's eyes to come together and then go apart.
+The default behavior is for the eyes to go in the same direction.
+.SH SOURCE
+.B /sys/src/cmd/date.c
+.br
+.B /sys/src/cmd/clock.c
+.br
+.B /sys/src/games/catclock.[cp]
 .SH FILES
 .TF /adm/timezone/local
 .TP
@@ -49,10 +70,7 @@ Default timezone file, copied by
 into
 .BR /env/timezone .
 .PD
-.PP
-.I Clock
-draws a simple analog clock in its window.
-.SH SOURCE
-.B /sys/src/cmd/date.c
-.br
-.B /sys/src/cmd/clock.c
+.SH BUGS
+.IR Catclock 's
+window cannot be too small, else clipping will occur.
+.\" added games/catclock and fixed small location bug - pietro gagliardi - 3 jan 2008
