@@ -36,7 +36,7 @@ datapage(char *p, long len)
 		exits("datapage");
 	}
 
-	sum = sumr(0, p, len) & (nelem(pgtab)-1);
+	sum = sumr(0, p, len);
 	if(sum == 0) {
 		iszero = 1;
 		for(q=p, ep=p+len; q<ep; q++)
@@ -46,6 +46,7 @@ datapage(char *p, long len)
 			}
 	} else
 		iszero = 0;
+	sum &= nelem(pgtab)-1;
 
 	for(pg = pgtab[sum]; pg; pg=pg->link)
 		if(pg->len == len && memcmp(pg->data, p, len) == 0)
