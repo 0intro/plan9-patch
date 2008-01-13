@@ -44,6 +44,8 @@ It typically runs as user
 and multiplexes access to multiple Plan 9 clients over the single wire.
 It assumes Plan 9 uids match Unix login names,
 and changes to the corresponding Unix effective uid when processing requests.
+Characters in file and directory names unacceptable to plan9 are translated
+into a the three character sequence \\ followed by two hex codes.
 .I U9fs
 serves both 9P1 (the 9P protocol as used by
 the second and third editions of Plan 9) and 9P2000.
@@ -113,9 +115,6 @@ if specified
 .B -A
 option),
 is consulted for the authentication data.
-The file must contain exactly three lines:
-the plaintext password, the user id, and
-the authentication domain.
 .TP
 .BI -A " autharg
 Used to specify an argument to the authentication method.
@@ -224,8 +223,51 @@ On systems where listeners cannot be started,
 .IR execnet (4)
 is useful for running
 .I u9fs
-via mechanisms like
-.IR ssh .
+via other network mechanisms; the script
+.IR srvssh (4)
+provides this for the ssh protocol.
+.SH AUTHENTICATION
+.LP
+The Nill authentication scheme
+.I none
+is normally only used when a secure channel has already
+been established, for example using ssh to a Unix host.
+.LP
+Rhosts authentication consults the file 
+.I .rhosts
+in the Unix users home directory on the Unix machine. If the calling
+plan9 host is listed in this file then the connection will succeed.
+Various other machine and site specific restrictions may be
+applied to the .rhosts file's contents and metadata; See rhosts(5)
+and ruserok(3) on the relevant host for more information.
+.LP
+The strongest authentication is plan9 specific \-
+.IR p9any ,
+generally this uses a plan9 account for each Unix server. The account details
+should be placed in the Unix file /etc/u9fs.key, which should be owned and
+readable only by
+.BR root .
+This file must contain exactly three lines:
+.LP
+.EX
+	secret
+	u9fs\-user
+	plan9\-auth.dom
+.EE
+.LP
+Where
+.I secret
+is the plaintext password,
+.I u9fs\-user
+the user id, and
+.I plan9\-auth.dom
+the authentication domain.
+.LP
+Finally factotum must be taught a key of the form:
+.LP
+.EX
+key proto=p9sk1 dom=plan9\-auth.dom user=u9fs\-user !password=secret
+.EE 
 .SH SOURCE
 .B /sys/src/cmd/unix/u9fs
 .SH DIAGNOSTICS
