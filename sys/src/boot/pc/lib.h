@@ -1,5 +1,3 @@
-#define	offsetof(s, m)	(ulong)(&(((s*)0)->m))
-
 /*
  * functions (possibly) linked in, complete, from libc.
  */
@@ -7,17 +5,17 @@
 /*
  * mem routines
  */
-extern	void*	memccpy(void*, void*, int, ulong);
-extern	void*	memset(void*, int, ulong);
-extern	int	memcmp(void*, void*, ulong);
-extern	void*	memmove(void*, void*, ulong);
-extern	void*	memchr(void*, int, ulong);
+extern	void*	memccpy(void*, void*, int, long);
+extern	void*	memset(void*, int, long);
+extern	int	memcmp(void*, void*, long);
+extern	void*	memmove(void*, void*, long);
+extern	void*	memchr(void*, int, long);
 
 /*
  * string routines
  */
 extern	char*	strcat(char*, char*);
-extern	char*	strchr(char*, int);
+extern	char*	strchr(char*, char);
 extern	int	strcmp(char*, char*);
 extern	char*	strcpy(char*, char*);
 extern	char*	strncat(char*, char*, long);
@@ -99,6 +97,7 @@ extern	int	atoi(char*);
 extern	uintptr	getcallerpc(void*);
 extern	long	strtol(char*, char**, int);
 extern	ulong	strtoul(char*, char**, int);
+extern	uvlong	strtoull(char*, char**, int);
 extern	long	end;
 
 #define	NAMELEN	28
