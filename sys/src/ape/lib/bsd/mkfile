@@ -31,6 +31,7 @@ OFILES=\
 	popen.$O\
 	putenv.$O\
 	rcmd.$O\
+	readpassphrase.$O\
 	readv.$O\
 	rresvport.$O\
 	send.$O\
