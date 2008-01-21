@@ -93,20 +93,24 @@ Suppressed in
 extension, ignored except in
 .BR TM .
 .ti0
-\fL\&.B\fP \fIx y\fR	no	no	Print
+\fL\&.B\fP \fIx y z\fR	no	no	Print
 .I x
 in boldface, append
-.IR y ;
+.IR y
+and prepend
+.IR z ;
 if no argument switch to boldface.
 .ti0
 \fL\&.B1\fP	no	yes	Begin text to be enclosed in a box.
 .ti0
 \fL\&.B2\fP	no	yes	End boxed text.
 .ti0
-\fL\&.BI\fP \fIx y\fR	no	no	Print
+\fL\&.BI\fP \fIx y z\fR	no	no	Print
 .I x
-in bold italic and append
-.IR y ;
+in bold italic, append
+.IR y
+and prepend
+.IR z ;
 if no argument switch to bold italic.
 .ti0
 \fL\&.BT\fP	date	no	Bottom title, automatically invoked at
@@ -117,10 +121,12 @@ May be redefined.
 .I x
 in a box.
 .ti0
-\fL\&.CW\fP \fIx y\fR	no	no	Constant width font for
+\fL\&.CW\fP \fIx y z\fR	no	no	Constant width font for
 .IR x ,
 append
-.IR y ;
+.IR y
+and prepend
+.IR z ;
 if no argument switch to constant width.
 .ti0
 \fL\&.CT\fP	no	yes	Print `Copies to' and turn off line filling.
@@ -176,10 +182,12 @@ The note will be moved to the bottom of the page.
 \fL\&.HO\fP	-	no	`Bell Laboratories, Holmdel,
 New Jersey 07733'.
 .ti0
-\fL\&.I\fP \fIx y\fR	no	no	Italicize
+\fL\&.I\fP \fIx y z\fR	no	no	Italicize
 .IR x ,
 append
-.IR y ;
+.IR y
+and prepend
+.IR z ;
 if no argument switch to italic.
 .ti0
 \fL\&.IH\fP	no	no	`Bell Laboratories, Naperville, Illinois 60540'
@@ -226,6 +234,9 @@ with automatic section
 numbers  like `1.2.3';
 .I n
 is subsection level (default 1).
+If
+.I n
+is 0, reset the numbering.
 .ti0
 \fL\&.NL\fP	yes	no	Make letters normal size.
 .ti0
