@@ -198,7 +198,7 @@ and
 flags.
 The child process
 calls
-.IB close( s -> srvfd )
+.IB close( s -> infd )
 and then
 .IB srv( s ) \fR;
 it will exit once
