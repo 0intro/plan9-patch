@@ -85,3 +85,5 @@ typedef	char*	va_list;
 	(sizeof(mode) == 4)?\
 		((mode*)(list += 8))[-1]:\
 		((mode*)(list += sizeof(mode)))[-1])
+#define va_copy(targ, list)\
+	(targ = list)
