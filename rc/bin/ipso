@@ -1,9 +1,10 @@
 #!/bin/rc
 
-if(! ~ $service terminal){
-	echo >[1=2] ipso should be run only on the terminal
-	exit terminal
-}
+#if(! ~ $service terminal){
+#	echo >[1=2] ipso should be run only on the terminal
+#	exit terminal
+#}
+
 
 path=(/bin)
 home=(/tmp)
@@ -44,6 +45,10 @@ fn editedfiles{
 	if not
 		ls -tr | sed '1,/^_timestamp$/d'
 }
+
+edexp=`{grep '^editor=' /mnt/plumb/rules >[2] /dev/null}
+if(~ $#edexp 1)
+	eval $edexp
 
 while(~ $1 -*){
 	switch($1){
