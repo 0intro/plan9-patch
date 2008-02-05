@@ -40,7 +40,7 @@ enum {					/* I/O ports */
 	Cylhi		= 5,		/* cylinder high */
 	Bytehi		= 5,		/* byte count hi (PACKET) */
 	Lbahi		= 5,		/* LBA<23-16>, LBA<47-40> */
-	Dh		= 6,		/* Device/Head, LBA<32-14> */
+	Dh		= 6,		/* Device/Head, LBA<27-24> */
 	Status		= 7,		/* (read) */
 	Command		= 7,		/* (write) */
 
@@ -1744,13 +1744,18 @@ retry:
 }
 
 static void
-atainterrupt(Ureg*, void* arg)
+atainterrupt(Ureg*r, void* arg)
 {
 	Ctlr *ctlr;
 	Drive *drive;
 	int cmdport, len, status;
 
 	ctlr = arg;
+	if((uintptr)ctlr < KZERO){
+		iprint("ata controller invalid %p\n", ctlr);
+		dumpregs(r);
+		return;
+	}
 
 	ilock(ctlr);
 	if(inb(ctlr->ctlport+As) & Bsy){
@@ -2016,7 +2021,8 @@ atapnp(void)
 		case (0x266F<<16)|0x8086:	/* 82801FB (ICH6) */
 		case (0x27C4<<16)|0x8086:	/* 82801GBM SATA (ICH7) */
 		case (0x27C5<<16)|0x8086:	/* 82801GBM SATA AHCI (ICH7) */
-			break;
+case (0x0502<<17)|0x100b:	/* National Semiconductor SC1100/SCx200 */
+		break;
 		}
 
 		for(channel = 0; channel < 2; channel++){
