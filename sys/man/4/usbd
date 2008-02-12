@@ -4,7 +4,7 @@ usbd \- Universal Serial Bus daemon
 .SH SYNOPSIS
 .B usbd
 [
-.B -dv
+.B -dfDV
 ]
 .SH DESCRIPTION
 .I Usbd
@@ -18,10 +18,24 @@ unconfiguring them when they are pulled out or switched off.
 .B Usbd
 recognizes the following options:
 .TP
+.B f
+Don't fork.
+.TP
 .B d
+Set USB library debugging bitmask. A value of 1
+sets
+.BI Dbginfo ,
+2 sets
+.BI Dbgfs ,
+4 sets
+.BI Dbgproc ,
+and 8 sets
+.BI Dbgcontrol .
+.TP
+.B D
 Debug; print the bytes in each message sent or received.
 .TP
-.B v
+.B V
 Verbose; print configuration information and device status as they change.
 .SH SOURCE
 .B /sys/src/cmd/usb/usbd

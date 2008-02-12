@@ -30,7 +30,7 @@ void (*dprinter[])(Device *, int, ulong, void *b, int n) = {
 static void
 usage(void)
 {
-	fprint(2, "usage: usbd\n");
+	fprint(2, "usage: usbd [-dfDV]\n");
 	threadexitsall("usage");
 }
 
