@@ -1668,15 +1668,6 @@ fileWAccess(File* f, char *mid)
 	if(f->mode == OReadOnly)
 		return;
 
-	/* We can get (recursively) here with root files
-	 * that don't have f->up. Their metadata
-	 * can't be changed. So we update just
-	 * the times.
-	 */
-	if (f->up == nil){
-		f->dir.atime = f->dir.mtime = time(0L);
-		return;
-	}
 	fileMetaLock(f);
 	f->dir.atime = f->dir.mtime = time(0L);
 	if(strcmp(f->dir.mid, mid) != 0){
@@ -1687,8 +1678,11 @@ fileWAccess(File* f, char *mid)
 	f->dirty = 1;
 	fileMetaUnlock(f);
 
+/*RSC: let's try this */
+/*presotto - lets not
 	if(f->up)
 		fileWAccess(f->up, mid);
+*/
 }
 
 static int
