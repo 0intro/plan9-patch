@@ -42,7 +42,7 @@ void winclosethread(void*);
 void deletethread(void*);
 void	initcmd(void*);
 
-char		*fontname, *backname;
+char		*fontname;
 int		mainpid;
 
 enum
@@ -111,7 +111,7 @@ derror(Display*, char *errorstr)
 void
 usage(void)
 {
-	fprint(2, "usage: rio [-f background] [-f font] [-i initcmd] [-k kbdcmd] [-s]\n");
+	fprint(2, "usage: rio [-f font] [-i initcmd] [-k kbdcmd] [-s]\n");
 	exits("usage");
 }
 
@@ -132,11 +132,6 @@ threadmain(int argc, char *argv[])
 	kbdin = nil;
 	maxtab = 0;
 	ARGBEGIN{
-	case 'b':
-		backname = ARGF();
-		if(backname == nil)
-			usage();
-		break;
 	case 'f':
 		fontname = ARGF();
 		if(fontname == nil)
@@ -187,7 +182,7 @@ threadmain(int argc, char *argv[])
 		fprint(2, "rio: can't open display: %r\n");
 		exits("display open");
 	}
-	iconinit(backname);
+	iconinit();
 	view = screen;
 	viewr = view->r;
 	mousectl = initmouse(nil, screen);
@@ -200,7 +195,7 @@ threadmain(int argc, char *argv[])
 	wscreen = allocscreen(screen, background, 0);
 	if(wscreen == nil)
 		error("can't allocate screen");
-	draw(view, viewr, background, nil, viewr.min);
+	draw(view, viewr, background, nil, ZP);
 	flushimage(display, 1);
 
 	exitchan = chancreate(sizeof(int), 0);
@@ -620,7 +615,7 @@ resized(void)
 	wscreen = allocscreen(screen, background, 0);
 	if(wscreen == nil)
 		error("can't re-allocate screen");
-	draw(view, view->r, background, nil, view->r.min);
+	draw(view, view->r, background, nil, ZP);
 	o = subpt(viewr.max, viewr.min);
 	n = subpt(view->clipr.max, view->clipr.min);
 	for(i=0; i<nwindow; i++){

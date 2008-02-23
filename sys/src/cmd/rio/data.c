@@ -173,8 +173,25 @@ Cursor *corners[9] = {
 };
 
 void
-iconinit(void)
+iconinit(char *bf)
 {
-	background = allocimage(display, Rect(0,0,1,1), RGB24, 1, 0x777777FF);
+	int fd;
+	Image *bimg = nil;
+
+	if(bf != nil){
+		fd = open(bf, OREAD);
+		if(fd >= 0){
+			bimg = readimage(display, fd, 0);
+			close(fd);
+		}else
+			fprint(2, "iconinit: %r\n");
+	}
+
+	if(bimg == nil)
+		background = allocimage(display, Rect(0,0,1,1), RGB24, 1, 0x777777FF);
+	else{
+		background = allocimage(display, Rect(0, 0, Dx(bimg->r), Dy(bimg->r)), RGB24, 1, 0xFFFFFFFF);
+		draw(background, background->r, bimg, 0, bimg->r.min);
+	}
 	red = allocimage(display, Rect(0,0,1,1), RGB24, 1, 0xDD0000FF);
 }
