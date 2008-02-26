@@ -546,3 +546,7 @@ to force it to be treated as a string concatenate
 .br
 The scope rules for variables in functions are a botch;
 the syntax is worse.
+.br
+It does not behave well with UTF and reads one
+byte at a time.
+
