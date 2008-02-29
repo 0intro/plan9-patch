@@ -1,6 +1,3 @@
-/*
- * ATA-over-Ethernet (AoE) protocol
- */
 enum {
 	ACata,
 	ACconfig,
@@ -24,7 +21,9 @@ enum {
 
 enum {
 	Aoetype	= 0x88a2,
-	Aoesectsz = 512,			/* standard sector size */
+	Aoesectsz = 512,
+	Szaoeata	= 24+12,
+	Szaoeqc	= 24+8,
 	Aoever	= 1,
 
 	AFerr	= 1<<2,
@@ -44,10 +43,7 @@ typedef struct {
 	uchar	minor;
 	uchar	cmd;
 	uchar	tag[4];
-	uchar	payload[];
 } Aoehdr;
-
-#define AOEHDRSZ	offsetof(Aoehdr, payload[0])
 
 typedef struct {
 	Aoehdr;
@@ -57,10 +53,7 @@ typedef struct {
 	uchar	cmdstat;
 	uchar	lba[6];
 	uchar	res[2];
-	uchar	payload[];
 } Aoeata;
-
-#define AOEATASZ	offsetof(Aoeata, payload[0])
 
 typedef struct {
 	Aoehdr;
@@ -69,10 +62,7 @@ typedef struct {
 	uchar	scnt;
 	uchar	verccmd;
 	uchar	cslen[2];
-	uchar	payload[];
 } Aoeqc;
-
-#define AOEQCSZ		offsetof(Aoeqc, payload[0])
 
 extern char Echange[];
 extern char Enotup[];
