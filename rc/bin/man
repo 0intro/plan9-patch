@@ -21,7 +21,7 @@ fn roff {
 		Nflag=-Tutf
 	}
 	if not {
-		Nflag='-N'
+		Nflag=(-N -Tutf)
 		Lflag='-rL1000i'
 		# setting L changes page length to infinity (sed script removes empty lines)
 		if (grep -s '^\.(2C|sp *[0-9]*\.)' $2)
