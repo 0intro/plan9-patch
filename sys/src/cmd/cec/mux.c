@@ -1,4 +1,3 @@
-/* Copyright © Coraid, Inc. 2006.  All rights reserved. */
 #include <u.h>
 #include <libc.h>
 #include "cec.h"

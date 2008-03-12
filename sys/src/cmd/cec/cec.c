@@ -1,11 +1,10 @@
 /*
- * Copyright © Coraid, Inc. 2006, 2007.  All Rights Reserved.
- * ethernet console for Coraid storage products.
- *  simple command line version.
- */
+ * cec -- simple ethernet console
+ * Copyright © Coraid, Inc. 2006—2008.  All Rights Reserved.
+*/
 #include <u.h>
 #include <libc.h>
-#include <ip.h>	/* really! */
+#include <ip.h>		/* really! */
 #include <ctype.h>
 #include "cec.h"
 
@@ -18,41 +17,40 @@ enum {
 	Tdiscover,
 	Toffer,
 	Treset,
-
-	HDRSIZ = 18,
+	
+	Hdrsz = 18,
 	Eaddrlen = 6,
 };
 
-typedef struct Shelf Shelf;
-
-struct Shelf {
-	uchar	ea[Eaddrlen];
+typedef struct{
+	uchar	ea[6];
 	int	shelfno;
 	char	*str;
-};
+}Shelf;
 
 void 	conn(int);
-void	exits0(char *);
 void 	gettingkilled(int);
 int 	pickone(void);
 void 	probe(void);
 void	sethdr(Pkt *, int);
 int	shelfidx(void);
 
-extern int errno;
-extern int fd;			/* set in netopen */
-
-Shelf	tab[1000];
-int	ntab;
-uchar	contag;
-int	shelf = -1;
 Shelf	*connp;
+uchar	contag;
+uchar	ea[6];
+char	*host;
+int	ntab;
+char	pflag;
+int	shelf = -1;
+Shelf	tab[1000];
+uchar	unsetea[6];
 char 	esc = '';
+extern 	int fd;		/* set in netopen */
 
 void
 usage(void)
 {
-	fprint(2, "usage: cec [-d] [-e esc] [-s shelf] interface\n");
+	fprint(2, "usage: cec [-dp] [-c esc] [-e ea] [-s shelf] [-h host] interface\n");
 	exits0("usage");
 }
 
@@ -64,31 +62,47 @@ catch(void*, char *note)
 	noted(NDFLT);
 }
 
+int
+nilea(uchar *ea)
+{
+	return memcmp(ea, unsetea, 6) == 0;
+}
+
 void
 main(int argc, char **argv)
 {
 	int r, n;
 
 	ARGBEGIN{
+	case 'c':
+		esc = toupper(*(EARGF(usage()))) - 'A' + 1;
+		if(esc < 1 || esc > 0x19)
+			usage();
+		break;
 	case 'd':
 		debug++;
+		break;
+	case 'e':
+		if(parseether(ea, EARGF(usage())) == -1)
+			usage();
+		pflag = 1;
+		break;
+	case 'h':
+		host = EARGF(usage());
+		break;
+	case 'p':
+		pflag = 1;
 		break;
 	case 's':
 		shelf = atoi(EARGF(usage()));
 		break;
-	case 'e':
-		esc = toupper(*(EARGF(usage()))) - 'A' + 1;
-		if(esc <= 0 || esc >= ' ')
-			usage();
-		break;
 	default:
 		usage();
 	}ARGEND
-	if(debug)
-		fprint(2, "debug is on\n");
-	if(argc != 1)
+	if(argc == 0)
+		*argv = "/net/ether0";
+	else if(argc != 1)
 		usage();
-
 	fmtinstall('E', eipfmt);
 	r = netopen(*argv);
 	if(r == -1){
@@ -99,18 +113,25 @@ main(int argc, char **argv)
 	probe();
 	for(;;){
 		n = 0;
-		if(shelf == -1)
+		if(shelf == -1 && host == 0 && nilea(ea))
 			n = pickone();
 		rawon();
 		conn(n);
 		rawoff();
-		if(shelf != -1)
-			exits0("shelf not found");
+		if(pflag == 0){
+			if(shelf != -1)
+				exits0("shelf not found");
+			if(host)
+				exits0("host not found");
+			if(!nilea(ea))
+				exits0("ea not found");
+		}else if(shelf != -1 || host || !nilea(ea))
+			exits0("");
 	}
 }
 
 void
-timewait(int ms)  /* arrange for a sig_alarm signal after `ms' milliseconds */
+timewait(int ms)
 {
 	alarm(ms);
 }
@@ -151,17 +172,32 @@ ntohs(int h)
 	return p[0] << 8 | p[1];
 }
 
+int
+tcmp(void *a, void *b)
+{
+	Shelf *s, *t;
+	int d;
+
+	s = a;
+	t = b;
+	d = s->shelfno-t->shelfno;
+	if(d == 0)
+		d = strcmp(s->str, t->str);
+	if(d == 0)
+		d = memcmp(s->ea, t->ea, 6);
+	return d;
+}
+
 void
 probe(void)
 {
-	int n;
 	char *sh, *other;
-	uchar buf[1500];
+	int n;
 	Pkt q;
 	Shelf *p;
 
+top:
 	ntab = 0;
-	memset(buf, 0xff, Eaddrlen);
 	memset(q.dst, 0xff, Eaddrlen);
 	memset(q.src, 0, Eaddrlen);
 	q.etype = htons(Etype);
@@ -170,9 +206,8 @@ probe(void)
 	q.conn = 0;
 	q.seq = 0;
 	netsend(&q, 60);
-//	fprint(2, "Probing for shelves ... ");
 	timewait(Iowait);
-	while((n = netget(&q, sizeof q)) >= 0) {
+	while((n = netget(&q, sizeof q)) >= 0){
 		if((n <= 0 && didtimeout()) || ntab == nelem(tab))
 			break;
 		if(n < 60 || q.len == 0 || q.type != Toffer)
@@ -181,24 +216,28 @@ probe(void)
 		sh = strtok((char *)q.data, " \t");
 		if(sh == nil)
 			continue;
+		if(!nilea(ea) && memcmp(ea, q.src, Eaddrlen))
+			continue;
 		if(shelf != -1 && atoi(sh) != shelf)
 			continue;
 		other = strtok(nil, "\x1");
+		if(other == 0)
+			other = "";
+		if(host && strcmp(host, other))
+			continue;
 		p = tab + ntab++;
 		memcpy(p->ea, q.src, Eaddrlen);
 		p->shelfno = atoi(sh);
 		p->str = other? strdup(other): "";
-		if(shelf != -1) {
-			fprint(2, "shelf %d found.\n", shelf);
-			break;
-		}
 	}
 	alarm(0);
 	if(ntab == 0) {
+		if(pflag)
+			goto top;
 		fprint(2, "none found.\n");
 		exits0("none found");
 	}
-//	fprint(2, "done.\n");
+	qsort(tab, ntab, sizeof tab[0], tcmp);
 }
 
 void
@@ -207,8 +246,7 @@ showtable(void)
 	int i;
 
 	for(i = 0; i < ntab; i++)
-		print("%2d   %5d %E %s\n", i,
-			tab[i].shelfno, tab[i].ea, tab[i].str);
+		print("%2d   %5d %E %s\n", i, tab[i].shelfno, tab[i].ea, tab[i].str);
 }
 
 int
@@ -224,14 +262,12 @@ pickone(void)
 		case 1:
 			if(buf[0] == '\n')
 				continue;
-			/* fall through */
 		case 2:
 			if(buf[0] == 'p'){
 				probe();
 				break;
 			}
 			if(buf[0] == 'q')
-			/* fall through */
 		case 0:
 		case -1:
 				exits0(0);
@@ -317,7 +353,7 @@ escape(void)
 /*
  * this is a bit too agressive.  it really needs to replace only \n\r with \n.
  */
-static uchar crbuf[1514];
+static uchar crbuf[256];
 
 void
 nocrwrite(int fd, uchar *buf, int n)
@@ -339,8 +375,8 @@ doloop(void)
 	int unacked, retries, set[2];
 	uchar c, tseq, rseq;
 	uchar ea[Eaddrlen];
-	Mux * m;
 	Pkt tpk, spk;
+	Mux *m;
 
 	memmove(ea, connp->ea, Eaddrlen);
 	retries = 0;
@@ -350,79 +386,76 @@ doloop(void)
 	set[0] = 0;
 	set[1] = fd;
 top:
-	if ((m = mux(set)) == 0)
+	if((m = mux(set)) == 0)
 		exits0("mux: %r");
-	for (; ; )
-		switch (muxread(m, &spk)) {
-		case -1:
-			if (unacked == 0)
-				break;
-			if (retries-- == 0) {
-				fprint(2, "Connection timed out\n");
-				muxfree(m);
+	for(;;) switch(muxread(m, &spk)){
+	case -1:
+		if(unacked == 0)
+			break;
+		if(retries-- == 0){
+			fprint(2, "Connection timed out\n");
+			muxfree(m);
+			return 0;
+		}
+		netsend(&tpk, Hdrsz+unacked);
+		break;
+	case 0:
+		c = spk.data[0];
+		if(c == esc) {
+			muxfree(m);
+			switch(escape()) {
+			case 'q':
+				tpk.len = 0;
+				tpk.type = Treset;
+				netsend(&tpk, 60);
 				return 0;
-			}
-			netsend(&tpk, HDRSIZ + unacked);
-			break;
-		case 0:
-			c = spk.data[0];
-			if (c == esc) {
-				muxfree(m);
-				switch (escape()) {
-				case 'q':
-					tpk.len = 0;
-					tpk.type = Treset;
-					netsend(&tpk, 60);
-					return 0;
-				case '.':
-					goto top;
-				case 'i':
-					if ((m = mux(set)) == 0)
-						exits0("mux: %r");
-					break;
-				}
-			}
-			sethdr(&tpk, Tdata);
-			memcpy(tpk.data, spk.data, spk.len);
-			tpk.len = spk.len;
-			tpk.seq = ++tseq;
-			unacked = spk.len;
-			retries = 2;
-			netsend(&tpk, HDRSIZ + spk.len);
-			break;
-		default:
-			if (memcmp(spk.src, ea, Eaddrlen) != 0 ||
-			    ntohs(spk.etype) != Etype)
-				continue;
-			if (spk.type == Toffer) {
-				muxfree(m);
-				return 1;
-			}
-			if (spk.conn != contag)
-				continue;
-			switch (spk.type) {
-			case Tdata:
-				if (spk.seq == rseq)
-					break;
-				nocrwrite(1, spk.data, spk.len);
-				if (0)
-					write(1, spk.data, spk.len);
-				memmove(spk.dst, spk.src, Eaddrlen);
-				memset(spk.src, 0, Eaddrlen);
-				spk.type = Tack;
-				spk.len = 0;
-				rseq = spk.seq;
-				netsend(&spk, 60);
+			case '.':
+				goto top;
+			case 'i':
+				if((m = mux(set)) == 0)
+					exits0("mux: %r");
 				break;
-			case Tack:
-				if (spk.seq == tseq)
-					unacked = 0;
-				break;
-			case Treset:
-				muxfree(m);
-				return 1;
 			}
 		}
+		sethdr(&tpk, Tdata);
+		memcpy(tpk.data, spk.data, spk.len);
+		tpk.len = spk.len;
+		tpk.seq = ++tseq;
+		unacked = spk.len;
+		retries = 2;
+		netsend(&tpk, Hdrsz+spk.len);
+		break;
+	default:
+		if(memcmp(spk.src, ea, 6) != 0 || ntohs(spk.etype) != Etype)
+			continue;
+		if(spk.type == Toffer){
+			muxfree(m);
+			return 1;
+		}
+		if(spk.conn != contag)
+			continue;
+		switch(spk.type){
+		case Tdata:
+			if(spk.seq == rseq)
+				break;
+			nocrwrite(1, spk.data, spk.len);
+//			write(1, spk.data, spk.len);
+			memmove(spk.dst, spk.src, 6);
+			memset(spk.src, 0, 6);
+			spk.type = Tack;
+			spk.len = 0;
+			rseq = spk.seq;
+			netsend(&spk, 60);
+			break;
+		case Tack:
+			if(spk.seq == tseq)
+				unacked = 0;
+			break;
+		case Treset:
+			muxfree(m);
+			return 1;
+		}
+	}
 }
 
 void
