@@ -126,6 +126,7 @@ extern	int	_IOUNIT(int);
 #define readn _READN
 #define mallocz _MALLOCZ
 #define iounit	_IOUNIT
+#define wait _WAIT
 
 /* assume being called as in event.c */
 #define postnote(x, pid, msg) kill(pid, SIGTERM)

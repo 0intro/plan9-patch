@@ -10,7 +10,7 @@ typedef struct	Ebuf Ebuf;
 struct Slave
 {
 	int	pid;
-	Ebuf	*head;		/* ueue of messages for this descriptor */
+	Ebuf	*head;		/* queue of messages for this descriptor */
 	Ebuf	*tail;
 	int	(*fn)(int, Event*, uchar*, int);
 };
@@ -37,6 +37,8 @@ static	void	ekill(void);
 static	int	enote(void *, char *);
 static	int	mousefd;
 static	int	cursorfd;
+static	int	consfd;
+static	int	ctlfd;
 
 static
 Ebuf*
@@ -228,13 +230,15 @@ breakout:;
 void
 einit(ulong keys)
 {
-	int ctl, fd;
+	int firstinit;
 	char buf[256];
 
+	firstinit = (parentpid == 0);
 	parentpid = getpid();
 	if(pipe(epipe) < 0)
 		drawerror(display, "events: einit pipe");
-	atexit(ekill);
+	if(firstinit)
+		atexit(ekill);
 	atnotify(enote, 1);
 	snprint(buf, sizeof buf, "%s/mouse", display->devdir);
 	mousefd = open(buf, ORDWR|OCEXEC);
@@ -246,23 +250,86 @@ einit(ulong keys)
 		drawerror(display, "einit: can't open cursor\n");
 	if(keys&Ekeyboard){
 		snprint(buf, sizeof buf, "%s/cons", display->devdir);
-		fd = open(buf, OREAD);
-		if(fd < 0)
+		consfd = open(buf, OREAD);
+		if(consfd < 0)
 			drawerror(display, "events: can't open console");
 		snprint(buf, sizeof buf, "%s/consctl", display->devdir);
-		ctl = open("/dev/consctl", OWRITE|OCEXEC);
-		if(ctl < 0)
+		ctlfd = open("/dev/consctl", OWRITE|OCEXEC);
+		if(ctlfd < 0)
 			drawerror(display, "events: can't open consctl");
-		write(ctl, "rawon", 5);
+		write(ctlfd, "rawon", 5);
 		for(Skeyboard=0; Ekeyboard & ~(1<<Skeyboard); Skeyboard++)
 			;
-		ekeyslave(fd);
+		ekeyslave(consfd);
 	}
 	if(keys&Emouse){
 		estart(Emouse, mousefd, 1+4*12);
 		for(Smouse=0; Emouse & ~(1<<Smouse); Smouse++)
 			;
 	}
+}
+
+static void
+_eshutdown(int exiting)
+{
+	int i;
+	int nalive;
+	Ebuf *eb;
+	Ebuf *next;
+	Waitmsg *wt;
+
+	atnotify(enote, 0);
+	close(epipe[0]);
+	epipe[0] = -1;
+	close(epipe[1]);
+	epipe[1] = -1;
+	for(i=0; i<nslave; i++){
+		if(parentpid == eslave[i].pid)
+			continue;	/* don't kill myself */
+		postnote(PNPROC, eslave[i].pid, "die");
+	}
+	/* returning leaves mousefd open so that the display is closed before the kernel closes mousefd. */
+	/* this ensures that rio redraws the console. */
+	if(exiting)
+		return;
+	nalive = nslave;
+	while(nalive > 0){
+		wt = wait();
+		if(!wt)
+			break;
+		for(i=0; i<nslave; i++){
+			if(eslave[i].pid == wt->pid){
+				nalive--;
+			}
+		}
+		free(wt);
+	}
+	for(i=0; i<nslave; i++){
+		for(eb=eslave[i].head; eb; eb=next){
+			next = eb->next;
+			free(eb);
+		}
+		memset(&eslave[i], 0, sizeof(eslave[i]));
+	}
+	nslave = 0;
+	Skeyboard = -1;
+	Smouse = -1;
+	Stimer = -1;
+	write(ctlfd, "rawoff", 6);
+	close(ctlfd);
+	ctlfd = -1;
+	close(consfd);
+	consfd = -1;
+	close(cursorfd);
+	cursorfd = -1;
+	close(mousefd);
+	mousefd = -1;
+}
+
+void
+eshutdown(void)
+{
+	_eshutdown(0);
 }
 
 static void
@@ -372,22 +439,15 @@ enote(void *v, char *s)
 		}
 		return 0;
 	}
-	close(epipe[0]);
-	epipe[0] = -1;
-	close(epipe[1]);
-	epipe[1] = -1;
-	for(i=0; i<nslave; i++){
-		if(pid == eslave[i].pid)
-			continue;	/* don't kill myself */
-		postnote(PNPROC, eslave[i].pid, "die");
-	}
+	_eshutdown(1);
 	return 0;
 }
 
 static void
 ekill(void)
 {
-	enote(0, 0);
+	if(epipe[0] != -1)
+		enote(0, 0);
 }
 
 Mouse
