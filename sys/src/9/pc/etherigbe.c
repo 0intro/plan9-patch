@@ -306,7 +306,9 @@ enum {					/* Rctl */
 	Bsize1024	= 0x00010000,	/* Bsex = 0 */
 	Bsize512	= 0x00020000,	/* Bsex = 0 */
 	Bsize256	= 0x00030000,	/* Bsex = 0 */
+	Bsize8192	= 0x00020000,
 	Bsize16384	= 0x00010000,	/* Bsex = 1 */
+	BsizeFlex	= 0x08000000,
 	Vfe		= 0x00040000,	/* VLAN Filter Enable */
 	Cfien		= 0x00080000,	/* Canonical Form Indicator Enable */
 	Cfi		= 0x00100000,	/* Canonical Form Indicator value */
@@ -388,22 +390,11 @@ enum {					/* Rd errors */
 	Rxe		= 0x80,		/* RX Data Error */
 };
 
-typedef struct Td Td;
-struct Td {				/* Transmit Descriptor */
-	union {
-		uint	addr[2];	/* Data */
-		struct {		/* Context */
-			uchar	ipcss;
-			uchar	ipcso;
-			ushort	ipcse;
-			uchar	tucss;
-			uchar	tucso;
-			ushort	tucse;
-		};
-	};
+typedef struct{				/* Transmit Descriptor */
+	uint	addr[2];	/* Data */
 	uint	control;
 	uint	status;
-};
+}Td;
 
 enum {					/* Td control */
 	LenMASK		= 0x000FFFFF,	/* Data/Packet Length Field */
@@ -463,7 +454,6 @@ typedef struct Ctlr {
 	void*	alloc;			/* receive/transmit descriptors */
 	int	nrd;
 	int	ntd;
-	int	nrb;			/* how many this Ctlr has in the pool */
 
 	int*	nic;
 	Lock	imlock;
@@ -510,6 +500,7 @@ typedef struct Ctlr {
 	int	txcw;
 	int	fcrtl;
 	int	fcrth;
+	uint	pba;			// packet buffer allocation register
 } Ctlr;
 
 #define csr32r(c, r)	(*((c)->nic+((r)/4)))
@@ -643,6 +634,7 @@ igbeifstat(Ether* edev, void* a, long n, ulong offset)
 		ctlr->ixsm, ctlr->ipcs, ctlr->tcpcs);
 	l += snprint(p+l, 2*READSTR-l, "rdtr: %ud\n", ctlr->rdtr);
 	l += snprint(p+l, 2*READSTR-l, "Ctrlext: %08x\n", csr32r(ctlr, Ctrlext));
+	l += snprint(p+l, 2*READSTR-1, "pba = %ux\n", ctlr->pba);
 
 	l += snprint(p+l, 2*READSTR-l, "eeprom:");
 	for(i = 0; i < 0x40; i++){
@@ -701,7 +693,7 @@ igbectl(Ether* edev, void* buf, long n)
 		v = strtol(cb->f[1], &p, 0);
 		if(v < 0 || p == cb->f[1] || v > 0xFFFF)
 			error(Ebadarg);
-		ctlr->rdtr = v;;
+		ctlr->rdtr = v;
 		csr32w(ctlr, Rdtr, Fpd|v);
 		break;
 	}
@@ -728,7 +720,7 @@ igbepromiscuous(void* arg, int on)
 		rctl |= Upe|Mpe;
 	else
 		rctl &= ~(Upe|Mpe);
-	csr32w(ctlr, Rctl, rctl|Mpe);	/* temporarily keep Mpe on */
+	csr32w(ctlr, Rctl, rctl);
 }
 
 static void
@@ -822,9 +814,11 @@ igbelproc(void* arg)
 		 *
 		 *	MiiPhy.speed, etc. should be in Mii.
 		 */
-		if(miistatus(ctlr->mii) < 0)
-			//continue;
+		if(miistatus(ctlr->mii) < 0){
+			edev->link = 0;
 			goto enable;
+		}
+		edev->link = 1;
 
 		phy = ctlr->mii->curphy;
 		ctrl = csr32r(ctlr, Ctrl);
@@ -1186,9 +1180,10 @@ igberproc(void* arg)
 static void
 igbeattach(Ether* edev)
 {
+	char name[KNAMELEN];
+	int i;
 	Block *bp;
 	Ctlr *ctlr;
-	char name[KNAMELEN];
 
 	ctlr = edev->ctlr;
 	ctlr->edev = edev;			/* point back to Ether* */
@@ -1218,11 +1213,9 @@ igbeattach(Ether* edev)
 	}
 
 	if(waserror()){
-		while(ctlr->nrb > 0){
-			bp = igberballoc();
+		while(bp = igberballoc()){
 			bp->free = nil;
 			freeb(bp);
-			ctlr->nrb--;
 		}
 		free(ctlr->tb);
 		ctlr->tb = nil;
@@ -1234,9 +1227,8 @@ igbeattach(Ether* edev)
 		nexterror();
 	}
 
-	for(ctlr->nrb = 0; ctlr->nrb < Nrb; ctlr->nrb++){
-		if((bp = allocb(Rbsz)) == nil)
-			break;
+	for(i = 0; i < Nrb; i++){
+		bp = allocb(Rbsz+BY2PG);
 		bp->free = igberbfree;
 		freeb(bp);
 	}
@@ -1701,6 +1693,18 @@ igbedetach(Ctlr* ctlr)
 {
 	int r, timeo;
 
+	/* rebalance rx/tx packet buffers for >8k jumbos. */
+	switch(ctlr->id){
+	case i82546eb:
+		if(Rbsz <= 8192)
+			break;
+		ctlr->pba = csr32r(ctlr, 0x1000);
+		ctlr->pba &= ~0xffff|0x20;
+		csr32w(ctlr, 0x1000, ctlr->pba);
+		ctlr->pba = csr32r(ctlr, 0x1000);
+		break;
+	}
+
 	/*
 	 * Perform a device reset to get the chip back to the
 	 * power-on state, followed by an EEPROM reset to read
@@ -1792,24 +1796,20 @@ igbereset(Ctlr* ctlr)
 	 * There are 16 addresses. The first should be the MAC address.
 	 * The others are cleared and not marked valid (MS bit of Rah).
 	 */
-	if ((ctlr->id == i82546gb || ctlr->id == i82546eb) &&
-	    BUSFNO(ctlr->pcidev->tbdf) == 1)
-		ctlr->eeprom[Ea+2] += 0x100;		/* second interface */
-	if(ctlr->id == i82541gi && ctlr->eeprom[Ea] == 0xFFFF)
+	if(ctlr->eeprom[Ea] == 0xFFFF)
 		ctlr->eeprom[Ea] = 0xD000;
-	for(i = Ea; i < Eaddrlen/2; i++){
-		ctlr->ra[2*i] = ctlr->eeprom[i];
-		ctlr->ra[2*i+1] = ctlr->eeprom[i]>>8;
+	for(i = 0; i < Eaddrlen/2; i++){
+		ctlr->ra[2*i] = ctlr->eeprom[Ea+i];
+		ctlr->ra[2*i+1] = ctlr->eeprom[Ea+i]>>8;
 	}
 	/* lan id seems to vary on 82543gc; don't use it */
 	if (ctlr->id != i82543gc) {
 		r = (csr32r(ctlr, Status) & Lanid) >> 2;
 		ctlr->ra[5] += r;		/* ea ctlr[1] = ea ctlr[0]+1 */
 	}
-
-	r = (ctlr->ra[3]<<24)|(ctlr->ra[2]<<16)|(ctlr->ra[1]<<8)|ctlr->ra[0];
+	r = ctlr->ra[3]<<24 | ctlr->ra[2]<<16 | ctlr->ra[1]<<8 | ctlr->ra[0];
 	csr32w(ctlr, Ral, r);
-	r = 0x80000000|(ctlr->ra[5]<<8)|ctlr->ra[4];
+	r = 0x80000000| ctlr->ra[5]<<8 | ctlr->ra[4];
 	csr32w(ctlr, Rah, r);
 	for(i = 1; i < 16; i++){
 		csr32w(ctlr, Ral+i*8, 0);
@@ -1937,16 +1937,16 @@ igbepci(void)
 		}
 		cls = pcicfgr8(p, PciCLS);
 		switch(cls){
-			default:
-				print("igbe: unexpected CLS - %d\n", cls*4);
-				break;
-			case 0x00:
-			case 0xFF:
-				print("igbe: unusable CLS\n");
-				continue;
-			case 0x08:
-			case 0x10:
-				break;
+		default:
+			print("igbe: unexpected CLS - %d\n", cls*4);
+			break;
+		case 0x00:
+		case 0xFF:
+			print("igbe: unusable CLS\n");
+			continue;
+		case 0x08:
+		case 0x10:
+			break;
 		}
 		ctlr = malloc(sizeof(Ctlr));
 		ctlr->port = p->mem[0].bar & ~0x0F;
