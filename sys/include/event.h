@@ -44,6 +44,7 @@ struct Menu
  * Events
  */
 extern void	 einit(ulong);
+extern void	 eshutdown(void);
 extern ulong	 estart(ulong, int, int);
 extern ulong	 estartfn(ulong, int, int, int (*fn)(int, Event*, uchar*, int));
 extern ulong	 etimer(ulong, int);
