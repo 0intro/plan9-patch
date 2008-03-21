@@ -329,8 +329,8 @@ void		timeradd(Timer*);
 void		timerdel(Timer*);
 void		timersinit(void);
 void		timerintr(Ureg*, Tval);
-void		timerset(Tval);
 ulong		tk2ms(ulong);
+void		timerset(uvlong);
 #define		TK2MS(x) ((x)*(1000/HZ))
 uvlong		tod2fastticks(vlong);
 vlong		todget(vlong*);
