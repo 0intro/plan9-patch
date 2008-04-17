@@ -188,7 +188,10 @@ ndbipinfo(Ndb *db, char *attr, char *val, char **alist, int n)
 		t = ndbnew("ip", val);
 		t->line = t;
 		t->entry = nil;
-		parseip(net, val);
+		if(parseip(net, val) == -1){
+			ndbfree(f);
+			return nil;
+		}
 	} else {
 		/* found one */
 		while(nt != nil){
@@ -196,7 +199,11 @@ ndbipinfo(Ndb *db, char *attr, char *val, char **alist, int n)
 			t = ndbconcatenate(t, nt);
 			nt = ndbsnext(&s, attr, val);
 		}
-		parseip(net, ipstr);
+		if(parseip(net, ipstr) == -1){
+			free(ipstr);
+			ndbfree(f);
+			return nil;
+		}
 		free(ipstr);
 	}
 	ipmove(ip, net);
