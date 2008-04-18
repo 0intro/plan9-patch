@@ -9,8 +9,6 @@
 #include <auth.h>
 #include "../smtp/y.tab.h"
 
-#define DBGMX 1
-
 char	*me;
 char	*him="";
 char	*dom;
@@ -30,6 +28,7 @@ int	debug;
 int	Dflag;
 int	fflag;
 int	gflag;
+int	qflag;
 int	rflag;
 int	sflag;
 int	authenticate;
@@ -142,6 +141,9 @@ main(int argc, char **argv)
 	case 'p':
 		passwordinclear = 1;
 		break;
+	case 'q':
+		qflag = 1;		/* don't log invalid hello */
+		break;
 	case 'r':
 		rflag = 1;			/* verify sender's domain */
 		break;
@@ -175,6 +177,8 @@ main(int argc, char **argv)
 			debug = 0;
 	}
 	getconf();
+	if(isbadguy())
+		exits("");
 	Binit(&bin, 0, OREAD);
 
 	if (chdir(UPASLOG) < 0)
@@ -265,6 +269,19 @@ sayhi(void)
 	reply("220 %s ESMTP\r\n", dom);
 }
 
+int
+dnsexists(char *d)
+{
+	int r;
+	Ndbtuple *t;
+
+	r = -1;
+	if(t = dnsquery(nci->root, d, "any"))
+		r = 0;
+	ndbfree(t);
+	return r;
+}
+
 /*
  * make callers from class A networks infested by spammers
  * wait longer.
@@ -310,8 +327,9 @@ hello(String *himp, int extended)
 	char *ldot, *rdot;
 
 	him = s_to_c(himp);
-	syslog(0, "smtpd", "%s from %s as %s", extended? "ehlo": "helo",
-		nci->rsys, him);
+	if(!qflag)
+		syslog(0, "smtpd", "%s from %s as %s", extended? "ehlo": "helo",
+			nci->rsys, him);
 	if(rejectcheck())
 		return;
 
@@ -327,9 +345,9 @@ hello(String *himp, int extended)
 		for(mynames = sysnames_read(); mynames && *mynames; mynames++){
 			if(cistrcmp(*mynames, him) == 0){
 Liarliar:
-				syslog(0, "smtpd",
-					"Hung up on %s; claimed to be %s",
-					nci->rsys, him);
+				if(!qflag)
+					syslog(0, "smtpd", "Hung up on %s; "
+						"claimed to be %s", nci->rsys, him);
 				reply("554 5.7.0 Liar!\r\n");
 				exits("client pretended to be us");
 				return;
@@ -359,8 +377,10 @@ Liarliar:
 		rdot++;
 	if (cistrcmp(rdot, "localdomain") == 0 ||
 	    cistrcmp(rdot, "localhost") == 0 ||
+	    cistrcmp(rdot, "local") == 0 ||
 	    cistrcmp(rdot, "example") == 0 ||
 	    cistrcmp(rdot, "invalid") == 0 ||
+	    cistrcmp(rdot, "lan") == 0 ||
 	    cistrcmp(rdot, "test") == 0)
 		goto Liarliar;			/* bad top-level domain */
 	/* check second-level RFC 2606 domains: example\.(com|net|org) */
@@ -385,7 +405,7 @@ Liarliar:
 	 * this rejects non-address-literal IP addresses,
 	 * among other bogosities.
 	 */
-	if (!trusted && him[0] != '[') {
+	if (!trusted && (1 || him[0] != '[')) {
 		char *p;
 
 		for (p = him; *p != '\0'; p++)
@@ -394,9 +414,18 @@ Liarliar:
 		if (*p == '\0')
 			goto Liarliar;
 	}
+
+	/* finally, just insist on an resolvable domain name */
+	if(!trusted && dnsexists(him) == -1)
+		goto Liarliar;
+
+
 	if(strchr(him, '.') == 0 && nci != nil && strchr(nci->rsys, '.') != nil)
 		him = nci->rsys;
 
+	if(qflag)
+		syslog(0, "smtpd", "%s from %s as %s", extended? "ehlo": "helo",
+			nci->rsys, him);
 	if(Dflag)
 		sleep(delaysecs()*1000);
 	reply("250%c%s you are %s\r\n", extended ? '-' : ' ', dom, him);
@@ -1167,6 +1196,7 @@ sendermxcheck(void)
 	char *cp, *senddom, *user, *who;
 	Waitmsg *w;
 
+	senddom = 0;
 	who = s_to_c(senders.first->p);
 	if(strcmp(who, "/dev/null") == 0){
 		/* /dev/null can only send to one rcpt at a time */
@@ -1175,13 +1205,14 @@ sendermxcheck(void)
 				"recipients");
 			return -1;
 		}
-		return 0;
+		/* 4408 spf §2.2 notes that 2821 says /dev/null == postmaster@domain */
+		senddom = smprint("%s!postmaster", him);
 	}
 
 	if(access("/mail/lib/validatesender", AEXEC) < 0)
 		return 0;
-
-	senddom = strdup(who);
+	if(!senddom)
+		senddom = strdup(who);
 	if((cp = strchr(senddom, '!')) == nil){
 		werrstr("rejected: domainless sender %s", who);
 		free(senddom);
@@ -1189,6 +1220,11 @@ sendermxcheck(void)
 	}
 	*cp++ = 0;
 	user = cp;
+	if(shellchars(senddom) || shellchars(user) || shellchars(him)){
+		werrstr("rejected: evil sender/domain/helo");
+		free(senddom);
+		return -1;
+	}
 
 	switch(pid = fork()){
 	case -1:
@@ -1200,7 +1236,7 @@ sendermxcheck(void)
 		 * to allow validatesender to implement SPF eventually.
 		 */
 		execl("/mail/lib/validatesender", "validatesender",
-			"-n", nci->root, senddom, user, nil);
+			"-n", nci->root, senddom, user, nci->rsys, him, nil);
 		_exits("exec validatesender: %r");
 	default:
 		break;
@@ -1377,6 +1413,8 @@ rejectcheck(void)
 		reply("554 5.5.0 too many errors.  transaction failed.\r\n");
 		exits("errcount");
 	}
+	if(rejectcount)
+		sleep(1000 * (4<<rejectcount));
 	if(hardreject){
 		rejectcount++;
 		reply("554 5.7.1 We don't accept mail from dial-up ports.\r\n");
