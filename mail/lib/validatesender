@@ -1,48 +1,67 @@
 #!/bin/rc
-
 rfork en
+
+# force non-explicit matches to fail.  gmail specifies allowed hosts, but
+# then says ?all, defeating all that work.  just fail jerks impersonating google.
+spfescalate=(gmail.com)
+
+# ignore spf results from these domains
+spfign=()
+
 fn usage{
-	echo 'usage: validatesender [-n /net] plan9.bell-labs.com glenda' >[1=2]
+	echo 'usage: validatesender [-n /net] dom user [ip [hellodom]]' >[1=2]
 	exit usage
 }
 
-echo $sysname $pid '$' validatesender $* >>/sys/log/smtpd.mx
+fn checkspf{
+	str=($h spf $*)
+	spfflag=-v
+	if(~ $1 $escalatespf)
+		spfflag=$spfflag^e
+	upas/spf $spfflag $* >[2=1] | sed 's:^:'^$"str^' -> :g' >>$log
+	spfstatus=$status
+	spfstatus=`{echo $spfstatus | sed 's:\|.*::g'}
+	if(! ~ $#spfstatus 0 && ! ~ $"spfstatus *none){
+		if(~ $spfstatus deferred:*)
+			exit $"spfstatus
+		if(! ~ $dom $spfign)
+			exit 'rejected: '^$"spfstatus
+	}
+}
 
-netroot=/net
+h=`{date -n} ^ ' ' ^ $sysname ^ ' ' ^ $pid
+h=$"h
+log=/sys/log/smtpd.mx	#/fd/2
+echo $h validatesender $* >>$log
+
+netroot=/net.alt
 if(~ $1 -n){
 	shift
 	netroot=$1
 	shift
 }
-if(! ~ $#* 2)
+if(! ~ $#* [234])
 	usage
 
-dom=$1
-addr=$2
+dom=$1; addr=$2; ip=$3; helo=$4
 
-# Cause some problems
-if(~ $dom swtch.com && ~ $addr glenda && ! ~ $sysname olive)
-	exit 'deferred: always defer this one'
-
-# Sites that we have to special case
-# Lucent only - use external network when mail from external domains
-# is delivered to us internally.  Assume that local domains are fine.
-#netroot=/net
-#if(~ $dom *.lucent.com lucent.com *.bell-labs.com bell-labs.com)
-#	exit ''
-#if(! ~ $sysname ethel)
-#	exit ''
-#if(~ $sysname ethel){
-#	if(! test -d /net.alt/tcp)
-#		import outside /net.alt
-#	if(test -d /net.alt/tcp)
-#		netroot=/net.alt
-#}
+if(! ~ $#ip 0 && test -x /mail/lib/spamhaus){
+	spamhaus=`{/mail/lib/spamhaus $ip}
+	if(! ~ $spamhaus ''){
+		echo $h spamhaus '->' $spamhaus>>$log
+		exit 'rejected: spamhaus: '^$"spamhaus
+	}
+}
 
 if(x=`{upas/smtp -p $netroot/tcp!$dom /dev/null $addr >[2=1] | 
-		tee >{sed 's/^/'$sysname' '$pid' /' >> /sys/log/smtpd.mx} |
-		tail -1})
+		tee >{sed 's/^/'$h' /' >> $log} |
+		tail -1}){
+	if(~ $#ip 0 || ! test -x /bin/upas/spf)
+		exit ''
+	echo $h spf $dom $ip $addr $helo>>$log
+	checkspf $dom $ip $addr $helo
 	exit ''
+}
 
 smtpstatus=$status
 if(~ $#x 0)
