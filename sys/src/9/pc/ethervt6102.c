@@ -40,6 +40,10 @@ enum {
 	Miiadr		= 0x71,		/* MII Address */
 	Miidata		= 0x72,		/* MII Data */
 	Eecsr		= 0x74,		/* EEPROM Control and Status */
+	Sticky		= 0x83,
+	Wolcrclr	= 0xA4,
+	Wolcgclr	= 0xA7,
+	Pwrcsrclr	= 0xAC,
 };
 
 enum {					/* Rcr */
@@ -837,7 +841,23 @@ vt6102miimiw(Mii* mii, int pa, int ra, int data)
 static int
 vt6102detach(Ctlr* ctlr)
 {
-	int timeo;
+	int revid, timeo;
+
+	/*
+	 * Reset power management registers.
+	 */
+	revid = pcicfgr8(ctlr->pcidev, PciRID);
+	if(revid >= 0x40){
+		/* Set power state D0. */
+		csr8w(ctlr, Sticky, csr8r(ctlr, Sticky) & 0xFC);
+
+		/* Disable force PME-enable. */
+		csr8w(ctlr, Wolcgclr, 0x80);
+
+		/* Clear WOL config and status bits. */
+		csr8w(ctlr, Wolcrclr, 0xFF);
+		csr8w(ctlr, Pwrcsrclr, 0xFF);
+	}
 
 	/*
 	 * Soft reset the controller.
