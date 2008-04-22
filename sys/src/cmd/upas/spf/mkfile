@@ -1,0 +1,14 @@
+</$objtype/mkfile
+
+TARG=spf
+BIN=/$objtype/bin/upas
+
+OFILES=\
+	dns.$O\
+	macro.$O\
+	spf.$O\
+
+</sys/src/cmd/mkone
+
+mtest: dns.$O macro.$O mtest.$O
+	$LD $LDFLAGS -o $target $prereq
