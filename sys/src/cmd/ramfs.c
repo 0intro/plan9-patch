@@ -206,7 +206,7 @@ main(int argc, char *argv[])
 				error("writing service file");
 		}
 	}
-
+	fmtinstall('M', dirmodefmt);
 	user = getuser();
 	notify(notifyf);
 	nram = 1;
