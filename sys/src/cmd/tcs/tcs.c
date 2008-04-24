@@ -537,6 +537,7 @@ struct convert convert[] =
 	{ "jis-kanji", "ISO 2022-JP (Japanese)", Func, 0, (Fnptr)jisjis_out },
 	{ "koi8", "KOI-8 (GOST 19769-74)", Table, (void *)tabkoi8 },
 	{ "koi8-r", "alias for koi8 (MIME)", Table, (void *)tabkoi8 },
+	{ "koi8-u", "koi8 ukranian", Table, (void *)tabkoi8u },
 	{ "latin1", "alias for 8859-1", Table, (void *)tab8859_1 },
 	{ "macrom", "Macintosh Standard Roman character set", Table, (void *)tabmacroman },
 	{ "microsoft", "alias for windows1252", Table, (void *)tabcp1252 },
