@@ -181,7 +181,7 @@ main(int argc, char **argv)
 	memmove(label, "CYLINDRICAL", sizeof(label));
 	ARGBEGIN {
 	case 'c':
-		clustersize = atoi(ARGF());
+		clustersize = atoi(EARGF(usage()));
 		break;
 	case 'd':
 		dos = 1;
@@ -191,7 +191,7 @@ main(int argc, char **argv)
 		fflag = 1;
 		break;
 	case 'l':
-		a = ARGF();
+		a = EARGF(usage());
 		n = strlen(a);
 		if(n > sizeof(label))
 			n = sizeof(label);
@@ -200,14 +200,14 @@ main(int argc, char **argv)
 			label[n++] = ' ';
 		break;
 	case 'b':
-		pbs = ARGF();
+		pbs = EARGF(usage());
 		writepbs = 1;
 		break;
 	case 'r':
-		nresrv = atoi(ARGF());
+		nresrv = atoi(EARGF(usage()));
 		break;
 	case 't':
-		type = ARGF();
+		type = EARGF(usage());
 		break;
 	case 'v':
 		chatty++;
