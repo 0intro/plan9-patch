@@ -85,7 +85,7 @@ newwalk(void)
 	Walk *w;
 
 	w = malloc(sizeof(Walk));
-	if (w->route == nil)
+	if (w == nil)
 		sysfatal("cannot allocate walk");
 	memset(w, 0, sizeof(Walk));
 	return w;
