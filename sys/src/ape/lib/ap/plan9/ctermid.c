@@ -12,3 +12,7 @@ ctermid(char *s)
 	strncpy(s, "/dev/cons", sizeof buf);
 	return(s);
 }
+
+char *ctermid_r(char *s) {
+    return s ? ctermid(s) : NULL;
+}

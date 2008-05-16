@@ -81,7 +81,9 @@ char *sys_errlist[] = {
 int sys_nerr = _IO_nerr;
 extern char _plan9err[];
 
-char *strerror(int n){
+char *
+strerror(int n)
+{
 	if(n == EPLAN9)
 		return _plan9err;
 	if(n >= 0 && n < _IO_nerr)
@@ -92,4 +94,11 @@ char *strerror(int n){
 		return "Range error";
 	else
 		return "Unknown error";
+}
+
+char *
+strerror_r(int n, char *buf, int len)
+{
+	strncpy(buf, strerror(n), len);
+	buf[len-1] = 0;
 }

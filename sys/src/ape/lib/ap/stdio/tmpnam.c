@@ -19,3 +19,8 @@ char *tmpnam(char *s){
 	}
 	return name;
 }
+
+char *tmpnam_r(char *s) {
+    return s ? tmpnam(s) : NULL;
+}
+

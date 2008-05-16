@@ -1,0 +1,6 @@
+--- rc/bin/ape/ranlib	Thu Jan  1 00:00:00 1970
++++ rc/bin/ape/ranlib	Sun Oct 31 00:46:38 2004
+@@ -0,0 +1,3 @@
++#!/bin/rc
++
++exit 0
