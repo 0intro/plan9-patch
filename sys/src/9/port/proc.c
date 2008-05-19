@@ -683,6 +683,7 @@ procwired(Proc *p, int bm)
 
 	p->wired = MACHP(bm);
 	p->mp = p->wired;
+	sched();  /* force switch to correct cpu */
 }
 
 void
