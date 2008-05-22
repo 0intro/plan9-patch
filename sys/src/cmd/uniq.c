@@ -4,23 +4,21 @@
 #include <u.h>
 #include <libc.h>
 #include <bio.h>
+#include <String.h>
 #include <ctype.h>
-
-#define	SIZE	8000
 
 int	fields	= 0;
 int	letters	= 0;
 int	linec	= 0;
 char	mode;
 int	uniq;
-char	*b1, *b2;
-long	bsize;
+String	*b1, *b2;
 Biobuf	fin;
 Biobuf	fout;
 
-int	gline(char *buf);
-void	pline(char *buf);
-int	equal(char *b1, char *b2);
+String*	gline(void);
+void	pline(String *buf);
+int	equal(String *b1, String *b2);
 char*	skip(char *s);
 
 void
@@ -29,9 +27,6 @@ main(int argc, char *argv[])
 	int f;
 
 	argv0 = argv[0];
-	bsize = SIZE;
-	b1 = malloc(bsize);
-	b2 = malloc(bsize);
 	f = 0;
 	while(argc > 1) {
 		if(*argv[1] == '-') {
@@ -59,11 +54,11 @@ main(int argc, char *argv[])
 	Binit(&fin, f, OREAD);
 	Binit(&fout, 1, OWRITE);
 
-	if(gline(b1))
+	if((b1 = gline()) == nil)
 		exits(0);
 	for(;;) {
 		linec++;
-		if(gline(b2)) {
+		if((b2 = gline()) == nil) {
 			pline(b1);
 			exits(0);
 		}
@@ -72,7 +67,7 @@ main(int argc, char *argv[])
 			linec = 0;
 			do {
 				linec++;
-				if(gline(b1)) {
+				if((b1 = gline()) == nil) {
 					pline(b2);
 					exits(0);
 				}
@@ -83,28 +78,23 @@ main(int argc, char *argv[])
 	}
 }
 
-int
-gline(char *buf)
+String *
+gline(void)
 {
-	char *p;
+	char *t;
 
-	p = Brdline(&fin, '\n');
-	if(p == 0)
-		return 1;
-	if(fin.rdline >= bsize-1)
-		sysfatal("line too long");
-	memmove(buf, p, fin.rdline);
-	buf[fin.rdline-1] = 0;
-	return 0;
+	if((t = Brdstr(&fin, '\n', 1)) == 0)
+		return nil;
+	return s_copy(t);
 }
 
 void
-pline(char *buf)
+pline(String *buf)
 {
 	switch(mode) {
 
 	case 'u':
-		if(uniq) {
+		if(uniq){
 			uniq = 0;
 			return;
 		}
@@ -119,19 +109,23 @@ pline(char *buf)
 		Bprint(&fout, "%4d ", linec);
 	}
 	uniq = 0;
-	Bprint(&fout, "%s\n", buf);
+	Bprint(&fout, "%s\n", s_to_c(buf));
 }
 
 int
-equal(char *b1, char *b2)
+equal(String *d1, String *d2)
 {
-	char c;
+	char c, *b1, *b2;
 
-	if(fields || letters) {
+	b1 = s_to_c(d1);
+	b2 = s_to_c(d2);
+	if(s_len(d1) != s_len(d2))
+		return 0;
+	if(fields || letters){
 		b1 = skip(b1);
 		b2 = skip(b2);
 	}
-	for(;;) {
+	for(;;){
 		c = *b1++;
 		if(c != *b2++) {
 			if(c == 0 && mode == 's')
