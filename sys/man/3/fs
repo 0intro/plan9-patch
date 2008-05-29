@@ -158,7 +158,6 @@ in
 .IR dd (1),
 .IR sd (3),
 .IR kfs (4),
-.IR fs (8),
 .IR plan9.ini (8),
 .IR prep (8),
 .IR venti (8)
