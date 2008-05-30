@@ -27,4 +27,8 @@ UPDATE=mkfile\
 	$HFILES\
 	$CFILES\
 
+rsatest: rsatest.c
+	$CC $CFLAGS  rsatest.c
+	$LD -o rsatest rsatest.$O
+
 </sys/src/cmd/mksyslib

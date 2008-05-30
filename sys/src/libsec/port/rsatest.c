@@ -12,10 +12,9 @@ main(void)
 	int n;
 	mpint *clr, *enc, *clr2;
 	uchar buf[4096];
-	uchar *e;
 	vlong start;
 
-	fmtinstall('B', mpconv);
+	fmtinstall('B', mpfmt);
 
 	rsa = rsagen(1024, 16, 0);
 	if(rsa == nil)
