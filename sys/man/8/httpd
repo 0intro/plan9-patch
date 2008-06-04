@@ -7,7 +7,9 @@ httpd, mirror, save, imagemap, man2html, webls \- HTTP server
 .RB [ -a
 .IR srvaddr ]
 .RB [ -c
-.IR cert ]
+.I cert
+.RB [ -C
+.IR certchain ]]
 .RB [ -d
 .IR domain ]
 .RB [ -n
@@ -103,6 +105,11 @@ option, then the service is instead
 .BR tcp!*!https .
 There should already be a factotum
 holding the corresponding private key.
+If the specified certificate has been signed
+by a certificate authority, the
+.B -C
+option may be used to specify a file
+containing a chain of signed certificates.
 .PP
 .I Httpd
 supports only the GET and HEAD methods of the HTTP protocol;
