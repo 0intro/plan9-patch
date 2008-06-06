@@ -198,7 +198,7 @@ dates(Tm *tm)
 	nd->next = Base;	
 	Base = nd;
 
-	snprint(buf, sizeof buf, "[\t ]*the[\t ]+%s[\t ]+%s", nth[tm->mday/7], day);
+	snprint(buf, sizeof buf, "[\t ]*the[\t ]+%s[\t ]+%s", nth[(tm->mday-1)/7], day);
 	if(debug)
 		print("%s\n", buf);
 	nd = emalloc(sizeof(Date));
