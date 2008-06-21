@@ -65,7 +65,7 @@ checksource:QV:
 
 lookindex:V:
 	builtin cd $LIB/lookman
-	mkindex
+	./mkindex
 
 
 print.out:V: permind
