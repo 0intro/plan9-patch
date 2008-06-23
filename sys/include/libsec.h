@@ -372,3 +372,13 @@ int	okThumbprint(uchar *sha1, Thumbprint *ok);
 /* readcert.c */
 uchar	*readcert(char *filename, int *pcertlen);
 PEMChain*readcertchain(char *filename);
+
+/* X509.c */
+typedef struct Bytes {
+	int	len;
+	uchar	data[1];
+} Bytes;
+mpint	*pkcs1pad(Bytes *b, mpint *modulus);
+
+
+
