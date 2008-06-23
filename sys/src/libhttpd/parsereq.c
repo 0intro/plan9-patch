@@ -144,12 +144,15 @@ parseuri(HConnect *c, char *uri)
 
 	urihost = nil;
 	if(uri[0] != '/'){
-		if(cistrncmp(uri, "http://", 7) != 0){
+		if(cistrncmp(uri, "http://", 7) == 0)
+			uri += 5;	/* skip http: */
+		else if (cistrncmp(uri, "https://", 8) == 0)
+			uri += 6;	/* skip https: */
+		else{
 			ss.s1 = nil;
 			ss.s2 = nil;
 			return ss;
 		}
-		uri += 5;	/* skip http: */
 	}
 
 	/*

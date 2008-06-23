@@ -4,9 +4,9 @@
 #include "httpsrv.h"
 
 void
-usage(void)
+usage(char *progname)
 {
-	fprint(2, "usage: httpd [-b inbuf] [-d domain] [-r remoteip] [-w webroot] [-N netdir] [-R reqline] [-L logfd0 logfd1] method version uri [search]\n");
+	fprint(2, "usage: %s [-b inbuf] [-d domain] [-p localport] [-r remoteip] [-s uri-scheme] [-w webroot] [-N netdir] [-R reqline] [-L logfd0 logfd1] method version uri [search]\n", progname);
 	exits("usage");
 }
 
@@ -20,12 +20,14 @@ static	HSPriv		priv;
 HConnect*
 init(int argc, char **argv)
 {
-	char *s, *vs;
+	char *s, *vs, *progname;
 
 	hinit(&connect.hin, 0, Hread);
 	hinit(&connect.hout, 1, Hwrite);
 	hmydomain = nil;
 	connect.replog = writelog;
+	connect.scheme = "http";
+	connect.port = "80";
 	connect.private = &priv;
 	priv.remotesys = nil;
 	priv.remoteserv = nil;
@@ -33,6 +35,7 @@ init(int argc, char **argv)
 	fmtinstall('H', httpfmt);
 	fmtinstall('U', hurlfmt);
 	netdir = "/net";
+	progname = argv[0];
 	ARGBEGIN{
 	case 'b':
 		s = ARGF();
@@ -42,8 +45,14 @@ init(int argc, char **argv)
 	case 'd':
 		hmydomain = ARGF();
 		break;
+	case 'p':
+		connect.port = ARGF();
+		break;
 	case 'r':
 		priv.remotesys = ARGF();
+		break;
+	case 's':
+		connect.scheme = ARGF();
 		break;
 	case 'w':
 		webroot = ARGF();
@@ -54,21 +63,21 @@ init(int argc, char **argv)
 	case 'L':
 		s = ARGF();
 		if(s == nil)
-			usage();
+			usage(progname);
 		logall[0] = strtol(s, nil, 10);
 		s = ARGF();
 		if(s == nil)
-			usage();
+			usage(progname);
 		logall[1] = strtol(s, nil, 10);
 		break;
 	case 'R':
 		s = ARGF();
 		if(s == nil)
-			usage();
+			usage(progname);
 		snprint((char*)connect.header, sizeof(connect.header), "%s", s);
 		break;
 	default:
-		usage();
+		usage(progname);
 	}ARGEND
 
 	if(priv.remotesys == nil)
@@ -87,7 +96,7 @@ init(int argc, char **argv)
 	syslog(0, HTTPLOG, nil);
 
 	if(argc != 4 && argc != 3)
-		usage();
+		usage(progname);
 
 	connect.req.meth = argv[0];
 
