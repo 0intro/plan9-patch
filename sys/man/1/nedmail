@@ -320,9 +320,6 @@ forwarding address(es)
 .B /mail/box/*/pipeto
 mail filter
 .TP
-.B /mail/box/*/L.reading
-mutual exclusion lock for multiple mbox readers
-.TP
 .B /mail/box/*/L.mbox
 mutual exclusion lock for altering mbox
 .SH SOURCE
