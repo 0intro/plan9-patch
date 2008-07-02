@@ -24,7 +24,7 @@ on a directory is a set of complete directory entries
 in a machine-independent format, exactly equivalent to
 the result of a
 .IR stat (2)
-on each file or subdirectory in the directory.
+on each file or subdirectory in the set.
 .I Dirread
 decodes the directory entries into a machine-dependent form.
 It reads from
