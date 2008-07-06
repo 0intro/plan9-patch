@@ -13,6 +13,7 @@ if(aux/isvmware -s){
 	for(i in '#S'/sd??)
 		if(test -f $i/ctl)
 			echo dma on >$i/ctl
+	echo -n hwaccel off >/dev/vgactl
 	aux/vmwarefs
 	if(! test -f /dev/snarf)
 		aux/stub /dev/snarf
