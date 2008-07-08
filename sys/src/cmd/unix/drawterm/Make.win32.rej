@@ -1,0 +1,45 @@
+--- sys/src/cmd/unix/drawterm/Make.win32	Thu Jan  1 00:00:00 1970
++++ sys/src/cmd/unix/drawterm/Make.win32	Fri May 19 06:22:19 2006
+@@ -0,0 +1,42 @@
++# Windows via mingw32
++# MING=mingw32- is necessary if you're cross-compiling
++# on another platform.  Otherwise the binaries are just
++# named gcc, etc.
++
++#MING=i586-mingw32msvc-
++MING=
++AR=$(MING)ar
++CC=$(MING)gcc
++AS=$(MING)as
++RANLIB=$(MING)ranlib
++WINDRES=$(MING)windres
++CFLAGS=-mno-cygwin -Wall -Wno-missing-braces -I$(ROOT)/include -I$(ROOT) -I$(ROOT)/kern -c -D_X86_ -DIS_32 -DWINDOWS -DUNICODE -O2
++O=o
++FS=fs-win32
++IP=win32
++OS=win32
++GUI=win32
++LDFLAGS=-L/usr/lib/mingw -mno-cygwin 
++LDADD=-lkernel32 -ladvapi32 -lgdi32 -lmpr -lwsock32 -lshell32 -lmsvcrt -lmingw32 -lcrtdll
++TARG=drawterm.exe
++XOFILES=9ball.$O
++
++# Windows via MSVC
++#AR=link -lib
++#CC=cl
++#CFLAGS=-c -nologo -W3 -YX -Zi -MT -Zl -Iinclude -DWINDOWS
++#O=obj
++#FS=fs-win32
++#IP=win32
++#OS=win32
++#GUI=win32
++
++all: default
++
++# for root
++libmachdep.a:
++	(cd win32-386; make)
++
++9ball.$O: 9ball.rc 9ball.ico
++	$(WINDRES) -i 9ball.rc -o 9ball.o
++
