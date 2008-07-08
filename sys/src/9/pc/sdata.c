@@ -1343,15 +1343,19 @@ static uchar cmd48[256] = {
 	[Cwsm]	Cwsm48,
 };
 
+enum{
+	Last28	= (1<<28) - 1 - 1,
+};
+
 static int
-atageniostart(Drive* drive, vlong lba)
+atageniostart(Drive* drive, uvlong lba)
 {
 	Ctlr *ctlr;
 	uchar cmd;
 	int as, c, cmdport, ctlport, h, len, s, use48;
 
 	use48 = 0;
-	if((drive->flags&Lba48always) || (lba>>28) || drive->count > 256){
+	if((drive->flags&Lba48always) || lba > Last28 || drive->count > 256){
 		if(!(drive->flags & Lba48))
 			return -1;
 		use48 = 1;
@@ -1398,14 +1402,14 @@ atageniostart(Drive* drive, vlong lba)
 	drive->limit = drive->data + drive->count*drive->secsize;
 	cmd = drive->command;
 	if(use48){
-		outb(cmdport+Count, (drive->count>>8) & 0xFF);
-		outb(cmdport+Count, drive->count & 0XFF);
-		outb(cmdport+Lbalo, (lba>>24) & 0xFF);
-		outb(cmdport+Lbalo, lba & 0xFF);
-		outb(cmdport+Lbamid, (lba>>32) & 0xFF);
-		outb(cmdport+Lbamid, (lba>>8) & 0xFF);
-		outb(cmdport+Lbahi, (lba>>40) & 0xFF);
-		outb(cmdport+Lbahi, (lba>>16) & 0xFF);
+		outb(cmdport+Count, drive->count>>8);
+		outb(cmdport+Count, drive->count);
+		outb(cmdport+Lbalo, lba>>24);
+		outb(cmdport+Lbalo, lba);
+		outb(cmdport+Lbamid, lba>>32);
+		outb(cmdport+Lbamid, lba>>8);
+		outb(cmdport+Lbahi, lba>>40);
+		outb(cmdport+Lbahi, lba>>16);
 		outb(cmdport+Dh, drive->dev|Lba);
 		cmd = cmd48[cmd];
 
@@ -1466,7 +1470,7 @@ atagenioretry(Drive* drive)
 }
 
 static int
-atagenio(Drive* drive, uchar* cmd, int)
+atagenio(Drive* drive, uchar* cmd, int clen)
 {
 	uchar *p;
 	Ctlr *ctlr;
@@ -1566,7 +1570,9 @@ atagenio(Drive* drive, uchar* cmd, int)
 		return SDok;
 
 	case 0x28:			/* read */
-	case 0x2A:			/* write */
+	case 0x88:
+	case 0x2a:			/* write */
+	case 0x8a:
 		break;
 
 	case 0x5A:
@@ -1574,8 +1580,17 @@ atagenio(Drive* drive, uchar* cmd, int)
 	}
 
 	ctlr = drive->ctlr;
-	lba = (cmd[2]<<24)|(cmd[3]<<16)|(cmd[4]<<8)|cmd[5];
-	count = (cmd[7]<<8)|cmd[8];
+	if(clen == 16){
+		/* ata commands only go to 48-bit lba */
+		if(cmd[2] || cmd[3])
+			return atasetsense(drive, SDcheck, 3, 0xc, 2);
+		lba = (uvlong)cmd[4]<<40 | (uvlong)cmd[5]<<32;
+		lba |= cmd[6]<<24 | cmd[7]<<16 | cmd[8]<<8 | cmd[9];
+		count = cmd[10]<<24 | cmd[11]<<16 | cmd[12]<<8 | cmd[13];
+	}else{
+		lba = cmd[2]<<24 | cmd[3]<<16 | cmd[4]<<8 | cmd[5];
+		count = cmd[7]<<8 | cmd[8];
+	}
 	if(drive->data == nil)
 		return SDok;
 	if(drive->dlen < count*drive->secsize)
@@ -2022,6 +2037,7 @@ atapnp(void)
 		case (0x27C0<<16)|0x8086:	/* 82801GB SATA AHCI (ICH7) */
 //		case (0x27C4<<16)|0x8086:	/* 82801GBM SATA (ICH7) */
 		case (0x27C5<<16)|0x8086:	/* 82801GBM SATA AHCI (ICH7) */
+		case (0x0502<<17)|0x100b:	/* National Semiconductor SC1100/SCx200 */
 			break;
 		}
 
