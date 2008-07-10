@@ -1,0 +1,50 @@
+#!/bin/rc
+# vacation - notify sender that recipient is away
+rfork en
+ramfs
+
+USER=`{echo $1 | sed 's/local!//;s/[+\-].*//'}
+DOM=coraid.com			# TODO
+cd /mail/box/$USER
+RECIP=$1
+MBOX=$2
+
+fn log {
+	if(~ $#USER 1)
+		echo `{date} $* >>/mail/box/$USER/_log >[2]/dev/null
+}
+
+fn spooltag {
+	if(~ $#* 0)
+		_mbox=$MBOX
+	if not {
+		_mbox=$1
+		shift
+	}
+	if(~ $#* 0)
+		tag=''
+	if not
+		tag=' '^$"*
+	{
+		sed 's/^[Ss][Uu][Bb][Jj][Ee][Cc][Tt]:/&'^$tag^':/' $D/rawheader
+		if(! grep -si '^subject:' $D/rawheader)
+			echo 'Subject: '^$tag
+		echo
+		cat $D/rawbody
+	} | upas/deliver $RECIP $D/from $_mbox || exit $status
+}
+
+# upas/qfrom >/tmp/msg
+cat >/tmp/msg
+upas/fs -pf /tmp/msg || exit $status
+D=/mail/fs/mbox/1
+S=`{awk '{print $2}'< $D/unixheader}
+
+if(! test -f vacmsg)
+	spooltag
+if not if(! ~ $S $USER $USER@$DOM) {
+	spooltag mbox VACATION
+	upas/marshal -a $D/raw -R $D/raw $S <vacmsg
+}
+if not
+	spooltag
