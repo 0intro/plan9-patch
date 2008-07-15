@@ -1,4 +1,7 @@
 # VGA database.
+database=
+	file=/lib/vgadb
+	file=/lib/vgadb.local
 #
 # ctlr:
 # These entries are used to identify a particular controller.
