@@ -50,7 +50,7 @@ filter=cat
 if(~ $1 -v){
 	filter=verbose
 }
-cd '#$/pci' && grep . *ctl | sed '
+builtin cd '#$/pci' && grep . *ctl | sed '
 	s/ctl:/:	/
 	s/:	01/:	disk 01/
 	s/:	02/:	net  02/
