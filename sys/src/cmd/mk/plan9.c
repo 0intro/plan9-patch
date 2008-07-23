@@ -346,6 +346,7 @@ void
 dirtime(char *dir, char *path)
 {
 	int i, fd, n;
+	long mtime;
 	Dir *d;
 	char buf[4096];
 
@@ -353,12 +354,13 @@ dirtime(char *dir, char *path)
 	if(fd >= 0){
 		while((n = dirread(fd, &d)) > 0){
 			for(i=0; i<n; i++){
-				if(d[i].mtime == 0)	/* yeah, this is likely */
-					continue;
+				mtime = d[i].mtime;
+				if(mtime == 0)
+					mtime = 1;	/* defensive driving: this does happen */
 				sprint(buf, "%s%s", path, d[i].name);
 				if(symlook(buf, S_TIME, 0))
 					continue;
-				symlook(strdup(buf), S_TIME, (void*)d[i].mtime)->u.value = d[i].mtime;
+				symlook(strdup(buf), S_TIME, (void*)mtime)->u.value = mtime;
 			}
 			free(d);
 		}
