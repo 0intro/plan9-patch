@@ -2,6 +2,7 @@
 
 if(aux/isvmware -s){
 	echo -n off >'#P/i8253timerset'
+	echo -n hwaccel off >'#v/vgactl'
 	for(i in '#S'/sd??)
 		if(test -f $i/ctl)
 			echo dma on >$i/ctl
