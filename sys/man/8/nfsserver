@@ -144,8 +144,8 @@ Assuming the CPU server's name is
 the mount commands on the client would be:
 .PP
 .EX
-/etc/mount -o soft,intr eduardo:bootes /n/bootes
-/etc/mount -o soft,intr eduardo:fornax /n/fornax
+/etc/mount -o soft,intr eduardo:edith /n/edith
+/etc/mount -o soft,intr eduardo:yoshimi /n/yoshimi
 .EE
 .PP
 Note that a single instance of
