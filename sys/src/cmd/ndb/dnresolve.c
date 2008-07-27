@@ -1250,7 +1250,7 @@ queryns(Query *qp, int depth, uchar *ibuf, uchar *obuf, int waitsecs, int inns)
 //	Dest dest[Maxdest];
 
 	/* pack request into a udp message */
-	req = rand();
+	req = nrand(0xffff);
 	len = mkreq(qp->dp, qp->type, obuf, Frecurse|Oquery, req);
 
 	/* no server addresses yet */

@@ -56,7 +56,7 @@ send_notify(char *slave, RR *soa, Request *req)
 	DNSmsg repmsg;
 
 	/* create the request */
-	reqno = rand();
+	reqno = nrand(0xffff);
 	n = mkreq(soa->owner, Cin, obuf, Fauth | Onotify, reqno);
 
 	/* get an address */
