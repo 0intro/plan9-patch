@@ -738,7 +738,7 @@ rwrite(Job *job, Mfile *mf, Request *req)
 	} else if(strcmp(job->request.data, "stats")==0){
 		dnstats("/lib/ndb/dnsstats");
 		goto send;
-	} else if(strncmp(job->request.data, "target", 6)==0){
+	} else if(strncmp(job->request.data, "target ", 7)==0){
 		target = atol(job->request.data + 6);
 		dnslog("target set to %ld", target);
 		goto send;
