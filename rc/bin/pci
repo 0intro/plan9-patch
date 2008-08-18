@@ -24,7 +24,7 @@ fn verbose {
 				vid=lower($1)
 				vendor[vid] = $2
 			}
-			if(/^	[0-9]/){
+			if(/^	[0-9A-F]/){
 				did=lower($2)
 				id[vid "/" did] = $3
 			}
