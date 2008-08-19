@@ -73,6 +73,63 @@ mmuinit0(void)
 	memmove(m->gdt, gdt, sizeof gdt);
 }
 
+/*
+ * set up a pat mappings.  the system depends
+ * on the first 4 mappings not changing.
+ */
+enum{
+	Patmsr	= 0x277,
+};
+
+static uchar pattab[8] = {
+	PATWB,
+	PATWT,
+	PATUCMINUS,
+	PATUC, 
+
+	PATWB,
+	PATWT,
+	PATUCMINUS,
+	PATUC,
+};
+
+static ulong patflags[8] = {
+	0,
+					PTEWT,
+			PTEPCD,
+			PTEPCD |	PTEWT,
+	PTEPAT,
+	PTEPAT | 			PTEWT,
+	PTEPAT |	PTEPCD,
+	PTEPAT |	PTEPCD |	PTEWT,
+};
+
+static void
+setpatreg(int rno, int type)
+{
+	int i;
+	ulong s;
+	vlong pat;
+
+	s = splhi();
+	rdmsr(Patmsr, &pat);
+
+	pat &= ~(0xffull<<rno*8);
+	pat |= (vlong)type<<rno*8;
+	wrmsr(Patmsr, pat);
+	splx(s);
+
+	print("pat: %.16llux\n", pat);
+	for(i = 0; i < 64; i += 8)
+		pattab[i>>3] = pat>>i;
+}
+
+static void
+patinit(void)
+{
+	setpatreg(7, PATWC);
+}
+
 void
 mmuinit(void)
 {
@@ -127,6 +184,9 @@ mmuinit(void)
 
 	taskswitch(PADDR(m->pdb),  (ulong)m + BY2PG);
 	ltr(TSSSEL);
+
+	if(m->cpuiddx & Pat)
+		patinit();
 }
 
 /* 
@@ -402,6 +462,57 @@ upallocpdb(void)
 }
 
 /*
+ * Special PAT flags for certain memory ranges.
+ */
+typedef struct Memflags Memflags;
+struct Memflags
+{
+	ulong pa;
+	ulong len;
+	ulong flags;
+};
+static Memflags mftab[64];
+static int nmftab;
+
+static ulong
+memflags(ulong pa)
+{
+	Memflags *tab, *m;
+	int n, i;
+	
+	tab = mftab;
+	n = nmftab;
+	while(n > 0){
+		i = n/2;
+		m = tab+i;
+		if(m->pa < pa){
+			if(pa - m->pa < m->len)
+				return m->flags;
+			tab += i+1;
+			n -= i+1;
+		}else
+			n = i;
+	}
+	return 0;			
+}
+
+void
+addmemflags(ulong pa, ulong len, ulong flags)
+{
+	Memflags *m;
+	
+	if(nmftab >= nelem(mftab))
+		panic("addmemflags");
+	
+	for(m=mftab+nmftab; m > mftab && (m-1)->pa > pa; m--)
+		*m = *(m-1);
+	m->pa = pa;
+	m->len = len;
+	m->flags = flags;
+	nmftab++;
+}
+
+/*
  * Update the mmu in response to a user fault.  pa may have PTEWRITE set.
  */
 void
@@ -446,7 +557,7 @@ putmmu(ulong va, ulong pa, Page*)
 		up->mmuused = page;
 	}
 	old = vpt[VPTX(va)];
-	vpt[VPTX(va)] = pa|PTEUSER|PTEVALID;
+	vpt[VPTX(va)] = pa|memflags(pa)|PTEUSER|PTEVALID;
 	if(old&PTEVALID)
 		flushpg(va);
 	if(getcr3() != up->mmupdb->pa)
@@ -535,9 +646,11 @@ static void pdbunmap(ulong*, ulong, int);
 
 /*
  * Add a device mapping to the vmap range.
+ * remember the flags so putmmu can maintain
+ * consistent mappings.
  */
 void*
-vmap(ulong pa, int size)
+vmapflags(ulong pa, int size, ulong flags)
 {
 	int osize;
 	ulong o, va;
@@ -552,12 +665,12 @@ vmap(ulong pa, int size)
 
 	size = ROUND(size, BY2PG);
 	if(pa == 0){
-		print("vmap pa=0 pc=%#p\n", getcallerpc(&pa));
+		print("vmap pa=0 pc=%#.8lux\n", getcallerpc(&pa));
 		return nil;
 	}
 	ilock(&vmaplock);
 	if((va = vmapalloc(size)) == 0 
-	|| pdbmap(MACHP(0)->pdb, pa|PTEUNCACHED|PTEWRITE, va, size) < 0){
+	|| pdbmap(MACHP(0)->pdb, pa|flags, va, size) < 0){
 		iunlock(&vmaplock);
 		return 0;
 	}
@@ -568,7 +681,26 @@ vmap(ulong pa, int size)
 	*/
 	USED(osize);
 //	print("  vmap %#.8lux %d => %#.8lux\n", pa+o, osize, va+o);
+	addmemflags(pa, size, flags);
 	return (void*)(va + o);
+}
+
+void*
+vmap(ulong pa, int size)
+{
+	return vmapflags(pa, size, PTEUNCACHED|PTEWRITE);
+}
+
+void*
+vmappat(ulong pa, int size, int pattype)
+{
+	int i;
+
+	if(m->cpuiddx & Pat)
+		for(i = 0; i < nelem(pattab); i++)
+			if(pattab[i] == pattype)
+				return vmapflags(pa, size, patflags[i]|PTEWRITE);
+	return vmap(pa, size);
 }
 
 static int
@@ -712,6 +844,10 @@ pdbmap(ulong *pdb, ulong pa, ulong va, int size)
 		 * va, pa aligned and size >= 4MB and processor can do it.
 		 */
 		if(pse && (pa+off)%(4*MB) == 0 && (va+off)%(4*MB) == 0 && (size-off) >= 4*MB){
+			if(flag & PTESIZE){
+				flag &= ~PTEPAT;
+				flag |= PTEDPAT;
+			}
 			*table = (pa+off)|flag|PTESIZE|PTEVALID;
 			pgsz = 4*MB;
 		}else{

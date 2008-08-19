@@ -345,14 +345,14 @@ waitforidle(VGAscr *scr)
 	while((readget(scr) != nv.dmaput) && x++ < 1000000)
 		;
 	if(x >= 1000000)
-		iprint("idle stat %lud put %d scr %#p pc %#p\n", readget(scr), nv.dmaput, scr, getcallerpc(&scr));
+		iprint("idle stat %lud put %d scr %p pc %luX\n", readget(scr), nv.dmaput, scr, getcallerpc(&scr));
 
 	x = 0;
 	while(pgraph[0x00000700/4] & 0x01 && x++ < 1000000)
 		;
 
 	if(x >= 1000000)
-		iprint("idle stat %lud scrio %#p scr %#p pc %#p\n", *pgraph, scr->mmio, scr, getcallerpc(&scr));
+		iprint("idle stat %lud scrio %.8lux scr %p pc %luX\n", *pgraph, scr->mmio, scr, getcallerpc(&scr));
 }
 
 static void
@@ -371,7 +371,7 @@ nvresetgraphics(VGAscr *scr)
 		if(scr->storage <= scr->apsize)
 			nv.dmabase = (ulong*)((uchar*)scr->vaddr + scr->storage - 128*1024);
 		else{
-			nv.dmabase = (void*)vmap(scr->paddr + scr->storage - 128*1024, 128*1024);
+			nv.dmabase = (void*)vmappat(scr->paddr + scr->storage - 128*1024, 128*1024, PATWT);
 			if(nv.dmabase == 0){
 				hwaccel = 0;
 				hwblank = 0;

@@ -284,6 +284,7 @@ enum {
 	Cpuapic	= 1<<9,
 	Mtrr	= 1<<12,	/* memory-type range regs.  */
 	Pge	= 1<<13,	/* page global extension */
+	Pat	= 1<<16,
 //	Pse2	= 1<<17,	/* more page size extensions */
 	Clflush = 1<<19,
 	Mmx	= 1<<23,

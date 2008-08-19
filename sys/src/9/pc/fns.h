@@ -165,6 +165,7 @@ void	upareserve(ulong, int);
 #define	userureg(ur) (((ur)->cs & 0xFFFF) == UESEL)
 void	vectortable(void);
 void*	vmap(ulong, int);
+void*	vmappat(ulong, int, int);
 int	vmapsync(ulong);
 void	vunmap(void*, int);
 void	wrmsr(int, vlong);

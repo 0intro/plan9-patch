@@ -122,7 +122,7 @@ screenaperture(int size, int align)
 	scr->paddr = upaalloc(size, align);
 	if(scr->paddr == 0)
 		return -1;
-	scr->vaddr = vmap(scr->paddr, size);
+	scr->vaddr = vmappat(scr->paddr, size, PATWB);
 	if(scr->vaddr == nil)
 		return -1;
 	scr->apsize = size;
@@ -517,7 +517,7 @@ vgalinearaddr(VGAscr *scr, ulong paddr, int size)
 	 */
 	if(nsize > 64*MB)
 		nsize = 64*MB;
-	scr->vaddr = vmap(npaddr, nsize);
+	scr->vaddr = vmappat(npaddr, nsize, PATWT);
 	if(scr->vaddr == 0)
 		error("cannot allocate vga frame buffer");
 	scr->vaddr = (char*)scr->vaddr+x;

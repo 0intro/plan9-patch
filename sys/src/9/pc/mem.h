@@ -138,12 +138,25 @@
 #define	PTEVALID	(1<<0)
 #define	PTEWT		(1<<3)
 #define	PTEUNCACHED	(1<<4)
+#define	PTEPCD		(1<<4)		/* PAT name for PTEUNCACHED */
 #define	PTEWRITE	(1<<1)
 #define	PTERONLY	(0<<1)
 #define	PTEKERNEL	(0<<2)
 #define	PTEUSER		(1<<2)
-#define	PTESIZE		(1<<7)
+#define	PTESIZE		(1<<7)		/* only in page directory entry */
+#define	PTEPAT		(1<<7)			/* PAT, in page table entry */
 #define	PTEGLOBAL	(1<<8)
+#define	PTEDPAT	(1<<12)			/* PAT, in page directory entry */
+
+/*
+ * pat memory types
+ */
+#define	PATUC		(0)
+#define	PATWC		(1)
+#define	PATWT		(4)
+#define	PATWP		(5)
+#define	PATWB		(6)
+#define	PATUCMINUS	(7)
 
 /*
  * Macros for calculating offsets within the page directory base
