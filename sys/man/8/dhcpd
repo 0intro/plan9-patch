@@ -28,7 +28,7 @@ dhcpd, dhcpleases, rarpd, tftpd \- Internet booting
 .IR netmtpt ]
 .PP
 .B ip/tftpd
-.RB [ -dr ]
+.RB [ -dru ]
 .RB [ -h
 .IR homedir ]
 .RB [ -x
@@ -252,6 +252,9 @@ The options are:
 .TP
 .B d
 Print debugging to standard output.
+.TP
+.B u
+Don't switch to user none, run as current user.
 .TP
 .B x
 The IP stack to use is mounted at 

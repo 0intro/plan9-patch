@@ -13,6 +13,7 @@ enum
 
 int 	dbg;
 int	restricted;
+int	user;
 void	sendfile(int, char*, char*);
 void	recvfile(int, char*, char*);
 void	nak(int, int, char*);
@@ -72,6 +73,9 @@ main(int argc, char **argv)
 	case 's':
 		svc = EARGF(usage());
 		break;
+	case 'u':
+		user = 1;
+		break;
 	case 'x':
 		p = ARGF();
 		if(p == nil)
@@ -107,7 +111,8 @@ main(int argc, char **argv)
 	if (cfd < 0)
 		sysfatal("announcing on %s: %r", buf);
 	syslog(dbg, flog, "tftpd started on %s dir %s", buf, adir);
-	setuser();
+	if(!user)
+		setuser();
 	for(;;) {
 		lcfd = listen(adir, ldir);
 		if(lcfd < 0)
@@ -306,11 +311,11 @@ recvfile(int fd, char *name, char *mode)
 		if(op == Tftp_ERROR)
 			goto error;
 
-		n -= 4;
 		inblock = buf[2]<<8|buf[3];
+		n -= 4;
 		if(op == Tftp_DATA) {
 			if(inblock == block) {
-				ret = write(file, buf, n);
+				ret = write(file, buf+4, n);
 				if(ret < 0) {
 					errstr(errbuf, sizeof errbuf);
 					nak(fd, 0, errbuf);
@@ -318,8 +323,8 @@ recvfile(int fd, char *name, char *mode)
 				}
 				ack(fd, block);
 				block++;
-			}
-			ack(fd, 0xffff);
+			} else
+				ack(fd, 0xffff);
 		}
 	}
 error:
