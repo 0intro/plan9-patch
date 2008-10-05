@@ -2042,8 +2042,10 @@ write(Usbhost *uh, Endpt *ep, void *a, long n, vlong off, int tok)
 		dcclean(b->rp, m);
 		if(ep->epmode == Isomode && ep->buffered <= ep->bw<<1){
 			sleep(&ep->dir[Dirout].rend, weptdone, ep);
-			if(ep->dir[Dirout].err)
+			if(ep->dir[Dirout].err){
+				freeb(b);
 				error(ep->dir[Dirout].err);
+			}
 		}
 		while(m > 0){
 			int l;
