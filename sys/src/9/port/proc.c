@@ -898,18 +898,30 @@ postnote(Proc *p, int dolock, char *n, int flag)
 	Rendez *r;
 	Proc *d, **l;
 
+	ret = 0;
+
 	if(dolock)
 		qlock(&p->debug);
 
-	if(flag != NUser && (p->notify == 0 || p->notified))
-		p->nnote = 0;
+	if(flag != NUser){
+		s = 0;
+		if(p->nnote < NNOTE){
+			memmove(&p->note[1], &p->note[0], sizeof(p->note[0])*p->nnote);
+			p->nnote++;
+		}
+	} else {
+		if(p->nnote+1 < NNOTE)
+			s = p->nnote++;
+		else
+			s = -1;
+	}
 
-	ret = 0;
-	if(p->nnote < NNOTE) {
-		strcpy(p->note[p->nnote].msg, n);
-		p->note[p->nnote++].flag = flag;
+	if(s != -1){
+		strcpy(p->note[s].msg, n);
+		p->note[s].flag = flag;
 		ret = 1;
 	}
+
 	p->notepending = 1;
 	if(dolock)
 		qunlock(&p->debug);
