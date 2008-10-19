@@ -329,7 +329,7 @@ changeconf(char *fmt, ...)
 	va_end(arg);
 	strncpy(pref+1, buf, 19);
 	pref[19] = '\0';
-	if(p = strchr(pref, '='))
+	if(p = strchr(pref+1, '='))
 		*(p+1) = '\0';
 	else
 		print("warning: did not change %s in plan9.ini\n", buf);
