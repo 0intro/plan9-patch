@@ -1,0 +1,11 @@
+--- sys/man/4/factotum	Tue Nov 30 04:46:33 2004
++++ sys/man/4/factotum	Tue Nov 30 04:46:33 2004
+@@ -634,7 +634,7 @@
+ .B "protocol not started
+ a
+ .B start
+-RPC needs to preceed reads and writes
++RPC needs to precede reads and writes
+ .TP
+ .B "needkey \fIattribute-value-list\fP
+ a key matching the argument is needed.  This argument
