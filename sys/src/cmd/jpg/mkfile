@@ -11,6 +11,9 @@ TARG=jpg\
 	ico\
 	toico\
 	bmp\
+	wbmp\
+	towbmp\
+	tga\
 
 IMFILES=\
 	torgbv.$O\
@@ -41,6 +44,7 @@ UPDATE=\
 </sys/src/cmd/mkmany
 c=`{sed -n 's/^O=//p' /$cputype/mkfile}
 
+$O.tga:		$IMFILES readtga.$O tga.$O
 $O.jpg:		$IMFILES readjpg.$O jpg.$O
 $O.gif:		$IMFILES readgif.$O gif.$O
 $O.togif:	writegif.$O onechan.$O togif.$O torgbv.$O
@@ -50,6 +54,8 @@ $O.png:		$IMFILES readpng.$O png.$O
 $O.topng:	writepng.$O topng.$O
 $O.yuv:		$IMFILES readyuv.$O yuv.$O
 $O.bmp:		$IMFILES readbmp.$O bmp.$O
+$O.wbmp:	$IMFILES readwbmp.$O wbmp.$O
+$O.towbmp:	writewbmp.$O towbmp.$O
 
 torgbv.$O:	ycbcr.h rgbv.h
 
