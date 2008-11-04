@@ -452,7 +452,7 @@ readlist(int off, int (*gen)(int, char*, uint, Fsstate*), Req *r, Fsstate *fss)
 static int
 keylist(int i, char *a, uint n, Fsstate *fss)
 {
-	char buf[512];
+	char buf[4096];
 	Keyinfo ki;
 	Key *k;
 
