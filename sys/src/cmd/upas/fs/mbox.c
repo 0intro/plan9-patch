@@ -478,7 +478,6 @@ headerline(char **pp, String *hl)
 	return 1;
 }
 
-/* returns nil iff there are no addressees */
 static String*
 addr822(char *p)
 {
@@ -572,64 +571,35 @@ addr822(char *p)
 	}
 	s_free(s);
 
-	if(n == 0){		/* no addressees given, just the keyword */
+	if(n == 0){
 		s_free(list);
 		return nil;
 	}
 	return list;
 }
 
-/*
- * per rfc2822 §4.5.3, permit multiple to, cc and bcc headers by
- * concatenating their values.
- */
-
 static void
 to822(Message *m, Header *h, char *p)
 {
-	String *s;
-
 	p += strlen(h->type);
-	s = addr822(p);
-	if (m->to822 == nil)
-		m->to822 = s;
-	else if (s != nil) {
-		s_append(m->to822, " ");
-		s_append(m->to822, s_to_c(s));
-		s_free(s);
-	}
+	s_free(m->to822);
+	m->to822 = addr822(p);
 }
 
 static void
 cc822(Message *m, Header *h, char *p)
 {
-	String *s;
-
 	p += strlen(h->type);
-	s = addr822(p);
-	if (m->cc822 == nil)
-		m->cc822 = s;
-	else if (s != nil) {
-		s_append(m->cc822, " ");
-		s_append(m->cc822, s_to_c(s));
-		s_free(s);
-	}
+	s_free(m->cc822);
+	m->cc822 = addr822(p);
 }
 
 static void
 bcc822(Message *m, Header *h, char *p)
 {
-	String *s;
-
 	p += strlen(h->type);
-	s = addr822(p);
-	if (m->bcc822 == nil)
-		m->bcc822 = s;
-	else if (s != nil) {
-		s_append(m->bcc822, " ");
-		s_append(m->bcc822, s_to_c(s));
-		s_free(s);
-	}
+	s_free(m->bcc822);
+	m->bcc822 = addr822(p);
 }
 
 static void
@@ -1120,7 +1090,7 @@ hex2int(int x)
 		return (x - 'A') + 10;
 	if(x >= 'a' && x <= 'f')
 		return (x - 'a') + 10;
-	return 0;
+	return -1;
 }
 
 // underscores are translated in 2047 headers (uscores=1) 
@@ -1155,7 +1125,12 @@ decquotedline(char *out, char *in, char *e, int uscores)
 		case '=':
 			c = hex2int(*in++)<<4;
 			c |= hex2int(*in++);
-			*out++ = c;
+			if(c != -1)
+				*out++ = c;
+			else{
+				*out++ = '=';
+				in -= 2;
+			}
 			break;
 		}
 	}
