@@ -44,7 +44,7 @@ Font*	getdefont(Display *d)
 int	flushimage(Display *d, int vis)
 .PP
 .B
-int	bufimage(Display *d, int n)
+uchar*	bufimage(Display *d, int n)
 .PP
 .B
 void	lockdisplay(Display *d)
