@@ -63,7 +63,7 @@ install:V:
 			echo RET
 		case amd64
 			if(~ $i seek)
-				echo TEXT _seek'(SB)', 1, '$0'
+				echo TEXT seek'(SB)', 1, '$0'
 			if not
 				echo TEXT $i'(SB)', 1, '$0'
 			echo MOVQ RARG, 'a0+0(FP)'
