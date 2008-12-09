@@ -14,11 +14,17 @@ $O.out:	$OFILES $LIB
 %.$O:	%.c
 	$CC $CFLAGS $stem.c
 
+%.$O:	%.C
+	c++/$CC $CFLAGS $stem.C
+
 %.$O:	%.s
 	$AS $AFLAGS $stem.s
 
 y.tab.h y.tab.c:	$YFILES
 	$YACC $YFLAGS $prereq
+
+lex.yy.c:	$LFILES
+	$LEX $LFLAGS $prereq
 
 install:V:	$BIN/$TARG
 
@@ -34,10 +40,10 @@ allall:V:
 		mk all
 
 nuke:V:
-	rm -f *.[$OS] [$OS].out y.tab.? y.debug y.output *.acid $TARG
+	rm -f *.[$OS] [$OS].out y.tab.? lex.yy.c y.debug y.output *.acid $TARG
 
 clean:V:
-	rm -f *.[$OS] [$OS].out y.tab.? y.debug y.output $TARG $CLEANFILES
+	rm -f *.[$OS] [$OS].out y.tab.? lex.yy.c y.debug y.output $TARG $CLEANFILES
 
 safeinstall:V: $O.out
 	test -e $BIN/$TARG && mv $BIN/$TARG $BIN/_$TARG
