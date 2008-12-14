@@ -3,6 +3,7 @@
 Display, Point, Rectangle, Cursor, initdraw, geninitdraw, drawerror, initdisplay, closedisplay, getdefont, getwindow, gengetwindow, flushimage, bufimage, lockdisplay, unlockdisplay, openfont, buildfont, freefont, Pfmt, Rfmt, strtochan, chantostr, chantodepth \- interactive graphics
 .SH SYNOPSIS
 .nf
+.PP
 .ft L
 #include <u.h>
 #include <libc.h>
@@ -37,13 +38,13 @@ Display*	initdisplay(char *devdir, char *win, void(*errfun)(Display*, char*))
 void	closedisplay(Display *d)
 .PP
 .B
-Font*	getdefont(Display *d)
+Subfont*	getdefont(Display *d)
 .PP
 .B
 int	flushimage(Display *d, int vis)
 .PP
 .B
-uchar*	bufimage(Display *d, int n)
+int	bufimage(Display *d, int n)
 .PP
 .B
 void	lockdisplay(Display *d)
@@ -415,8 +416,8 @@ in which the files associated with the window reside.
 disconnects the display and frees the associated data structures.
 .I Getdefont
 builds a
-.B Font
-structure from in-core data describing a default font.
+.B Subfont
+structure from in-core data describing a default subfont.
 None of these routines is needed by most programs, since
 .I initdraw
 calls them as needed.
