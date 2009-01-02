@@ -65,6 +65,8 @@ dirread(int fd, Dir **d)
 	if(ts >= 0)
 		ts = dirpackage(buf, ts, d);
 	free(buf);
+	if(*d != nil)
+		setmalloctag(*t, getcallerpc(&fd));
 	return ts;
 }
 
@@ -91,6 +93,8 @@ dirreadall(int fd, Dir **d)
 	if(ts >= 0)
 		ts = dirpackage(buf, ts, d);
 	free(buf);
+	if(*d != nil)
+		setmalloctag(*t, getcallerpc(&fd));
 	if(ts == 0 && n < 0)
 		return -1;
 	return ts;
