@@ -106,6 +106,8 @@ robertindexentry(Entry e, int cmd)
 	if(db == 0)
 		db = Bouvrir(dfile);
 	def.start = malloc(dl+1);
+	if(def.start == nil)
+		sysfatal("malloc: %r");
 	def.end = def.start + dl;
 	def.doff = da;
 	Bseek(db, da, 0);
@@ -117,6 +119,8 @@ robertindexentry(Entry e, int cmd)
 		if(eb == 0)
 			eb = Bouvrir(efile);
 		etym.start = malloc(el+1);
+		if(etym.start == nil)
+			sysfatal("malloc: %r");
 		etym.end = etym.start + el;
 		etym.doff = ea;
 		Bseek(eb, ea, 0);

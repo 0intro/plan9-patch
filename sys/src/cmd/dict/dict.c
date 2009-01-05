@@ -72,34 +72,30 @@ main(int argc, char **argv)
 			break;
 		}
 	}
-	ARGBEGIN {
-		case 'd':
-			p = ARGF();
-			dict = 0;
-			if(p) {
-				for(i=0; dicts[i].name; i++)
-					if(strcmp(p, dicts[i].name)==0) {
-						dict = &dicts[i];
-						break;
-					}
+	ARGBEGIN{
+	case 'd':
+		dict = 0;
+		p = EARGF(usage());
+		for(i=0; dicts[i].name; i++)
+			if(strcmp(p, dicts[i].name)==0) {
+				dict = &dicts[i];
+				break;
 			}
-			if(!dict)
-				usage();
-			break;
-		case 'c':
-			line = ARGF();
-			if(!line)
-				usage();
-			break;
-		case 'k':
-			kflag++;
-			break;
-		case 'D':
-			debug++;
-			break;
-		default:
+		if(!dict)
 			usage();
-	ARGEND }
+		break;
+	case 'c':
+		line = EARGF(usage());
+		break;
+	case 'k':
+		kflag++;
+		break;
+	case 'D':
+		debug++;
+		break;
+	default:
+		usage();
+	 }ARGEND
 	if(dict == 0){
 		err("no dictionaries present on this system");
 		exits("nodict");
@@ -390,10 +386,8 @@ search(char *pat, int dofold)
 				n = 2*dot->maxn;
 				dot = realloc(dot,
 					sizeof(Addr)+(n-1)*sizeof(long));
-				if(!dot) {
-					err("out of memory");
-					exits("nomem");
-				}
+				if(!dot)
+					sysfatal("realloc: %r");
 				dot->maxn = n;
 			}
 			dot->doff[dot->n++] = v;
@@ -609,10 +603,8 @@ getentry(int i)
 		n = e-b;
 		if(n+1 > anslen) {
 			ans.start = realloc(ans.start, n+1);
-			if(!ans.start) {
-				err("out of memory");
-				exits("nomem");
-			}
+			if(!ans.start)
+				sysfatal("realloc: %r");
 			anslen = n+1;
 		}
 		Bseek(bdict, b, 0);

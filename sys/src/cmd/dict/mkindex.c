@@ -23,6 +23,13 @@ Dict	*dict;	/* current dictionary */
 Entry	getentry(long);
 
 void
+usage(void)
+{
+	fprint(2, "usage: mkindex [-D] [-d dictname]\n");
+	exits("usage");
+}
+
+void
 main(int argc, char **argv)
 {
 	int i;
@@ -32,33 +39,30 @@ main(int argc, char **argv)
 
 	Binit(&boutbuf, 1, OWRITE);
 	dict = &dicts[0];
-	ARGBEGIN {
-		case 'd':
-			p = ARGF();
-			dict = 0;
-			if(p) {
-				for(i=0; dicts[i].name; i++)
-					if(strcmp(p, dicts[i].name)==0) {
-						dict = &dicts[i];
-						break;
-					}
+	ARGBEGIN{
+	case 'd':
+		dict = 0;
+		p = EARGF(usage());
+		for(i=0; dicts[i].name; i++)
+			if(strcmp(p, dicts[i].name)==0) {
+				dict = &dicts[i];
+				break;
 			}
-			if(!dict) {
-				err("unknown dictionary: %s", p);
-				exits("nodict");
-			}
-			break;
-		case 'D':
-			debug++;
-			break;
-	ARGEND }
-	USED(argc,argv);
+		if(!dict) {
+			err("unknown dictionary: %s", p);
+			exits("nodict");
+		}
+		break;
+	case 'D':
+		debug++;
+		break;
+	}ARGEND
 	bdict = Bopen(dict->path, OREAD);
-	ae = Bseek(bdict, 0, 2);
 	if(!bdict) {
 		err("can't open dictionary %s", dict->path);
 		exits("nodict");
 	}
+	ae = Bseek(bdict, 0, 2);
 	for(a = 0; a < ae; a = (*dict->nextoff)(a+1)) {
 		linelen = 0;
 		e = getentry(a);
@@ -92,10 +96,8 @@ getentry(long b)
 	if(n) {
 		if(n > anslen) {
 			ans.start = realloc(ans.start, n);
-			if(!ans.start) {
-				err("out of memory");
-				exits("nomem");
-			}
+			if(!ans.start)
+				sysfatal("realloc: %r");
 			anslen = n;
 		}
 		Bseek(bdict, b, 0);
