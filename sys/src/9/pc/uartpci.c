@@ -8,7 +8,7 @@
 
 extern PhysUart i8250physuart;
 extern PhysUart pciphysuart;
-extern void* i8250alloc(int, int, int);
+extern void *i8250alloc(int, int, int);
 
 static Uart *perlehead, *perletail;
 
@@ -40,19 +40,12 @@ uartpci(int ctlrno, Pcidev* p, int barno, int n, int freq, char* name,
 		kstrdup(&uart->name, buf);
 		uart->freq = freq;
 		uart->phys = &i8250physuart;
-		if(uart != head)
-			(uart-1)->next = uart;
-		uart++;
-	}
-
-	if (head) {
 		if(perlehead != nil)
-			perletail->next = head;
+			perletail->next = uart;
 		else
-			perlehead = head;
-		for(perletail = head; perletail->next != nil;
-		    perletail = perletail->next)
-			;
+			perlehead = uart;
+		perletail = uart;
+		uart++;
 	}
 	return head;
 }
@@ -84,10 +77,10 @@ ultraport16si(int ctlrno, Pcidev *p, ulong freq)
 static Uart*
 uartpcipnp(void)
 {
-	Pcidev *p;
 	char *name;
 	int ctlrno, subid;
 	ulong freq;
+	Pcidev *p;
 	Uart *uart;
 
 	/*
@@ -96,7 +89,6 @@ uartpcipnp(void)
 	 * are familiar. All suitable devices are configured to
 	 * simply point to the generic i8250 driver.
 	 */
-	perlehead = perletail = nil;
 	ctlrno = 0;
 	for(p = pcimatch(nil, 0, 0); p != nil; p = pcimatch(p, 0, 0)){
 		if(p->ccrb != 0x07 || p->ccru > 2)
@@ -116,6 +108,7 @@ uartpcipnp(void)
 			break;
 		case (0x950A<<16)|0x1415:	/* Oxford Semi OX16PCI954 */
 		case (0x9501<<16)|0x1415:
+		case (0x9521<<16)|0x1415:
 			/*
 			 * These are common devices used by 3rd-party
 			 * manufacturers.
@@ -129,6 +122,10 @@ uartpcipnp(void)
 				print("oxsemi uart %.8#ux of vid %#ux did %#ux unknown\n",
 					subid, p->vid, p->did);
 				continue;
+			case (1<<16)|0x1415:
+				uart = uartpci(ctlrno, p, 0, 2, 14745600,
+					"starport-pex2s", 8);
+				break;
 			case (0<<16)|0x1415:
 				uart = uartpci(ctlrno, p, 0, 4, 1843200,
 					"starport-pex4s", 8);
