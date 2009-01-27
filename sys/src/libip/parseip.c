@@ -179,6 +179,6 @@ v4parsecidr(uchar *addr, uchar *mask, char *from)
 		if(i > 0)
 			*a = ~((1<<(8-i))-1);
 	} else 
-		memcpy(mask, defmask(addr), IPv4addrlen);
+		memmove(mask, defmask(addr), IPv4addrlen);
 	return p;
 }
