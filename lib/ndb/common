@@ -140,6 +140,7 @@ tcp=imap port=143
 tcp=NeWS port=144
 tcp=print-srv port=170
 tcp=z39.50 port=210
+tcp=ldap port=389
 tcp=fsb port=400
 tcp=sysmon port=401
 tcp=proxy port=402
@@ -160,6 +161,7 @@ tcp=9fs port=564
 tcp=whoami port=565
 tcp=guard port=566
 tcp=ticket port=567
+tcp=ldaps port=636
 tcp=fmclient port=729
 tcp=imaps port=993
 tcp=pop3s port=995
@@ -168,6 +170,7 @@ tcp=pptp port=1723
 tcp=nfs port=2049
 tcp=webster port=2627
 tcp=weather port=3000
+tcp=mysql port=3306
 tcp=sip port=5060
 tcp=sips port=5061
 tcp=secstore port=5356
