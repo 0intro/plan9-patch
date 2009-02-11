@@ -86,9 +86,10 @@ struct {
 	ulong	meta;
 } stats;
 
+int noatimes;
 int bsize = BlockSize;
 int maxbsize;
-char *oname, *dfile;
+char *oname, *dfile, *vname;
 int verbose;
 uvlong fileid = 1;
 int qdiff;
@@ -110,6 +111,12 @@ main(int argc, char *argv[])
 	ARGBEGIN{
 	default:
 		usage();
+	case 'A':
+		noatimes=1;
+		break;
+	case 'N':
+		vname = EARGF(usage());
+		break;
 	case 'b':
 		bsize = unittoull(EARGF(usage()));
 		if(bsize == ~0)
@@ -189,7 +196,7 @@ main(int argc, char *argv[])
 static void
 usage(void)
 {
-	fprint(2, "usage: %s [-amqsv] [-h host] [-d vacfile] [-b blocksize] [-i name] [-e exclude] [-f vacfile] file ... \n", argv0);
+	fprint(2, "usage: %s [-Amqsv] [-h host] [-d vacfile] [-b blocksize] [-i name] [-e exclude] [-N name] [-f vacfile] file ... \n", argv0);
 	exits("usage");
 }
 
@@ -338,7 +345,7 @@ vac(VtSession *z, char *argv[])
 
 	memset(&root, 0, sizeof(root));
 	root.version = VtRootVersion;
-	strncpy(root.name, dir->name, sizeof(root.name));
+	strncpy(root.name, (vname)?vname:dir->name, sizeof(root.name));
 	root.name[sizeof(root.name)-1] = 0;
 	free(dir);
 	sprint(root.type, "vac");
@@ -1140,7 +1147,7 @@ plan9ToVacDir(VacDir *vd, Dir *dir, ulong entry, uvlong qid)
 	vd->mtime = dir->mtime;
 	vd->mcount = 0;
 	vd->ctime = dir->mtime;		/* ctime: not available on plan 9 */
-	vd->atime = dir->atime;
+	vd->atime = (noatimes)?dir->mtime:dir->atime;
 
 	vd->mode = dir->mode & 0777;
 	if(dir->mode & DMDIR)

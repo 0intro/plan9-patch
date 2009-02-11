@@ -4,7 +4,7 @@ vac, unvac \- create, extract a vac archive on Venti
 .SH SYNOPSIS
 .B vac
 [
-.B -mqsv
+.B -Amqsv
 ] [
 .B -b
 .I blocksize
@@ -69,6 +69,17 @@ Option to
 are:
 .TF "\fL-d\fI oldvacfile"
 .PD
+.TP
+.BI -A
+Use mtime for atimes in the archive.
+By default, vac uses the real atime, which may just be noise.
+.TP
+.BI -N " name
+Set the name of the archive (stored in the root block) to
+.IR name .
+If this option is not given, the name defaults to the name of
+the vac file, or "cons" if writing to standard out.  Names may
+be up to 128 bytes long.
 .TP
 .BI -b " blocksize
 Specifies the block size that data will be broken into.
@@ -169,8 +180,6 @@ to standard error.
 If listing files, print metadata in addition to the names.
 .SH SOURCE
 .B /sys/src/cmd/vac
-.br
-.B /sys/src/cmd/unvac
 .SH "SEE ALSO"
 .IR vacfs (4),
 .IR venti (8)
