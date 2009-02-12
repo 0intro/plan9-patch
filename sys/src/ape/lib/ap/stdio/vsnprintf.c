@@ -8,7 +8,7 @@ int vsnprintf(char *buf, size_t nbuf, const char *fmt, va_list args){
 	if(f==NULL)
 		return 0;
 	setvbuf(f, buf, _IOFBF, nbuf);
-	n=vfprintf(f, fmt, args);
+	n=_vfprintf(f, fmt, args);
 	_IO_sclose(f);
-	return n;
+	return n;	// no ferror() check.
 }

@@ -6,6 +6,7 @@ OFILES=\
 	_IO_putc.$O\
 	_dtoa.$O\
 	_fconv.$O\
+	_vfprintf.$O \
 	clearerr.$O\
 	atexit.$O\
 	exit.$O\

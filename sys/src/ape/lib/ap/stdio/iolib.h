@@ -42,3 +42,5 @@ int _IO_setvbuf(FILE *);
 FILE *_IO_sopenr(const char*);
 FILE *_IO_sopenw(void);
 char *_IO_sclose(FILE *);
+
+int _vfprintf(FILE *f, const char *s, va_list args);

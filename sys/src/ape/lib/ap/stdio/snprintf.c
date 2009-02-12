@@ -10,7 +10,7 @@ int snprintf(char *buf, size_t nbuf, const char *fmt, ...){
 		return 0;
 	setvbuf(f, buf, _IOFBF, nbuf);
 	va_start(args, fmt);
-	n=vfprintf(f, fmt, args);
+	n=_vfprintf(f, fmt, args);
 	va_end(args);
 	_IO_sclose(f);
 	return n;

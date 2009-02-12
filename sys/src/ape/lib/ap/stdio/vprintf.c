@@ -3,5 +3,6 @@
  */
 #include "iolib.h"
 int vprintf(const char *fmt, va_list args){
-	return vfprintf(stdout, fmt, args);
+	int ret = _vfprintf(stdout, fmt, args);
+	return ferror(stdout) ? -1 : ret;
 }
