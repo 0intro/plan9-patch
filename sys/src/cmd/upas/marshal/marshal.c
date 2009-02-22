@@ -7,6 +7,7 @@
 typedef struct Attach Attach;
 typedef struct Alias Alias;
 typedef struct Addr Addr;
+typedef struct Sendermap Sendermap;
 typedef struct Ctype Ctype;
 
 struct Attach {
@@ -28,6 +29,13 @@ struct Addr
 {
 	Addr	*next;
 	char	*v;
+};
+
+struct Sendermap
+{
+	char *to;
+	char *from;
+	Sendermap *next;
 };
 
 enum {
@@ -110,6 +118,7 @@ void	freeaddr(Addr *);
 void	freeaddrs(Addr*);
 void	freealias(Alias*);
 void	freealiases(Alias*);
+void freesendermaps(Sendermap *sm);
 Attach*	mkattach(char*, char*, int);
 char*	mkboundary(void);
 char*	mksubject(char*);
@@ -121,6 +130,8 @@ int	printfrom(Biobuf*);
 int	printinreplyto(Biobuf*, char*);
 int	printsubject(Biobuf*, char*);
 int	printto(Biobuf*, Addr*);
+Sendermap *readsendermaps(void);
+char * overridesender(char *user, Sendermap *sm, Addr *to);
 Alias*	readaliases(void);
 int	readheaders(Biobuf*, int*, String**, Addr**, int);
 void	readmimetypes(void);
@@ -184,6 +195,7 @@ bwritesfree(Biobuf *bp, String **str)
 	s_free(*str);
 	*str = nil;
 }
+
 
 void
 main(int argc, char **argv)
@@ -290,6 +302,10 @@ main(int argc, char **argv)
 	} else
 		to = cc = nil;
 
+	Sendermap *sendermaps = readsendermaps();
+	user = overridesender(user, sendermaps, to);
+	freesendermaps(sendermaps);
+
 	flags = 0;
 	headersrv = Nomessage;
 	if(!nflag && !xflag && !lbflag &&!dflag) {
@@ -298,8 +314,8 @@ main(int argc, char **argv)
 		 * perhaps building to list.
 		 */
 		holding = holdon();
-		headersrv = readheaders(&in, &flags, &hdrstring,
-			eightflag? &to: nil, 1);
+		headersrv = readheaders(&in, &flags, &hdrstring, 
+			eightflag ? &to: nil, 1);
 		if(rfc822syntaxerror){
 			Bdrain(&in);
 			fatal("rfc822 syntax error, message not sent");
@@ -532,6 +548,7 @@ readheaders(Biobuf *in, int *fp, String **sp, Addr **top, int strict)
 	*sp = s;
 	if(top)
 		*top = to;
+
 
 	if(seen == 0){
 		if(Blinelen(in) == 0)
@@ -1309,6 +1326,67 @@ freealiases(Alias *a)
 	}
 }
 
+void
+freesendermaps(Sendermap *sm) {
+	Sendermap *s;
+
+	for(s = sm; s; s = sm) {
+		free(s->to);
+		free(s->from);
+		sm = s->next;
+		free(s);
+	}
+}
+
+/*
+*	map recipients on to senders i.e. when I send to 9fans@9fans.net always use mattmobile@proweb.co.uk
+*	(or rather look in /mail/box/maht/senders and see what maps I have set up
+*/
+
+Sendermap*
+readsendermaps(void) {
+	Sendermap *s, *first, **l;
+	Sinstack *sp;
+	String *file, *line, *token;
+
+	first = nil;
+	file = s_new();
+	line = s_new();
+	token = s_new();
+
+	l = &first;
+
+	/* open and get length */
+	mboxpath("senders", login, file, 0);
+	sp = s_allocinstack(s_to_c(file));
+	if(sp == nil)
+		goto readsendermapsout;
+
+	while(s_rdinstack(sp, s_restart(line))!=nil) {
+		s_restart(line);
+		s = emalloc(sizeof(Sendermap));
+		s->to = s->from = nil;
+		if(s_parse(line, s_restart(token)) != 0)
+			s->to = strdup(s_to_c(token));
+		if(s_parse(line, s_restart(token)) != 0)
+			s->from = strdup(s_to_c(token));
+		if(s->to && s->from) {
+			s->next = nil;
+			*l = s;
+			l = &s->next;
+		} else
+			free(s);
+	}
+	s_freeinstack(sp);
+
+readsendermapsout:
+	s_free(file);
+	s_free(line);
+	s_free(token);
+
+	return first;
+}
+
 /*
  *  read alias file
  */
@@ -1909,4 +1987,17 @@ mksubject(char *line)
 hard:
 	snprint(buf, sizeof buf, "Subject: %U", p);
 	return buf;
+}
+
+char *
+overridesender(char *user, Sendermap *sm, Addr *to) {
+
+	Addr* r ;
+	Sendermap *s;
+
+	for(r = to; r; r = to->next)
+		for(s = sm; s; s = s->next) 
+			if(strcmp(r->v, s->to) == 0) 
+				return s->from;
+	return user;
 }

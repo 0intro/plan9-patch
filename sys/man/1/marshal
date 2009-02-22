@@ -152,6 +152,18 @@ For example:
 .IP
 .EX
 upasname=natasha@kremvax.com upas/mail boris@squirrel.com
+.PP
+Entries in /mail/box/username/senders does the equivalent of
+overriding upasname for outgoing mail depending on addresses 
+in the To list - first match wins. The format is To From.
+.PP
+For instance the line in senders
+.EX
+9fans@9fans.net matt@proweb.co.uk
+.PP
+Will set upasname to matt@proweb.co.uk if 9fans@9fans.net is 
+encountered in the To list before any other entry in senders.
+.PP
 .EE
 .SH FILES
 .TP
