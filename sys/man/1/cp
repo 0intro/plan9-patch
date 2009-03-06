@@ -118,7 +118,8 @@ but it refuses to move a directory into another directory.
 .SH "SEE ALSO"
 .IR cat (1),
 .IR stat (2),
-.IR read (5)
+.IR read (5) ,
+.IR dircp(1)
 .SH DIAGNOSTICS
 .IR Cp ,
 .IR fcp ,
