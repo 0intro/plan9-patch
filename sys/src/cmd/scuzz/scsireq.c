@@ -553,14 +553,31 @@ SRclose(ScsiReq *rp)
 	return 0;
 }
 
+uint
+mkascq(ScsiReq *r)
+{
+	uchar *u;
+
+	u = r->sense;
+	return u[2]<<16 | u[12]<<8 | u[13];
+}
+
 static int
 dirdevopen(ScsiReq *rp)
 {
 	ulong blocks;
 	uchar data[8];
 
-	if(SRstart(rp, 1) == -1 || SRrcapacity(rp, data) == -1)
+	if(SRstart(rp, 1) == -1){
+		/*
+		 * it's okay for removable media to say
+		 * "check condition: medium not present"
+		 */
+		if(rp->inquiry[1] & 0x80
+		  && mkascq(rp) >> 8 == 0x023a)
+			return 0;
 		return -1;
+	}
 	rp->lbsize = GETBELONG(data+4);
 	blocks =     GETBELONG(data);
 	/* some newer dev's don't support 6-byte commands */
