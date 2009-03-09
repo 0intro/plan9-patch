@@ -83,7 +83,9 @@ tries to determine which version of IP to use automatically.
 adds the IP source and destination addresses to each report.
 .TP
 .B f
-send messages as fast as possible (flood).
+send messages as fast as possible (flood). This flag
+is not compatable with
+.BR -r .
 .TP
 .B i
 sets the time between messages
@@ -104,7 +106,9 @@ suppresses any output (i.e. be quiet).
 .TP
 .B r
 randomizes the delay with a minimum extra delay of 0 ms and a
-maximum extra delay of the selected interval.
+maximum extra delay of the selected interval. This flag
+is not compatable with
+.BR -f .
 .TP
 .B s
 sets the length of the message to be

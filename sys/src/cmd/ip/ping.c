@@ -532,6 +532,10 @@ main(int argc, char **argv)
 		break;
 	} ARGEND;
 
+	if(flood && rint){
+		fprint(2, "-f and -r are not compatable\n");
+		usage();
+	}
 	if(msglen < proto->iphdrsz + ICMP_HDRSIZE)
 		msglen = proto->iphdrsz + ICMP_HDRSIZE;
 	if(msglen < 64)
