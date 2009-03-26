@@ -51,31 +51,29 @@ static void
 periodicThread(void *a)
 {
 	Periodic *p = a;
-	double t, ct, ts;
+	vlong ts, ct, t;
 
 	vtThreadSetName("periodic");
 
-	ct = nsec()*1e-6;
+	ct = nsec()/1000000;
 	t = ct + p->msec;
 
 	for(;;){
-		/* skip missed */
-		while(t <= ct)
-			t += p->msec;
-
 		ts = t - ct;
 		if(ts > 1000)
 			ts = 1000;
 		sleep(ts);
-		ct = nsec()*1e-6;
 		vtLock(p->lk);
 		if(p->die){
 			vtUnlock(p->lk);
 			break;
 		}
-		if(t <= ct){
+		ct = nsec()/1000000;
+		if(ct >= t){
 			p->f(p->a);
-			t += p->msec;
+			ct = nsec()/1000000;
+			while(t <= ct)
+				t += p->msec;
 		}
 		vtUnlock(p->lk);
 	}
