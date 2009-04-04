@@ -25,22 +25,8 @@ static struct {
 	int len;
 } nvtab[] = {
 	"sparc", "#r/nvram", 1024+850, sizeof(Nvrsafe),
-	"pc", "#S/sdC0/nvram", 0, sizeof(Nvrsafe),
-	"pc", "#S/sdC0/9fat", -1, sizeof(Nvrsafe),
-	"pc", "#S/sdC1/nvram", 0, sizeof(Nvrsafe),
-	"pc", "#S/sdC1/9fat", -1, sizeof(Nvrsafe),
-	"pc", "#S/sdD0/nvram", 0, sizeof(Nvrsafe),
-	"pc", "#S/sdD0/9fat", -1, sizeof(Nvrsafe),
-	"pc", "#S/sdE0/nvram", 0, sizeof(Nvrsafe),
-	"pc", "#S/sdE0/9fat", -1, sizeof(Nvrsafe),
-	"pc", "#S/sdF0/nvram", 0, sizeof(Nvrsafe),
-	"pc", "#S/sdF0/9fat", -1, sizeof(Nvrsafe),
-	"pc", "#S/sd00/nvram", 0, sizeof(Nvrsafe),
-	"pc", "#S/sd00/9fat", -1, sizeof(Nvrsafe),
-	"pc", "#S/sd01/nvram", 0, sizeof(Nvrsafe),
-	"pc", "#S/sd01/9fat", -1, sizeof(Nvrsafe),
-	"pc", "#S/sd10/nvram", 0, sizeof(Nvrsafe),
-	"pc", "#S/sd10/9fat", -1, sizeof(Nvrsafe),
+	"pc", "#S/%s%d/9fat", -1, 512,
+	"pc", "#S/%s%d/nvram",	0, 512,
 	"pc", "#f/fd0disk", -1, 512,	/* 512: #f requires whole sector reads */
 	"pc", "#f/fd1disk", -1, 512,
 	"mips", "#r/nvram", 1024+900, sizeof(Nvrsafe),
@@ -123,6 +109,44 @@ readcons(char *prompt, char *def, int raw, char *buf, int nbuf)
 	}
 }
 
+static int
+sdnvram0(char *s, int l, int tabi)
+{
+	char *p, *f[3], buf[16];
+	int fd,i;
+
+	s[l] = 0;
+	for(; p = strchr(s, '\n'); s = p + 1){
+		if(tokenize(s, f, nelem(f)) < 1)
+			continue;
+		for(i = 0; i < 10; i++){
+			snprint(buf, sizeof buf, nvtab[tabi].file, f[0], i);
+			if((fd = open(buf, ORDWR)) >= 0)
+				return fd;
+		}
+	}
+	return -1;
+}
+
+static int
+sdnvram(int tabi)
+{
+	char *s;
+	int fd, l, r;
+
+	fd = open("#S/sdctl", OREAD);
+	if(fd == -1)
+		return -1;
+	r = -1;
+	l = 1024;	/* #S/sdctl has 0 size; guess */
+	if(s = malloc(l + 1))
+	if((l = read(fd, s, l)) > 0)
+		r = sdnvram0(s, l, tabi);
+	free(s);
+	close(fd);
+	return r;
+}
+
 typedef struct {
 	int	fd;
 	int	safeoff;
@@ -185,7 +209,11 @@ findnvram(Nvrwhere *locp)
 		for(i=0; i<nelem(nvtab); i++){
 			if(strcmp(cputype, nvtab[i].cputype) != 0)
 				continue;
-			if((fd = open(nvtab[i].file, ORDWR)) < 0)
+			if(nvtab[i].file[0] == '#' && nvtab[i].file[1] == 'S')
+				fd = sdnvram(i);
+			else
+				fd = open(nvtab[i].file, ORDWR);
+			if(fd < 0)
 				continue;
 			safeoff = nvtab[i].off;
 			safelen = nvtab[i].len;
