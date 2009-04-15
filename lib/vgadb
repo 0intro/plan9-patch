@@ -327,7 +327,6 @@ ctlr
 	vid=0x10C8 did=0x0004		# MagicGraph 128 XD
 	vid=0x10C8 did=0x0005		# MagicMedia 256 AV
 	vid=0x10C8 did=0x0006		# MagicMedia 256 ZX
-	vid=0x10C8 did=0x0016		# MagicMedia 256 XL+
 	0xC0048="MagicGraph 128XD"	# IBM Thinkpad 560X
 	0xC0048="MagicMedia 256AV"	# IBM Thinkpad 600E
 	0xC0048="MagicGraph 256 AV"	# IBM Thinkpad 570, 600E
@@ -1280,6 +1279,23 @@ planar=1280x1024
 	shb=1968 ehb=2000 ht=2080
 	vrs=1203 vre=1209 vt=1235
 	hsync=+ vsync=- 
+
+#
+# Dell 2007fp
+# 20 inch flat pannel
+#
+# Horz= 30-81kHz
+# Vert=56-76Hz, 1600x1200 at 60Hz only 
+# Optimal=1600x1200 at 60Hz
+#
+2007fp
+	videobw=200
+	alias=multisync
+2007fp1=1600x1200					# 76Hz, 90.0KHz
+	defaultclock=160				# 146MHz
+	shb=1864 ehb=1888 ht=2144
+	shs=1648
+	vrs=1202 vre=1208 vt=1240
 
 #
 # Viewsonic VP201(b) at 1600x1200 
