@@ -1150,7 +1150,7 @@ msgRecv(TlsConnection *c, Msg *m)
 		nn = get16(p);
 		p += 2;
 		n -= 2;
-		if(nn == 0 || n != nn)
+		if(n != nn)
 			goto Short;
 		/* cas */
 		i = 0;
