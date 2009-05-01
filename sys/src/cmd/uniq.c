@@ -91,10 +91,10 @@ gline(char *buf)
 	p = Brdline(&fin, '\n');
 	if(p == 0)
 		return 1;
-	if(fin.rdline >= bsize-1)
+	if(Blinelen(&fin) >= bsize-1)
 		sysfatal("line too long");
-	memmove(buf, p, fin.rdline);
-	buf[fin.rdline-1] = 0;
+	memmove(buf, p, Blinelen(&fin));
+	buf[Blinelen(&fin)-1] = 0;
 	return 0;
 }
 
