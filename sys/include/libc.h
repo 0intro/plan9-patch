@@ -207,6 +207,7 @@ extern	Rune*	runefmtstrflush(Fmt*);
 #pragma	varargck	type	"n"	int*
 #pragma	varargck	type	"p"	uintptr
 #pragma	varargck	type	"p"	void*
+#pragma	varargck	flag	' '
 #pragma	varargck	flag	','
 #pragma	varargck	flag	'h'
 #pragma varargck	type	"<"	void*
