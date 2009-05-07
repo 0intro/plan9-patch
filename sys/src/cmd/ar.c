@@ -701,9 +701,12 @@ getdir(Biobuf *b)
 	if(strncmp(bp->hdr.fmag, ARFMAG, sizeof(bp->hdr.fmag)))
 		phaseerr(Boffset(b));
 	strncpy(name, bp->hdr.name, sizeof(bp->hdr.name));
+	name[sizeof(name)-1] = 0;
 	cp = name+sizeof(name)-1;
 	while(*--cp==' ')
 		;
+	if (cp[0] == '/')	/* trim trailing slash from GNU archives */
+		cp[0] = '\0';
 	cp[1] = '\0';
 	file = name;
 	bp->date = strtol(bp->hdr.date, 0, 0);
