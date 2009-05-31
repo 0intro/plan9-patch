@@ -83,7 +83,8 @@ void text(int t, char *p1)	/* convert text string p1 of type t */
 	else if (t == TAB)
 		p = "\\t";
 	else if ((tp = lookup(restbl, p1)) != NULL) {
-		p = tp->cval;
+		sprintf(cs, "\\f%s%s\\fP", ftp->name, tp->cval);
+		p = cs;
 	} else {
 		lf = rf = 0;
 		lastft = 0;
