@@ -191,14 +191,19 @@ lptwrite(Chan *c, void *a, long n, vlong)
 static void
 outch(int base, int c)
 {
-	int status, tries;
+	int status, tries, spin;
+	static int maxspin = 0;
 
+	spin = 0;
 	for(tries=0;; tries++) {
 		status = inb(base+Qpsr);
 		if(status&Fnotbusy)
 			break;
 		if((status&Fpe)==0 && (status&(Fselect|Fnoerror)) != (Fselect|Fnoerror))
 			error(Eio);
+		if(++spin < maxspin)
+			continue;
+		maxspin++;
 		if(tries < 10)
 			tsleep(&lptrendez, return0, nil, 1);
 		else {
@@ -209,6 +214,8 @@ outch(int base, int c)
 	outb(base+Qdlr, c);
 	outb(base+Qpcr, Finitbar|Fstrobe);
 	outb(base+Qpcr, Finitbar);
+	if(spin*2 + 16 < maxspin)
+		maxspin--;
 }
 
 static int
