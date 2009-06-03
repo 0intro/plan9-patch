@@ -29,6 +29,14 @@ case sourcessnap
 	mount -n /srv/sources /n/sourcessnap main/snapshot
 case wiki
 	srv -m 'net!plan9.bell-labs.com!wiki' wiki /mnt/wiki
+# Lookup archives in ($home)/lib/scores
+case *.vac
+	if(test -e $home/lib/scores/$1)
+		vacfs -S $1 $home/lib/scores/$1 && mount /srv/$1 /n/$1
+	if not if(test -e /lib/scores/$1) {
+		vacfs -S $1 /lib/scores/$1 && mount /srv/$1 /n/$1
+	}
+	if not echo 'Don''t know how to mount' $1
 case *
 	switch($#*){
 	case 1
