@@ -1174,7 +1174,7 @@ enum {
 static void
 westerndigitalhung(Drive *d)
 {
-	if((d->portm.feat&Datapi) == 0 && d->active && TK2MS(d->intick) > 5000){
+	if((d->portm.feat&Datapi) == 0 && d->active && TK2MS(MACHP(0)->ticks - d->intick) > 5000){
 		dprint("%s: drive hung; resetting [%lux] ci %lx\n",
 			d->unit->name, d->port->task, d->port->ci);
 		d->state = Dreset;
