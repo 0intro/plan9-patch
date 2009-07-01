@@ -1,4 +1,8 @@
-/* readyuv.c - read an Abekas A66 style image file.   Steve Simon, 2003 */
+/*
+ * readV210.c - read single uncompressed Quicktime YUV image. 
+ * http://developer.apple.com/quicktime/icefloe/dispatch019.html#v210
+ * Steve Simon, 2009 
+ */
 #include <u.h>
 #include <libc.h>
 #include <bio.h>
@@ -14,14 +18,11 @@ enum {
 	Shift = 13
 };
 
-
-static int lsbtab[] = { 6, 4, 2, 0 };
-
 static int
-looksize(char *file, vlong size, int *pixels, int *lines, int *bits)
+looksize(char *file, vlong size, int *pixels, int *lines, int *chunk)
 {
 	Biobuf *bp;
-	uvlong l, p;
+	uvlong l, p, c;
 	char *s, *a[12];
 
 	/*
@@ -38,16 +39,11 @@ looksize(char *file, vlong size, int *pixels, int *lines, int *bits)
 		p = atoll(a[3]);
 		l = atoll(a[5]);
 		l += atoll(a[7]);
-		if(l*p*2 == size){
+		c = 128 * ceil(p/48); 
+		if(l*c == size){
 			*pixels = p;
 			*lines = l;
-			*bits = 8;
-			break;
-		}
-		if((l*p*20)/8 == size){
-			*pixels = p;
-			*lines = l;
-			*bits = 10;
+			*chunk = c;
 			break;
 		}
 	}
@@ -71,34 +67,35 @@ clip(int x)
 }
 
 Rawimage**
-Breadyuv(Biobuf *bp, int colourspace)
+BreadV210(Biobuf *bp, int colourspace)
 {
 	Dir *d;
 	uvlong sz;
 	Rawimage *a, **array;
-	ushort * mux, *end, *frm;
+	ushort *mux, *end, *frm, *wr;
 	uchar *buf, *r, *g, *b;
-	int y1, y2, cb, cr, c, l, w, base;
-	int bits, lines, pixels;
+	uint i, t;
+	int y1, y2, cb, cr, c, l, rd;
+	int chunk, lines, pixels;
 	int F1, F2, F3, F4;
+
+	buf = nil;
+	if(colourspace != CYCbCr){
+		werrstr("BreadV210: unknown colour space %d", colourspace);
+		return nil;
+	}
 
 	if((d = dirfstat(Bfildes(bp))) != nil){
 		sz = d->length;
 		free(d);
 	}
-	else{
+	else {
 		fprint(2, "cannot stat input, assuming pixelsx576x10bit\n");
-		sz = Pixels * R601pal * 2L + (Pixels * R601pal / 2L);
+		sz = Pixels * R601pal * 2L + (pixels * R601pal / 2L);
 	}
 
-	if(looksize("/lib/video.specs", sz, &pixels, &lines, &bits) == -1){
-		werrstr("file size not listed in /lib/video.specs");
-		return nil;
-	}
-
-	buf = nil;
-	if(colourspace != CYCbCr){
-		werrstr("ReadYUV: unknown colour space %d", colourspace);
+	if(looksize("/lib/video.specs", sz, &pixels, &lines, &chunk) == -1){
+		werrstr("file spec not in /lib/video.specs\n");
 		return nil;
 	}
 
@@ -122,29 +119,26 @@ Breadyuv(Biobuf *bp, int colourspace)
 		if((a->chans[c] = malloc(pixels*lines)) == nil)
 			goto Error;
 
-	if((buf = malloc(pixels*2)) == nil)
+	if((buf = malloc(chunk)) == nil)
 		goto Error;
 
 	for(l = 0; l < lines; l++){
-		if(Bread(bp, buf, pixels *2) == -1)
+		if(Bread(bp, buf, chunk) == -1)
 			goto Error;
 
-		base = l*pixels*2;
-		for(w = 0; w < pixels *2; w++)
-			frm[base + w] = ((ushort)buf[w]) << 2;
-	}
-
-
-	if(bits == 10)
-		for(l = 0; l < lines; l++){
-			if(Bread(bp, buf, pixels / 2) == -1)
-				goto Error;
-
-
-			base = l * pixels * 2;
-			for(w = 0; w < pixels * 2; w++)
-				frm[base + w] |= (buf[w / 4] >> lsbtab[w % 4]) & 3;
+		rd = 0;
+		wr = &frm[l*pixels*2];
+		end = &frm[(l+1)*pixels*2];
+		while(wr < end){
+			t = 0;
+			for(i = 0; i < 4; i++)
+				t += buf[rd+i] << 8*i;
+			*wr++ = t & 0x3ff;
+			*wr++ = t>>10 & 0x3ff;
+			*wr++ = t>>20 & 0x3ff;
+			rd += 4;
 		}
+	}
 
 	mux = frm;
 	end = frm + pixels * lines * 2;
@@ -200,16 +194,17 @@ Error:
 
 
 Rawimage**
-readyuv(int fd, int colorspace)
+readV210(int fd, int colorspace)
 {
 	Rawimage * *a;
 	Biobuf b;
 
 	if(Binit(&b, fd, OREAD) < 0)
 		return nil;
-	a = Breadyuv(&b, colorspace);
+	a = BreadV210(&b, colorspace);
 	Bterm(&b);
 	return a;
 }
+
 
 
