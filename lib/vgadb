@@ -1356,6 +1356,60 @@ e198wfp=1440x900	# 60 Hz
 	hsync=- vsync=+
 
 #
+# Dell E228WFP LCD monitor (1680x1050 native)
+#
+e228wfp
+	videobw=150
+
+e228wfp= 640x480	# 60Hz 
+	clock=25.175
+	shb=648 ehb=792 ht=800
+	vrs=490 vre=492 vt=525
+	hsync=- vsync=- 
+
+e228wfp=640x480		# 75Hz 
+	clock=31.5
+	shb=640 ehb=840 ht=840
+	vrs=481 vre=484 vt=500
+	hsync=- vsync=- 
+
+e228wfp=800x600		# 60Hz 
+	clock=40
+	shb=800 ehb=1056 ht=1056
+	vrs=601 vre=605 vt=628
+	hsync=+ vsync=+ 
+
+e228wfp=800x600		# 75Hz 
+	clock=49.5
+	shb=800 ehb=1056 ht=1056
+	vrs=601 vre=604 vt=625
+	hsync=+ vsync=+ 
+
+e228wfp=1024x768	# 60Hz
+	clock=65
+	shb=1024 ehb=1344 ht=1344
+	vrs=771 vre=777 vt=806
+	hsync=- vsync=- 
+
+e228wfp=1024x768	# 75Hz
+	clock=78.75
+	shb=1024 ehb=1312 ht=1312
+	vrs=769 vre=772 vt=800
+	hsync=+ vsync=+ 
+
+e228wfp=1280x1024	# 75Hz
+	clock=135
+	shb=1280 ehb=1688 ht=1688
+	vrs=1025 vre=1028 vt=1066
+	hsync=+ vsync=+ 
+
+e228wfp=1680x1050	# 60Hz
+	clock=146.25
+	shb=1784 ehb=1960 ht=2240
+	vrs=1053 vre=1059 vt=1089
+	hsync=- vsync=+ 
+
+#
 # HannsG JC199D LCD monitor (1280x1024 native)
 #
 jc199d
