@@ -126,7 +126,7 @@ The following code reads from an x86 byte I/O port.
 .IP
 .EX
 uchar
-inportb(long port)
+inportb(uint port)
 {
     uchar data;
 
