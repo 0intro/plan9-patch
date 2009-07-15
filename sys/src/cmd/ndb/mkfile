@@ -13,6 +13,7 @@ TARG =	\
 	dnstcp\
 	dnsdebug\
 	ipquery\
+	inform\
 
 
 DNSOBJ = dns.$O dnudpserver.$O dn.$O dnresolve.$O dblookup.$O dnserver.$O dnnotify.$O\
