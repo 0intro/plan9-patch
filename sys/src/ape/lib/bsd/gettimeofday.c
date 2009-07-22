@@ -25,15 +25,21 @@ be2vlong(vlong *to, uchar *f)
 int
 gettimeofday(struct timeval *tp, struct timezone *tzp)
 {
-	int f;
+	static int fd = -1;
 	uchar b[8];
 	vlong t;
+	int opened;
 
-	memset(b, 0, sizeof b);
-	f = _OPEN("/dev/bintime", 0);
-	if(f >= 0) {
-		_PREAD(f, b, sizeof(b), 0);
-		_CLOSE(f);
+	opened = 0;
+	if(fd < 0){
+	reopen:
+		if(opened++ || (fd = _OPEN("/dev/bintime", OREAD|OCEXEC)) < 0)
+			return 0;
+	}
+	if(_PREAD(fd, b, sizeof b, 0) != sizeof b){
+		_CLOSE(fd);
+		fd = -1;
+		goto reopen;
 	}
 	be2vlong(&t, b);
 
