@@ -32,9 +32,6 @@ enum
 	Enabledelay	= 100,		/* waiting for a port to enable */
 	Abortdelay	= 5,		/* delay after cancelling Tds (ms) */
 	Incr		= 64,		/* for Td and Qh pools */
-	Ctltmout	= 2000,		/* timeout for a ctl. request (ms) */
-	Bulktmout	= 4000,		/* timeout for a bulk xfer. (ms) */
-	Isotmout	= 2000,		/* timeout for an iso. request (ms) */
 
 	Tdatomic	= 8,		/* max nb. of Tds per bulk I/O op. */
 
@@ -1034,7 +1031,7 @@ episowrite(Ep *ep, Isoio *iso, void *a, long count)
 				ilock(ctlr);
 				break;
 			}
-			tsleep(iso, isocanwrite, iso, Isotmout);
+			tsleep(iso, isocanwrite, iso, ep->tmout);
 			poperror();
 			ilock(ctlr);
 		}
@@ -1102,7 +1099,7 @@ episoread(Ep *ep, Isoio *iso, void *a, int count)
 			ilock(ctlr);
 			break;
 		}
-		tsleep(iso, isocanread, iso, Isotmout);
+		tsleep(iso, isocanread, iso, ep->tmout);
 		poperror();
 		ilock(ctlr);
 	}
@@ -1254,30 +1251,24 @@ epiowait(Ctlr *ctlr, Qio *io, int tmout, ulong load)
  * Non iso I/O.
  * To make it work for control transfers, the caller may
  * lock the Qio for the entire control transfer.
- * If tmout is not 0 it is a timeout value in ms.
- *
  */
 static long
-epio(Ep *ep, Qio *io, void *a, long count, int tmout, int mustlock)
+epio(Ep *ep, Qio *io, void *a, long count, int mustlock)
 {
-	Td *td;
-	Td *ltd;
-	Td *td0;
-	Td *ntd;
+	Td *td, *ltd, *td0, *ntd;
 	Ctlr *ctlr;
 	Qh* qh;
-	long n;
-	long tot;
+	long n, tot;
 	char buf[128];
 	uchar *c;
-	int saved;
-	int ntds;
+	int saved, ntds, tmout;
 	ulong load;
 	char *err;
 
 	qh = io->qh;
 	ctlr = ep->hp->aux;
 	io->debug = ep->debug;
+	tmout = ep->tmout;
 	ddeprint("epio: %s ep%d.%d io %#p count %ld load %uld\n",
 		io->tok == Tdtokin ? "in" : "out",
 		ep->dev->nb, ep->nb, io, count, ctlr->load);
@@ -1338,6 +1329,7 @@ epio(Ep *ep, Qio *io, void *a, long count, int tmout, int mustlock)
 	iunlock(ctlr);
 
 	epiowait(ctlr, io, tmout, load);
+
 	if(debug > 1 || ep->debug > 1)
 		dumptd(td0, "epio: got tds: ");
 
@@ -1456,7 +1448,7 @@ epread(Ep *ep, void *a, long count)
 		io = ep->aux;
 		if(ep->clrhalt)
 			clrhalt(ep);
-		return epio(ep, &io[OREAD], a, count, Bulktmout, 1);
+		return epio(ep, &io[OREAD], a, count, 1);
 	case Tintr:
 		io = ep->aux;
 		delta = TK2MS(MACHP(0)->ticks) - io[OREAD].iotime + 1;
@@ -1464,7 +1456,7 @@ epread(Ep *ep, void *a, long count)
 			tsleep(&up->sleep, return0, 0, ep->pollival/2 - delta);
 		if(ep->clrhalt)
 			clrhalt(ep);
-		return epio(ep, &io[OREAD], a, count, 0, 1);
+		return epio(ep, &io[OREAD], a, count, 1);
 	case Tiso:
 		iso = ep->aux;
 		return episoread(ep, iso, a, count);
@@ -1515,7 +1507,7 @@ epctlio(Ep *ep, Ctlio *cio, void *a, long count)
 	c = a;
 	cio->tok = Tdtoksetup;
 	cio->toggle = Tddata0;
-	if(epio(ep, cio, a, Rsetuplen, Ctltmout, 0) < Rsetuplen)
+	if(epio(ep, cio, a, Rsetuplen, 0) < Rsetuplen)
 		error(Eio);
 	a = c + Rsetuplen;
 	count -= Rsetuplen;
@@ -1537,7 +1529,7 @@ epctlio(Ep *ep, Ctlio *cio, void *a, long count)
 		if(waserror())
 			len = -1;
 		else{
-			len = epio(ep, cio, a, len, Ctltmout, 0);
+			len = epio(ep, cio, a, len, 0);
 			poperror();
 		}
 	if(c[Rtype] & Rd2h){
@@ -1552,7 +1544,7 @@ epctlio(Ep *ep, Ctlio *cio, void *a, long count)
 		cio->tok = Tdtokin;
 	}
 	cio->toggle = Tddata1;
-	epio(ep, cio, nil, 0, Ctltmout, 0);
+	epio(ep, cio, nil, 0, 0);
 	qunlock(cio);
 	poperror();
 	ddeprint("epctlio cio %#p return %ld\n", cio, count);
@@ -1590,7 +1582,7 @@ epwrite(Ep *ep, void *a, long count)
 			nw = count - tot;
 			if(nw > Tdatomic * ep->maxpkt)
 				nw = Tdatomic * ep->maxpkt;
-			nw = epio(ep, &io[OWRITE], b+tot, nw, Bulktmout, 1);
+			nw = epio(ep, &io[OWRITE], b+tot, nw, 1);
 		}
 		return tot;
 	case Tintr:
@@ -1600,7 +1592,7 @@ epwrite(Ep *ep, void *a, long count)
 			tsleep(&up->sleep, return0, 0, ep->pollival - delta);
 		if(ep->clrhalt)
 			clrhalt(ep);
-		return epio(ep, &io[OWRITE], a, count, 0, 1);
+		return epio(ep, &io[OWRITE], a, count, 1);
 	case Tiso:
 		iso = ep->aux;
 		return episowrite(ep, iso, a, count);
@@ -1639,10 +1631,8 @@ isoopen(Ep *ep)
 		error("uhci isoopen bug");	/* we need at least 3 tds */
 
 	ilock(ctlr);
-	if(ctlr->load + ep->load > 800){
-		iunlock(ctlr);
-		error("bandwidth exceeded");
-	}
+	if(ctlr->load + ep->load > 800)
+		print("usb: uhci: bandwidth may be exceeded\n");
 	ctlr->load += ep->load;
 	ctlr->isoload += ep->load;
 	dprint("uhci: load %uld isoload %uld\n", ctlr->load, ctlr->isoload);
