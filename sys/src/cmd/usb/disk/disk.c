@@ -630,6 +630,9 @@ findendpoints(Ums *ums)
 	}
 	dprint(2, "disk: ep in %s out %s\n", ums->epin->dir, ums->epout->dir);
 
+	devctl(ums->epin, "timeout 2000");
+	devctl(ums->epout, "timeout 2000");
+
 	if(usbdebug > 1 || diskdebug > 2){
 		devctl(ums->epin, "debug 1");
 		devctl(ums->epout, "debug 1");
