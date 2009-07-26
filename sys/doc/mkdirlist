@@ -2,4 +2,4 @@
 
 for(i in $*)
 	if(~ $i */*)
-		echo $i
+		basename -d $i
