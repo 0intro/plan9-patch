@@ -1,0 +1,8 @@
+--- sys/man/1/spin	Sun Jul 22 05:03:46 2007
++++ sys/man/1/spin	Sun Jul 22 05:02:15 2007
+@@ -271,4 +271,4 @@
+ --, `The model checker \*Z,'
+ \f2IEEE Trans. on SE\f1, Vol, 23, No. 5, May 1997.
+ .in -4
+-.br 
++.br 

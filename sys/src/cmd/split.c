@@ -70,10 +70,12 @@ main(int argc, char *argv[])
 		Binit(b, 0, OREAD);
 
 	if(pattern) {
+		Resub match[2];
 		if(!(exp = regcomp(iflag? fold(pattern,strlen(pattern)): pattern)))
 			badexp();
+		memset(match, 0, sizeof match);
+		matchfile(match);
 		while((line=Brdline(b,'\n')) != 0) {
-			Resub match[2];
 			memset(match, 0, sizeof match);
 			line[Blinelen(b)-1] = 0;
 			if(regexec(exp,iflag?fold(line,Blinelen(b)-1):line,match,2)) {
