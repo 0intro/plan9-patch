@@ -15,6 +15,9 @@ hget  \- retrieve a web page corresponding to a url
 ][
 .B -x
 .I netmntpt
+][
+.B -r
+.I header
 ]
 .I url
 .SH DESCRIPTION
@@ -48,6 +51,10 @@ Option
 .B -h
 causes HTTP headers to be printed to standard output
 in addition to the transferred web page.
+.PP
+Option
+.B -r
+can be used to send an arbitrary HTTP header.
 .PP
 Option
 .B -d
