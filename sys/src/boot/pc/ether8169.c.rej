@@ -1,0 +1,26 @@
+--- sys/src/boot/pc/ether8169.c	Sun Jun  7 02:06:58 2009
++++ sys/src/boot/pc/ether8169.c	Sun Jun  7 02:06:57 2009
+@@ -114,6 +114,7 @@
+ 	Macv13		= 0x34000000,	/* RTL8101E */
+ 	Macv14		= 0x30800000,	/* RTL8100E */
+ 	Macv15		= 0x38800000,	/* RTL8100E */
++	Macv16		= 0x24800000, /* RTL8102EL */
+ 	Ifg0		= 0x01000000,	/* Interframe Gap 0 */
+ 	Ifg1		= 0x02000000,	/* Interframe Gap 1 */
+ };
+@@ -518,6 +519,7 @@
+ 	cplusc |= Rxchksum|Mulrw;
+ 	switch(ctlr->macv){
+ 	default:
++		print("unknown macv: 0x%08x\n", ctlr->macv);
+ 		return -1;
+ 	case Macv01:
+ 		ctlr->mtps = HOWMANY(Mps, 32);
+@@ -553,6 +555,7 @@
+ 	case Macv12:
+ 	case Macv14:
+ 	case Macv15:
++	case Macv16:
+ 		break;
+ 	}
+ 
