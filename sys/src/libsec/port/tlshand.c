@@ -439,7 +439,7 @@ tlsServer2(int ctl, int hand, uchar *cert, int ncert, int (*trace)(char*fmt, ...
 	int cipher, compressor, nsid, rv, numcerts, i;
 
 	if(trace)
-		trace("tlsServer2\n");
+		trace("tlsServer2");
 	if(!initCiphers())
 		return nil;
 	c = emalloc(sizeof(TlsConnection));
@@ -451,7 +451,7 @@ tlsServer2(int ctl, int hand, uchar *cert, int ncert, int (*trace)(char*fmt, ...
 	memset(&m, 0, sizeof(m));
 	if(!msgRecv(c, &m)){
 		if(trace)
-			trace("initial msgRecv failed\n");
+			trace("initial msgRecv failed");
 		goto Err;
 	}
 	if(m.tag != HClientHello) {
@@ -460,7 +460,7 @@ tlsServer2(int ctl, int hand, uchar *cert, int ncert, int (*trace)(char*fmt, ...
 	}
 	c->clientVersion = m.u.clientHello.version;
 	if(trace)
-		trace("ClientHello version %x\n", c->clientVersion);
+		trace("ClientHello version %x", c->clientVersion);
 	if(setVersion(c, m.u.clientHello.version) < 0) {
 		tlsError(c, EIllegalParameter, "incompatible version");
 		goto Err;
@@ -488,7 +488,7 @@ tlsServer2(int ctl, int hand, uchar *cert, int ncert, int (*trace)(char*fmt, ...
 
 	csid = m.u.clientHello.sid;
 	if(trace)
-		trace("  cipher %d, compressor %d, csidlen %d\n", cipher, compressor, csid->len);
+		trace("  cipher %d, compressor %d, csidlen %d", cipher, compressor, csid->len);
 	c->sec = tlsSecInits(c->clientVersion, csid->data, csid->len, c->crandom, sid, &nsid, c->srandom);
 	if(c->sec == nil){
 		tlsError(c, EHandshakeFailure, "can't initialize security: %r");
@@ -540,7 +540,7 @@ tlsServer2(int ctl, int hand, uchar *cert, int ncert, int (*trace)(char*fmt, ...
 		goto Err;
 	}
 	if(trace)
-		trace("tls secrets\n");
+		trace("tls secrets");
 	secrets = (char*)emalloc(2*c->nsecret);
 	enc64(secrets, 2*c->nsecret, kd, c->nsecret);
 	rv = fprint(c->ctl, "secret %s %s 0 %s", c->digest, c->enc, secrets);
@@ -586,7 +586,7 @@ tlsServer2(int ctl, int hand, uchar *cert, int ncert, int (*trace)(char*fmt, ...
 		goto Err;
 	msgClear(&m);
 	if(trace)
-		trace("tls finished\n");
+		trace("tls finished");
 
 	if(fprint(c->ctl, "opened") < 0)
 		goto Err;
@@ -783,7 +783,7 @@ tlsClient2(int ctl, int hand, uchar *csid, int ncsid, int (*trace)(char*fmt, ...
 
 	if(fprint(c->ctl, "opened") < 0){
 		if(trace)
-			trace("unable to do final open: %r\n");
+			trace("unable to do final open: %r");
 		goto Err;
 	}
 	tlsSecOk(c->sec);
@@ -1006,7 +1006,7 @@ msgRecv(TlsConnection *c, Msg *m)
 				|| nrandom < 16 || nn % 3)
 			goto Err;
 		if(c->trace && (n - nrandom != nn))
-			c->trace("n-nrandom!=nn: n=%d nrandom=%d nn=%d\n", n, nrandom, nn);
+			c->trace("n-nrandom!=nn: n=%d nrandom=%d nn=%d", n, nrandom, nn);
 		/* ignore ssl2 ciphers and look for {0x00, ssl3 cipher} */
 		nciph = 0;
 		for(i = 0; i < nn; i += 3)
@@ -1267,9 +1267,12 @@ bytesPrint(char *bs, char *be, char *s0, Bytes *b, char *s1)
 	bs = seprint(bs, be, "[");
 	if(b == nil)
 		bs = seprint(bs, be, "nil");
-	else
+	else{
 		for(i=0; i<b->len; i++)
 			bs = seprint(bs, be, "%.2x ", b->data[i]);
+		if(b->len > 0)
+			bs--;
+	}
 	bs = seprint(bs, be, "]");
 	if(s1)
 		bs = seprint(bs, be, "%s", s1);
@@ -1286,9 +1289,12 @@ intsPrint(char *bs, char *be, char *s0, Ints *b, char *s1)
 	bs = seprint(bs, be, "[");
 	if(b == nil)
 		bs = seprint(bs, be, "nil");
-	else
+	else{
 		for(i=0; i<b->len; i++)
 			bs = seprint(bs, be, "%x ", b->data[i]);
+		if(b->len > 0)
+			bs--;
+	}
 	bs = seprint(bs, be, "]");
 	if(s1)
 		bs = seprint(bs, be, "%s", s1);
@@ -1314,7 +1320,7 @@ msgPrint(char *buf, int n, Msg *m)
 		bs = seprint(bs, be, "\n");
 		bs = bytesPrint(bs, be, "\tsid: ", m->u.clientHello.sid, "\n");
 		bs = intsPrint(bs, be, "\tciphers: ", m->u.clientHello.ciphers, "\n");
-		bs = bytesPrint(bs, be, "\tcompressors: ", m->u.clientHello.compressors, "\n");
+		bs = bytesPrint(bs, be, "\tcompressors: ", m->u.clientHello.compressors, "");
 		break;
 	case HServerHello:
 		bs = seprint(bs, be, "ServerHello\n");
@@ -1325,7 +1331,7 @@ msgPrint(char *buf, int n, Msg *m)
 		bs = seprint(bs, be, "\n");
 		bs = bytesPrint(bs, be, "\tsid: ", m->u.serverHello.sid, "\n");
 		bs = seprint(bs, be, "\tcipher: %.4x\n", m->u.serverHello.cipher);
-		bs = seprint(bs, be, "\tcompressor: %.2x\n", m->u.serverHello.compressor);
+		bs = seprint(bs, be, "\tcompressor: %.2x", m->u.serverHello.compressor);
 		break;
 	case HCertificate:
 		bs = seprint(bs, be, "Certificate\n");
@@ -1340,17 +1346,17 @@ msgPrint(char *buf, int n, Msg *m)
 			bs = bytesPrint(bs, be, "\t\t", m->u.certificateRequest.cas[i], "\n");
 		break;
 	case HServerHelloDone:
-		bs = seprint(bs, be, "ServerHelloDone\n");
+		bs = seprint(bs, be, "ServerHelloDone");
 		break;
 	case HClientKeyExchange:
 		bs = seprint(bs, be, "HClientKeyExchange\n");
-		bs = bytesPrint(bs, be, "\tkey: ", m->u.clientKeyExchange.key, "\n");
+		bs = bytesPrint(bs, be, "\tkey: ", m->u.clientKeyExchange.key, "");
 		break;
 	case HFinished:
 		bs = seprint(bs, be, "HFinished\n");
 		for(i=0; i<m->u.finished.n; i++)
 			bs = seprint(bs, be, "%.2x", m->u.finished.verify[i]);
-		bs = seprint(bs, be, "\n");
+//		bs = seprint(bs, be, "\n");
 		break;
 	}
 	USED(bs);
@@ -1367,7 +1373,7 @@ tlsError(TlsConnection *c, int err, char *fmt, ...)
 	vseprint(msg, msg+sizeof(msg), fmt, arg);
 	va_end(arg);
 	if(c->trace)
-		c->trace("tlsError: %s\n", msg);
+		c->trace("tlsError: %s", msg);
 	else if(c->erred)
 		fprint(2, "double error: %r, %s", msg);
 	else
