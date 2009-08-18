@@ -199,6 +199,10 @@ Rune	*stext(Rune *, Rune *);
 int	ycomp(SedCom *);
 char *	trans(int c);
 void	putline(Biobuf *bp, Rune *buf, int n);
+void	ebputc(Biobufhdr*, int);
+void	ebputrune(Biobufhdr*, int);
+
+#define ebprint(bp, ...) if(Bprint(bp, __VA_ARGS__) < 0) quit("Bprint: %r"); else {}
 
 void
 main(int argc, char **argv)
@@ -735,7 +739,8 @@ getrune(void)
 		} else
 			c = -1;
 	} else if ((c = Bgetrune(prog.bp)) < 0)
-		Bterm(prog.bp);
+		if(Bterm(prog.bp) < 0)
+			quit("write: %r");
 	return c;
 }
 
@@ -1132,8 +1137,8 @@ command(SedCom *ipc)
 		delflag = 1;
 		if(ipc->active == 1) {
 			for(rp = ipc->text; *rp; rp++)
-				Bputrune(&fout, *rp);
-			Bputc(&fout, '\n');
+				ebputrune(&fout, *rp);
+			ebputc(&fout, '\n');
 		}
 		break;
 	case DCOM:
@@ -1154,7 +1159,7 @@ command(SedCom *ipc)
 		jflag++;
 		break;
 	case EQCOM:
-		Bprint(&fout, "%ld\n", lnum);
+		ebprint(&fout, "%ld\n", lnum) ;
 		break;
 	case GCOM:
 		p1 = linebuf;
@@ -1189,8 +1194,8 @@ command(SedCom *ipc)
 		break;
 	case ICOM:
 		for(rp = ipc->text; *rp; rp++)
-			Bputrune(&fout, *rp);
-		Bputc(&fout, '\n');
+			ebputrune(&fout, *rp);
+		ebputc(&fout, '\n');
 		break;
 	case BCOM:
 		jflag = 1;
@@ -1200,25 +1205,25 @@ command(SedCom *ipc)
 		for (i = 0, rp = linebuf; *rp; rp++) {
 			c = *rp;
 			if(c >= 0x20 && c < 0x7F && c != '\\') {
-				Bputc(&fout, c);
+				ebputc(&fout, c);
 				if(i++ > 71) {
-					Bprint(&fout, "\\\n");
+					ebprint(&fout, "\\\n");
 					i = 0;
 				}
 			} else {
 				for (ucp = trans(*rp); *ucp; ucp++){
 					c = *ucp;
-					Bputc(&fout, c);
+					ebputc(&fout, c);
 					if(i++ > 71) {
-						Bprint(&fout, "\\\n");
+						ebprint(&fout, "\\\n");
 						i = 0;
 					}
 				}
 			}
 		}
 		if(c == ' ')
-			Bprint(&fout, "\\n");
-		Bputc(&fout, '\n');
+			ebprint(&fout, "\\n");
+		ebputc(&fout, '\n');
 		break;
 	case NCOM:
 		if(!nflag)
@@ -1248,8 +1253,8 @@ command(SedCom *ipc)
 	case CPCOM:
 cpcom:
 		for(rp = linebuf; *rp && *rp != '\n'; rp++)
-			Bputc(&fout, *rp);
-		Bputc(&fout, '\n');
+			ebputc(&fout, *rp);
+		ebputc(&fout, '\n');
 		break;
 	case QCOM:
 		if(!nflag)
@@ -1316,8 +1321,8 @@ void
 putline(Biobuf *bp, Rune *buf, int n)
 {
 	while (n--)
-		Bputrune(bp, *buf++);
-	Bputc(bp, '\n');
+		ebputrune(bp, *buf++);
+	ebputc(bp, '\n');
 }
 ecmp(Rune *a, Rune *b, int count)
 {
@@ -1339,17 +1344,25 @@ arout(void)
 	for (aptr = abuf; *aptr; aptr++) {
 		if((*aptr)->command == ACOM) {
 			for(p1 = (*aptr)->text; *p1; p1++ )
-				Bputrune(&fout, *p1);
-			Bputc(&fout, '\n');
+				ebputrune(&fout, *p1);
+			ebputc(&fout, '\n');
 		} else {
 			for(s = buf, p1 = (*aptr)->text; *p1; p1++)
 				s += runetochar(s, p1);
 			*s = '\0';
-			if((fi = Bopen(buf, OREAD)) == 0)
+			if((fi = Bopen(buf, OREAD)) == nil){
+				/*
+				 * this is a botch.  we should quit.
+				 * but i'm worried about breaking
+				 * old scripts.  — quanstro
+				 */
+				fprint(2, "Bopen: %r\n");
 				continue;
+			}
 			while((c = Bgetc(fi)) >= 0)
-				Bputc(&fout, c);
-			Bterm(fi);
+				ebputc(&fout, c);
+			if(Bterm(fi) < 0)
+				quit("Bterm: %r");
 		}
 	}
 	aptr = abuf;
@@ -1377,6 +1390,20 @@ quit(char *fmt, ...)
 	p = seprint(p, ep, "\n");
 	write(2, msg, p - msg);
 	errexit();
+}
+
+void
+ebputc(Biobufhdr *bp, int c)
+{
+	if(Bputc(bp, c) < 0)
+		quit("Bputc: %r");
+}
+
+void
+ebputrune(Biobufhdr *bp, int r)
+{
+	if(Bputrune(bp, r) < 0)
+		quit("Bputrune: %r");
 }
 
 Rune *
@@ -1412,7 +1439,8 @@ gline(Rune *addr)
 			return p;
 		}
 		peekc = 0;
-		Bterm(f);
+		if(Bterm(f) < 0)
+			quit("write: %r");
 	} while (opendata() > 0);		/* Switch to next stream */
 	f = 0;
 	return 0;
