@@ -135,7 +135,7 @@ pcmd(io *f, tree *t)
 			pfmt(f, " %t", c2);
 		break;
 	case PIPE:
-		pfmt(f, "%t|", c0);
+		pfmt(f, c0->type==BRACE? "%t|": "{%t}|", c0);
 		if(t->fd1==0){
 			if(t->fd0!=1)
 				pfmt(f, "[%d]", t->fd0);
