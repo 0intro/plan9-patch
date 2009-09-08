@@ -186,7 +186,6 @@ For control and isochronous transfers, there is an implicit
 timeout performed by the kernel and it is not necessary for applications
 to place their own timers.
 For other transfer types, the kernel will not time out any operation
-by default
 (but see the
 .L timeout
 control request).
@@ -222,8 +221,9 @@ Device state
 One of
 .BR config ,
 .BR enabled ,
+.BR detached ,
 and
-.BR detached .
+.BR reset .
 An endpoint starts in the
 .B config
 state, and accepts control commands written to its
@@ -242,6 +242,9 @@ Upon severe errors, perhaps a physical
 detachment from the bus, the endpoint enters the
 .B detached
 state and no further I/O is accepted on it.
+The
+.B reset
+state reflects that a port reset is being performed to recover from errors.
 Files for an endpoint (including its directory)
 vanish when the device is detached and its files are no longer open.
 Root hubs may not be detached.
@@ -482,6 +485,13 @@ Set the endpoint speed to full, low, or high, respectively.
 .TP
 .B hub
 Tell this driver that the endpoint corresponds to a hub device.
+.TP
+.B reset
+Ask for a port reset on the device, to recover from errors.
+The caller
+must close the data file before issuing the request.
+The request is finished when the caller can open the
+data file again (and the device state changes).
 .PD
 .PP
 Setup endpoints for hub devices also accept his request:

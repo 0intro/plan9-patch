@@ -62,6 +62,7 @@ enum
 	Dconfig	 = 0,		/* configuration in progress */
 	Denabled,		/* address assigned */
 	Ddetach,		/* device is detached */
+	Dreset,			/* its port is being reset */
 
 	/* (root) Hub reply to port status (reported to usbd) */
 	HPpresent	= 0x1,
