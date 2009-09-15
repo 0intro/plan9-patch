@@ -111,11 +111,12 @@ ischeme(char *s)
  */
 
 /* RE character-class components -- these go in brackets */
+#define UNWISE		"\\[\\]|\\\\^{}`"
 #define PUNCT			"\\-_.!~*'()"
 #define RES			";/?:@&=+$,"
 #define ALNUM		"a-zA-Z0-9"
 #define HEX			"0-9a-fA-F"
-#define UNRES			ALNUM PUNCT
+#define UNRES			ALNUM PUNCT UNWISE
 
 /* RE components; _N => has N parenthesized subexpressions when expanded */
 #define ESCAPED_1			"(%[" HEX "][" HEX "])"
