@@ -260,7 +260,11 @@ convRR2M(RR *rp, uchar *p, uchar *ep, Dict *dp)
 		USHORT(rp->srv->pri);
 		USHORT(rp->srv->weight);
 		USHORT(rp->port);
-		STRING(rp->host->name);	/* rfc2782 sez no name compression */
+		/*
+		 * rfc2782 sez no name compression, but
+		 * but bind (dig) disagree.  we'll go with bind.
+		 */
+		NAME(rp->host->name);
 		break;
 	case Ttxt:
 		for(t = rp->txt; t != nil; t = t->next)
