@@ -364,6 +364,10 @@ is set to the maximum value that
 .I end
 can take on without running off the disk
 or into another partition.
+Numeric constants suffixed by
+K, M, G, or T
+are scaled to the respective size in kilo-, mega-, giga-,
+or terabytes.
 Finally, the expression
 .IB n %
 evaluates to
@@ -375,6 +379,12 @@ As an example,
 creates a new partition starting at
 .B .
 that takes up a fifth of the disk,
+.B a
+.B .
+.B .+21G
+creates a new partition starting at
+.B .
+that takes up 21 gigabytes (21 × 2^30 bytes),
 and
 .B a
 .B 1000

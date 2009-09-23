@@ -85,6 +85,8 @@ static char** errp;
 static int
 yylex(void)
 {
+	vlong n;
+
 	while(isspace(*inp))
 		inp++;
 
@@ -92,7 +94,26 @@ yylex(void)
 		return 0;
 
 	if(isdigit(*inp)) {
-		yylval = mkNUM(strtoll(inp, &inp, 0));
+		n = strtoll(inp, &inp, 0);
+		switch(*inp) {
+		case 'k':
+		case 'K': 	n *= 2;
+					inp++;
+					break;
+		case 'm':
+		case 'M': 	n *= (1024*2);
+					inp++;
+					break;
+		case 'g':
+		case 'G': 	n *= (1024*1024*2);
+					inp++;
+					break;
+		case 't':
+		case 'T': 	n *= (1024LL*1024*1024*2);
+					inp++;
+					break;
+		}
+		yylval = mkNUM(n);
 		return NUMBER;
 	}
 
