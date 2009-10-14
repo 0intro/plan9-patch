@@ -139,6 +139,8 @@ If the buffer was allocated by
 the buffer is
 .I freed
 and the file is closed.
+The return is the result returned by
+.IR Bflush .
 .PP
 .I Brdline
 reads a string from the file associated with
