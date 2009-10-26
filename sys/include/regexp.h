@@ -27,7 +27,7 @@ struct Resub{
  */
 struct Reclass{
 	Rune	*end;
-	Rune	spans[64];
+	Rune	spans[256];
 };
 
 /*

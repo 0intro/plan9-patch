@@ -37,7 +37,7 @@ struct Resub{
  */
 struct Reclass{
 	wchar_t	*end;
-	wchar_t	spans[64];
+	wchar_t	spans[256];
 };
 
 /*
