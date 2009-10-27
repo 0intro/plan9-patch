@@ -19,6 +19,10 @@ acme, win, awd \- interactive text windows
 .I fixfont
 ]
 [
+.B -L
+.I label
+]
+[
 .B -l
 .I loadfile
 |
@@ -76,6 +80,11 @@ the default is
 Tab intervals are set to the width of 4 (or the value of
 .BR $tabstop )
 numeral zeros in the appropriate font.
+.PP
+The
+.B -L
+option sets the label of the acme window for the duration of
+its run.
 .PP
 .SS Windows
 .I Acme

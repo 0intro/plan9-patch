@@ -57,10 +57,10 @@ void
 threadmain(int argc, char *argv[])
 {
 	int i;
-	char *p, *loadfile;
+	char *p, *label, *loadfile;
 	char buf[256];
 	Column *c;
-	int ncol;
+	int labelfd, ncol;
 	Display *d;
 	static void *arg[1];
 
@@ -68,6 +68,7 @@ threadmain(int argc, char *argv[])
 
 	ncol = -1;
 
+	label = nil;
 	loadfile = nil;
 	ARGBEGIN{
 	case 'a':
@@ -99,9 +100,14 @@ threadmain(int argc, char *argv[])
 		if(loadfile == nil)
 			goto Usage;
 		break;
+	case 'L':
+		label = ARGF();
+		if(label == nil)
+			goto Usage;
+		break;
 	default:
 	Usage:
-		fprint(2, "usage: acme [-ab] [-c ncol] [-f font] [-F fixedfont] [-l loadfile | file...]\n");
+		fprint(2, "usage: acme [-ab] [-c ncol] [-f font] [-F fixedfont] [-L label] [-l loadfile | file...]\n");
 		exits("usage");
 	}ARGEND
 
@@ -184,6 +190,11 @@ threadmain(int argc, char *argv[])
 	plumbsendfd = plumbopen("send", OWRITE|OCEXEC);
 
 	fsysinit();
+	if(label){
+		labelfd = open("/dev/label", ORDWR);
+		write(labelfd, label, strlen(label));
+		close(labelfd);
+	}
 
 	#define	WPERCOL	8
 	disk = diskinit();
