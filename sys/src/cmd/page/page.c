@@ -82,6 +82,11 @@ main(int argc, char **argv)
 	enum { Ninput = 16 };
 	uchar buf[Ninput+1];
 	int readstdin;
+	char *envppi;
+
+	envppi = getenv("pageppi");
+	if(envppi != nil)
+		ppi = atoi(envppi);
 
 	ARGBEGIN{
 	/* "temporary" debugging options */
@@ -197,10 +202,6 @@ main(int argc, char **argv)
 	else if(strncmp((char*)buf, "x T ", 4) == 0)
 		doc = inittroff(b, argc, argv, buf, Ninput);
 	else {
-		if(ppi != 100) {
-			fprint(2, "page: you can't specify -p with graphic files\n");
-			wexits("-p and graphics");
-		}
 		doc = initgfx(b, argc, argv, buf, Ninput);
 	}
 
