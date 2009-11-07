@@ -33,6 +33,7 @@ static Ec2t ec2tpcmcia[] = {
 	{ "10/100 Port Attached", 1, },	/* SMC 8040TX */
 	{ "8041TX-10/100-PC-Card-V2", 0 }, /* SMC 8041TX */
 	{ "FA411", 0 },			/* Netgear FA411 PCMCIA */
+	{ "SMC8022", 0},		/* SMC 8022 / EZCard-10-PCMCIA */
 	{ nil, 0, },
 };
 
