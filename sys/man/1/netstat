@@ -4,7 +4,7 @@ netstat \- summarize network connections
 .SH SYNOPSIS
 .B netstat
 [
-.B -in
+.B -ain
 ] [
 .B -p
 .I proto
@@ -26,6 +26,9 @@ connection state, local port, remote port and
 remote address.
 .PP
 The options are:
+.TP
+.B -a
+Also print information about closed connections.
 .TP
 .B -i
 Instead of the usual listing, print one line per network interface.

@@ -13,11 +13,11 @@ char	*netroot;
 char *proto[20];
 int nproto;
 int	notrans;
-
+int showall;
 void
 usage(void)
 {
-	fprint(2, "usage: %s [-in] [-p proto] [network-dir]\n", argv0);
+	fprint(2, "usage: %s [-ain] [-p proto] [network-dir]\n", argv0);
 	exits("usage");
 }
 
@@ -30,6 +30,9 @@ main(int argc, char *argv[])
 	char buf[128];
 
 	ARGBEGIN{
+	case 'a':
+		showall = 1;
+		break;
 	case 'i':
 		justinterfaces = 1;
 		break;
@@ -144,6 +147,9 @@ pip(char *net, Dir *db)
 	buf[n] = 0;
 	close(fd);
 
+	if(!showall)
+		if(strncmp(buf, "Closed ", 7) == 0)
+			return;
 	p = strchr(buf, ' ');
 	if(p != 0)
 		*p = 0;
