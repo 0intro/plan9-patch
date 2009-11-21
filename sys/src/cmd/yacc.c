@@ -1918,17 +1918,22 @@ skipcom(void)
 
 	/* i is the number of lines skipped */
 	i = 0;
-	if(Bgetrune(finput) != '*')
-		error("illegal comment");
 	c = Bgetrune(finput);
-	while(c != Beof) {
-		while(c == '*')
-			if((c=Bgetrune(finput)) == '/')
-				return i;
-		if(c == '\n')
-			i++;
-		c = Bgetrune(finput);
-	}
+	if(c == '/'){
+		while((c = Bgetrune(finput)) != Beof)
+			if(c == '\n')
+				return 1;
+	}else if(c == '*'){
+		while((c = Bgetrune(finput)) != Beof) {
+			while(c == '*')
+				if((c=Bgetrune(finput)) == '/')
+					return i;
+			if(c == '\n')
+				i++;
+		}
+	}else
+		error("illegal comment");
+
 	error("EOF inside comment");
 	return 0;
 }
