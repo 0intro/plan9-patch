@@ -67,6 +67,13 @@ void	rcanon(Rune*, Rune*);
 int	ncomp(Rune*, Rune*);
 
 void
+usage(void)
+{
+	fprint(2, "usage: %s -[dfinx] [-t c] [string] [file]\n", argv0);
+	exits("usage");
+}
+
+void
 main(int argc, char *argv[])
 {
 	int n;
@@ -88,15 +95,13 @@ main(int argc, char *argv[])
 		compare = ncomp;
 		break;
 	case 't':
-		chartorune(&tab,ARGF());
+		chartorune(&tab, EARGF(usage()));
 		break;
 	case 'x':
 		exact++;
 		break;
 	default:
-		fprint(2, "%s: bad option %c\n", argv0, ARGC());
-		fprint(2, "usage: %s -[dfinx] [-t c] [string] [file]\n", argv0);
-		exits("usage");
+		usage();
 	} ARGEND
 	if(!iflag){
 		if(argc >= 1) {
