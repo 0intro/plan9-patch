@@ -385,10 +385,11 @@ doNTchap(char *pass, uchar chal[ChapChallen], uchar reply[MSchapResplen])
 	uchar digest[MD4dlen];
 	uchar *w, unipass[256];
 
-	// Standard says unlimited length, experience says 128 max
+	/* Standard says unlimited length, experience says 128 max */
 	if ((n = strlen(pass)) > 128)
 		n = 128;
 
+	/* assume 16 bit Rune */
 	for(i=0, w=unipass; i < n; i++) {
 		pass += chartorune(&r, pass);
 		*w++ = r & 0xff;

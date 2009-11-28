@@ -1263,7 +1263,7 @@ namelenerror(char *aname, int len, char *err)
 			if(name <= aname)
 				panic("bad math in namelenerror");
 			/* walk out of current UTF sequence */
-			for(i=0; (*name&0xC0)==0x80 && i<3; i++)
+			for(i=0; (*name&0xC0)==0x80 && i<UTFmax; i++)
 				name++;
 		}
 		snprint(up->genbuf, sizeof up->genbuf, "...%.*s",
@@ -1688,8 +1688,8 @@ validname0(char *aname, int slashok, int dup, ulong pc)
 	if((ulong)name < KZERO){
 		validaddr((ulong)name, 1, 0);
 		if(!dup)
-			print("warning: validname called from %lux with user pointer", pc);
-		ename = vmemchr(name, 0, (1<<16));
+			print("warning: validname called from %#p with user pointer", pc);
+		ename = vmemchr(name, 0, 1<<16);
 	}else
 		ename = memchr(name, 0, (1<<16));
 

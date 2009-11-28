@@ -1129,6 +1129,13 @@ getname(char *p, Dosdir *d)
 	*p = 0;
 }
 
+Rune
+utfbe16(uchar *buf)
+{
+	/* not extended-plane capable */
+	return buf[0] | buf[1]<<8;
+}
+
 static char*
 getnamerunes(char *dst, uchar *buf, int step)
 {
@@ -1139,15 +1146,15 @@ getnamerunes(char *dst, uchar *buf, int step)
 	d = dbuf;
 	r = 1;
 	for(i = 1; r && i < 11; i += 2){
-		r = buf[i] | (buf[i+1] << 8);
+		r = utfbe16(buf + i);
 		d += runetochar(d, &r);
 	}
 	for(i = 14; r && i < 26; i += 2){
-		r = buf[i] | (buf[i+1] << 8);
+		r = utfbe16(buf + i);
 		d += runetochar(d, &r);
 	}
 	for(i = 28; r && i < 32; i += 2){
-		r = buf[i] | (buf[i+1] << 8);
+		r = utfbe16(buf + i);
 		d += runetochar(d, &r);
 	}
 

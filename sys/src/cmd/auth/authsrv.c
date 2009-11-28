@@ -725,9 +725,10 @@ nthash(uchar hash[MShashlen], char *passwd)
 {
 	uchar buf[512];
 	int i;
+	Rune r;
 
+	/* assume 16 bit runes; cf. factotum/chap.c */
 	for (i = 0; *passwd && i + 1 < sizeof(buf);) {
-		Rune r;
 		passwd += chartorune(&r, passwd);
 		buf[i++] = r;
 		buf[i++] = r >> 8;
@@ -809,8 +810,10 @@ speaksfor(char *speaker, char *user)
 	snprint(notuser, sizeof notuser, "!%s", user);
 	for(ntp = tp; ntp; ntp = ntp->entry)
 		if(strcmp(ntp->attr, "uid") == 0){
-			if(strcmp(ntp->val, notuser) == 0)
+			if(strcmp(ntp->val, notuser) == 0){
+				ok = 0;
 				break;
+			}
 			if(*ntp->val == '*' || strcmp(ntp->val, user) == 0)
 				ok = 1;
 		}

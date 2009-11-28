@@ -362,7 +362,7 @@ map(Rune rp[], int font)	/* figure out mapping for char in this font */
 		return 0;
 	}
 	dprint(2, "map %S to %s font# %d\n", rp, s, font);
-	s[runetochar(s, &r)] = 0;
+	s[runetochar(s, &r)] = 0;			/* looks wrong -quanstro */
 	return s;
 }
 
