@@ -647,7 +647,7 @@ pushsrc(char *name)
 	free(d);
 }
 
-/* get next logical byte.  from stdin or a defined string */
+/* get next logical rune.  from stdin or a defined string */
 int
 getrune(void)
 {

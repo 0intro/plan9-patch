@@ -14,7 +14,7 @@ typedef struct Font Font;
 typedef struct HTMLfont HTMLfont;
 
 /*
- * a Char is >= 32 bits. low 16 bits are the rune. higher are attributes.
+ * a Char is >= 32 bits. low 24 bits are the rune. higher are attributes.
  * must be able to hold a pointer.
  */
 enum
@@ -32,7 +32,7 @@ enum
 enum	/* magic emissions */
 {
 	Estring = 0,
-	Epp = 1<<16,
+	Epp = 1<<24,
 };
 
 int attrorder[] = { Indent1, Indent2, Indent3, Heading, Anchor, Italic, Bold, CW };
