@@ -1,4 +1,5 @@
 #include <stdlib.h>
+#include <utf.h>
 
 /*
  * Use the FSS-UTF transformation proposed by posix.
@@ -7,12 +8,14 @@
  *	Tx	10xxxxxx	6 free bits
  *	T1	110xxxxx	5 free bits
  *	T2	1110xxxx	4 free bits
+ *	T3	11110xxx 3 free bits
  *
  *	Encoding is as follows.
  *	From hex	Thru hex	Sequence		Bits
- *	00000000	0000007F	T0			7
- *	00000080	000007FF	T1 Tx			11
+ *	00000000	0000007F	T0		7
+ *	00000080	000007FF	T1 Tx		11
  *	00000800	0000FFFF	T2 Tx Tx		16
+ *	00000800	00010000	T2 Tx Tx	Tx	20 (and change)
  */
 
 int
@@ -25,7 +28,7 @@ mblen(const char *s, size_t n)
 int
 mbtowc(wchar_t *pwc, const char *s, size_t n)
 {
-	int c, c1, c2;
+	int c, c1, c2, c3;
 	long l;
 
 	if(!s)
@@ -68,6 +71,24 @@ mbtowc(wchar_t *pwc, const char *s, size_t n)
 		if(pwc)
 			*pwc = l;
 		return 3;
+	}
+
+	if(n < 4)
+		goto bad;
+	if(UTFmax >= 4) {
+		c3 = (s[3] ^ 0x80) & 0xff;
+		if(c3 & 0xC0)
+			goto bad;
+		if(c < 0xf8) {
+			l = ((((((c << 6) | c1) << 6) | c2) << 6) | c3) & 0x3fffff;
+			if(l <= 0x10000)
+				goto bad;
+			if(l > Runemax)
+				goto bad;
+			if(pwc)
+				*pwc = l;
+			return 4;
+		}
 	}
 
 	/*
