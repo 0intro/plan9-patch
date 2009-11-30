@@ -224,7 +224,7 @@ connectlocalfossil(void)
 				f[2] = "tcp!127.1!8000";
 			}
 			configloopback();
-			run("/boot/venti", "-c", f[0], "-a", f[1], "-h", f[2], 0);
+			run("/boot/venti", "-c", f[0], "-m", "20", "-a", f[1], "-h", f[2], 0);
 			/*
 			 * If the announce address is tcp!*!foo, then set
 			 * $venti to tcp!127.1!foo instead, which is actually dialable.
