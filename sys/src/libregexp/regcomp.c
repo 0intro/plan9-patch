@@ -387,7 +387,7 @@ static int
 bldcclass(void)
 {
 	int type;
-	Rune r[NCCRUNE];
+	Rune r[NSPANS*2];
 	Rune *p, *ep, *np;
 	Rune rune;
 	int quoted;
@@ -408,7 +408,11 @@ bldcclass(void)
 	}
 
 	/* parse class into a set of spans */
-	for(; ep<&r[NCCRUNE];){
+	for(;;){
+		if(ep == r + nelem(r)){
+			rcerror("class too large");
+			return 0;
+		}
 		if(rune == 0){
 			rcerror("malformed '[]'");
 			return 0;

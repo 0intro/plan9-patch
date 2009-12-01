@@ -1,6 +1,11 @@
 #pragma	src	"/sys/src/libregexp"
 #pragma	lib	"libregexp.a"
 
+enum {
+	NSPANS	= 128,		/* max rune ranges per character class */
+	NCLASS	= 16,		/* max character classes per program */
+};
+
 typedef struct Resub		Resub;
 typedef struct Reclass		Reclass;
 typedef struct Reinst		Reinst;
@@ -27,7 +32,7 @@ struct Resub{
  */
 struct Reclass{
 	Rune	*end;
-	Rune	spans[64];
+	Rune	spans[NSPANS*2];
 };
 
 /*
@@ -52,7 +57,7 @@ struct Reinst{
  */
 struct Reprog{
 	Reinst	*startinst;	/* start pc */
-	Reclass	class[16];	/* .data */
+	Reclass	class[NCLASS];	/* .data */
 	Reinst	firstinst[5];	/* .text */
 };
 
