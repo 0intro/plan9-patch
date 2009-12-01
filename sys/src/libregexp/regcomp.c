@@ -383,11 +383,26 @@ lex(int literal, int dot_type)
 	return RUNE;
 }
 
+static void
+debugspan(void)
+{
+#ifdef DEBUG
+	int i, nspan;
+	Rune r;
+
+	nspan = yyclassp->end - yyclassp->spans >>1;
+	fprint(2, "nspan = %d\n", nspan);
+	p = yyclassp->spans;
+	for(i = 0; i < nspan; i++)
+		print("%C %C	%.4ux %.4ux\n", p[2*i], p[2*i+1], p[2*i], p[2*i+1]);
+#endif
+}
+
 static int
 bldcclass(void)
 {
 	int type;
-	Rune r[NCCRUNE];
+	Rune r[NSPANS*2];
 	Rune *p, *ep, *np;
 	Rune rune;
 	int quoted;
@@ -408,7 +423,11 @@ bldcclass(void)
 	}
 
 	/* parse class into a set of spans */
-	for(; ep<&r[NCCRUNE];){
+	for(;;){
+		if(ep == r + nelem(r)){
+			rcerror("class too large");
+			return 0;
+		}
 		if(rune == 0){
 			rcerror("malformed '[]'");
 			return 0;
@@ -455,8 +474,8 @@ bldcclass(void)
 		np[0] = *p++;
 		np[1] = *p++;
 		for(; p < ep; p += 2)
-			if(p[0] <= np[1]){
-				if(p[1] > np[1])
+			if(p[0] <= np[1]+1){
+				if(p[1] >= np[1])
 					np[1] = p[1];
 			} else {
 				np += 2;
@@ -464,6 +483,7 @@ bldcclass(void)
 				np[1] = p[1];
 			}
 		yyclassp->end = np+2;
+		debugspan();
 	}
 
 	return type;
