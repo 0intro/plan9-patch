@@ -12,13 +12,14 @@
 
 enum {
 	Tcycles = CLOCKFREQ / HZ,		/* cycles per clock tick */
+	MaxPeriod = Tcycles,
+	MinPeriod = MaxPeriod / 100,
 };
 
 static void
 clockintr(Ureg *ureg, void*)
 {
 	TIMERREG->timerwd = CLOCKFREQ;		/* reassure the watchdog */
-	m->fastclock++;
 	coherence();
 	timerintr(ureg, 0);
 	intrclear(Irqbridge, IRQcputimer0);
@@ -66,45 +67,45 @@ clockinit(void)
 	tmr->ctl = 0;
 	coherence();
 	tmr->timer0  = Tcycles;
-	tmr->reload0 = Tcycles;
+	tmr->timer1  = ~0;
+	tmr->reload1 = ~0;
 	tmr->timerwd = CLOCKFREQ;
 	coherence();
-	tmr->ctl = Tmr0enable | Tmr0periodic | TmrWDenable;
+	tmr->ctl = Tmr0enable | Tmr1enable | Tmr1periodic | TmrWDenable;
 	CPUCSREG->rstout |= RstoutWatchdog;
 	coherence();
 }
 
 void
-timerset(uvlong next)
+timerset(Tval next)
 {
-#ifdef FANCYTIMERS
-	Tn *tn;
-	Tval offset;
+	TimerReg *tmr = TIMERREG;
+	int offset;
 
-	ilock(&timers.tn1lock);
-	tn = (Tn*)Tn1;
-	tn->cr = Tm;
-
-	offset = next + tn->cv;
-	if(offset < timers.tn1minperiod)
-		offset = timers.tn1minperiod;
-	else if(offset > timers.tn1maxperiod)
-		offset = timers.tn1maxperiod;
-
-	tn->lc = offset;
-	tn->cr = Tm|Te;
-	iunlock(&timers.tn1lock);
-#else
-	USED(next);
-#endif
+	offset = next - fastticks(nil);
+	if(offset < MinPeriod)
+		offset = MinPeriod;
+	else if(offset > MaxPeriod)
+		offset = MaxPeriod;
+	tmr->timer0 = offset;
+	coherence();
 }
 
 uvlong
 fastticks(uvlong *hz)
 {
+	uvlong now;
+	int s;
+
 	if(hz)
-		*hz = HZ;
-	return m->fastclock;
+		*hz = CLOCKFREQ;
+	s = splhi();
+	now = (m->fastclock&0xFFFFFFFF00000000LL) | ~TIMERREG->timer1;
+	if(now < m->fastclock)
+		now += 0x100000000LL;
+	m->fastclock = now;
+	splx(s);
+	return now;
 }
 
 ulong
@@ -140,6 +141,5 @@ delay(int l)
 ulong
 perfticks(void)
 {
-//	return ((Tn*)Tn0)->cv;		// TODO: FANCYTIMERS
-	return (ulong)fastticks(nil);
+	return ~TIMERREG->timer1;
 }
