@@ -25,7 +25,10 @@ These values can be produced by such things as overflow
 and division by zero.
 Also, the library functions sometimes return them when
 the arguments are not in the domain, or the result is
-out of range.
+out of range.  By default, these values
+will cause a floating point exception but
+.IR setfcr (2)
+can be use to change that behavior.
 .PP
 .I NaN
 returns a double that is not-a-number.
@@ -42,3 +45,6 @@ returns true if its first argument is infinity
 with the same sign as the second argument.
 .SH SOURCE
 .B /sys/src/libc/port/nan.c
+.SH "SEE ALSO"
+.BR getfcr (2),
+.BR setfcr (2).
