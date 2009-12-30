@@ -52,14 +52,21 @@ for (i in `{echo $IBIN|awk -F, '{ n=split($0, a, ","); for (i=1;i<=n;i++) print 
 		echo illegal option ''''-i $i'''' ignored >[1=2]
 	}
 }
-#if (! ~ $#DUPLEX 0) {
-#	if (~ $DUPLEX 1 )
-#		PATCH=$PATCH'
-#statusdict /setduplexmode known {statusdict begin true setduplexmode end} if';
-#	if (~ $DUPLEX 0 )
-#		PATCH=$PATCH'
-#statusdict /setduplexmode known {statusdict begin false setduplexmode end} if';
-#}
+if (! ~ $#DUPLEX 0) {
+	switch ($DUPLEX) {
+	case 0;
+		DUPLEX=false
+	case 1;
+		DUPLEX=true
+	}
+	PATCH=$PATCH'
+%%BeginFeature: *Set DuplexMode
+[{ systemdict /languagelevel known {languagelevel 1 gt product (HP LaserJet 4Si) ne and} if {
+    << /Duplex '$DUPLEX'  >> setpagedevice
+  } {statusdict /setduplexmode known {statusdict begin '$DUPLEX' setduplexmode end} if} ifelse
+ } stopped cleartomark
+%%EndFeature';
+}
 PATCH=$PATCH'
 %%EndPatch from lp
 '
