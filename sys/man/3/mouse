@@ -100,8 +100,10 @@ is equivalent to a write of
 followed by a write of
 .BR intellimouse .
 .TP
-.B accelerated
+.B accelerated [\fIn\fP]
 turns on mouse acceleration.
+.I n
+specifies an optional acceleration factor.
 .TP
 .B linear
 turns off mouse acceleration
