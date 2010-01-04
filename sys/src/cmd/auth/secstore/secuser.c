@@ -123,7 +123,7 @@ main(int argc, char **argv)
 	for(;;){
 		tm = localtime(expsecs);
 		print("expires [DDMMYYYY, default = %2.2d%2.2d%4.4d]: ",
-				tm->mday, tm->mon, tm->year+1900);
+				tm->mday, tm->mon + 1, tm->year+1900);
 		userinput(buf, sizeof(buf));
 		if(strlen(buf) == 0)
 			break;

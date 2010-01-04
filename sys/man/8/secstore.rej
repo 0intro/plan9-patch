@@ -1,0 +1,35 @@
+--- sys/man/8/secstore	Thu Jan  6 14:05:00 2005
++++ sys/man/8/secstore	Thu Jan  6 14:05:00 2005
+@@ -83,17 +116,24 @@
+ to create an account
+ .BR FICTITIOUS .
+ .SH FILES
+-.B /adm/secstore/who/$uid
+-secstore account name, expiration date, verifier
+-.br
+-.B /adm/secstore/store/$uid/
+-users' files
+-.br
++.TF /adm/secstore/store/user/
++.TP
++.BI /adm/secstore/who/ user
++.I secstore
++account name, expiration date, verifier
++.TP
++.BI /adm/secstore/store/ user /
++.I user 's
++file storage
++.TP
+ .B /lib/ndb/auth
+ for mapping local userid to RADIUS userid
+-.br
++.TP
+ .B /sys/log/secstore
+-log file (secstored logs to /dev/cons if it does not exist)
++log file (if it does not exist,
++.I secstored
++logs to
++.BR /dev/cons )
+ .SH SOURCE
+ .B /sys/src/cmd/auth/secstore
+ .SH SEE ALSO
