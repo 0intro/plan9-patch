@@ -27,13 +27,13 @@ ensure_exists(char *f, ulong perm)
 }
 
 
-int
+void
 main(int argc, char **argv)
 {
 	int isnew;
+	long expsecs, u;
 	char *id, buf[Maxmsg], home[Maxmsg], prompt[100], *hexHi;
-	char *pass, *passck;
-	long expsecs;
+	char *p, *pass, *passck;
 	mpint *H = mpnew(0), *Hi = mpnew(0);
 	PW *pw;
 	Tm *tm;
@@ -122,30 +122,29 @@ main(int argc, char **argv)
 
 	for(;;){
 		tm = localtime(expsecs);
-		print("expires [DDMMYYYY, default = %2.2d%2.2d%4.4d]: ",
-				tm->mday, tm->mon, tm->year+1900);
-		userinput(buf, sizeof(buf));
+		print("expires [YYYYMMDD, default %.4d%.2d%.2d: ",
+			tm->year + 1900, tm->mon + 1, tm->mday);
+		userinput(buf, sizeof buf);
 		if(strlen(buf) == 0)
 			break;
-		if(strlen(buf) != 8){
-			print("!bad date format: %s\n", buf);
+		u = strtoul(buf, &p, 10);
+		if(*p || u < 19700101 || u > 20370101){
+			print("!bad date format %s\n", buf);
 			continue;
 		}
-		tm->mday = (buf[0]-'0')*10 + (buf[1]-'0');
+		tm->mday = u%100;
+		u /= 100;
 		if(tm->mday > 31 || tm->mday < 1){
 			print("!bad day of month: %d\n", tm->mday);
 			continue;
 		}
-		tm->mon = (buf[2]-'0')*10 + (buf[3]-'0') - 1;
-		if(tm->mon > 11 || tm->mday < 0){
+		tm->mon = u%100 - 1;
+		u /= 100;
+		if(tm->mon > 11 || tm->mon < 0){
 			print("!bad month: %d\n", tm->mon + 1);
 			continue;
 		}
-		tm->year = atoi(buf+4) - 1900;
-		if(tm->year < 70){
-			print("!bad year: %d\n", tm->year + 1900);
-			continue;
-		}
+		tm->year = u - 1900;
 		tm->sec = 59;
 		tm->min = 59;
 		tm->hour = 23;
@@ -216,7 +215,6 @@ main(int argc, char **argv)
 	}
 
 	exits("");
-	return 1;  /* keep  other compilers happy */
 }
 
 
@@ -238,4 +236,3 @@ userinput(char *buf, int blen)
 			exits("input too large");
 	}
 }
-
