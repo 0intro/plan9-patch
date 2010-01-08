@@ -1,15 +1,18 @@
 enum {
 	/* flavours of the device */
-	Type0,
-	Type1,
+	TypeH,
 	TypeHX,
+	TypeUnk,
+
+	RevH = 0x0202,
+	RevX = 0x0300,
+	RevHX = 0x0400,
+	Rev1 = 0x0001,
 
 	/* usbcmd parameters */
 	SetLineReq = 0x20,
 
 	SetCtlReq = 0x22,
-	CtlDTR = 0x01,
-	CtlRTS = 0x02,
 
 	BreakReq = 0x23,
 	BreakOn = 0xffff,
@@ -19,38 +22,43 @@ enum {
 
 	VendorWriteReq = 0x01,	/* BUG: is this a standard request? */
 	VendorReadReq = 0x01,
-
-	VendorReqSize = 10,
+	
+	ParamReqSz = 7,
+	VendorReqSz = 10,
 
 	/* status read from interrupt endpoint */
 	DcdStatus =	0x01,
 	DsrStatus =	0x02,
-	BreakerrStatus=	0x04,
+	BreakerrStatus =	0x04,
 	RingStatus =	0x08,
 	FrerrStatus =	0x10,
 	ParerrStatus =	0x20,
 	OvererrStatus =	0x40,
 	CtsStatus =	0x80,
 
-	/*
-	 * flow control bits, Dcr0InitH
-	 * I think, composed this list from various drivers and specs.
-	 * FlowOutCts =	0x0001,
-	 * FlowOutDsr =	0x0002,
-	 * FlowInDsr =	0x0004,
-	 * FlowInDtr =	0x0008,
-	 * FlowInRts =	0x0010,
-	 * FlowOutRts =	0x0020,
-	 * FlowOutXon =	0x0080,
-	 * FlowInXon =	0x0100,
-	 */
+	DcrGet = 0x80,
+	DcrSet = 0x00,
 
-	Dcr0InitH = 0x0041,
-	Dcr0InitX = 0x0061,
+	Dcr0Idx = 0x00,
+
+	Dcr0Init = 0x0001,
+	Dcr0HwFcH = 0x0040,
+	Dcr0HwFcX = 0x0060,
+
+	Dcr1Idx = 0x01,
+
+	Dcr1Init = 0x0000,
 	Dcr1InitH = 0x0080,
 	Dcr1InitX = 0x0000,
+
+	Dcr2Idx = 0x02,
+
 	Dcr2InitH = 0x0024,
 	Dcr2InitX = 0x0044,
+
+	PipeDSRst = 0x08,
+	PipeUSRst = 0x09,
+
 };
 
 enum {

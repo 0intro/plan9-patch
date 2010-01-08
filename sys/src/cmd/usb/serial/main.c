@@ -6,6 +6,7 @@
 #include "serial.h"
 #include "ucons.h"
 #include "prolific.h"
+#include "ftdi.h"
 
 typedef struct Parg Parg;
 enum {
@@ -24,7 +25,7 @@ usage(void)
 static int
 matchserial(char *info, void*)
 {
-	if(uconsmatch(info) == 0 || plmatch(info) == 0)
+	if(uconsmatch(info) == 0 || plmatch(info) == 0 || ftmatch(nil, info) == 0)
 		return 0;
 	return -1;
 }
@@ -35,7 +36,7 @@ threadmain(int argc, char **argv)
 	char *mnt, *srv, *as, *ae;
 	char args[Arglen];
 
-	mnt = "/dev";
+	mnt = "/n/serial";
 	srv = nil;
 
 	quotefmtinstall();

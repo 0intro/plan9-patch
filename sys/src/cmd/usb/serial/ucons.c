@@ -28,13 +28,17 @@ uconsmatch(char *info)
 	return -1;
 }
 
+static int
+ucseteps(Serial *ser)
+{
+	ser->maxread = 8;
+	ser->maxwrite = 8;
+	devctl(ser->epin, "maxpkt 8");
+	devctl(ser->epout, "maxpkt 8");
+	return 0;
+}
 
+/* all nops */
 Serialops uconsops = {
-	.init =		serialnop,
-	.getparam =	serialnop,
-	.setparam =	serialnop,
-	.clearpipes =	serialnop,
-	.sendlines =	serialnop,
-	.modemctl =	serialnopctl,
-	.setbreak =	serialnopctl,
+	.seteps = ucseteps,
 };
