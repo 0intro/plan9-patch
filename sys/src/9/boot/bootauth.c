@@ -10,7 +10,7 @@ static void glenda(void);
 void
 authentication(int cpuflag)
 {
-	char *argv[16], **av;
+	char *argv[16], **av, *s;
 	int ac;
 
 	if(access("/boot/factotum", AEXEC) < 0){
@@ -22,10 +22,8 @@ authentication(int cpuflag)
 	ac = 0;
 	av = argv;
 	av[ac++] = "factotum";
-	if(getenv("debugfactotum"))
-		av[ac++] = "-p";
-//	av[ac++] = "-d";		/* debug traces */
-//	av[ac++] = "-D";		/* 9p messages */
+	if(s = getenv("debugfactotum"))
+		av[ac++] = s;
 	if(cpuflag)
 		av[ac++] = "-S";
 	else
