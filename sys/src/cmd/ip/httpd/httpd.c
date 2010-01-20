@@ -38,8 +38,7 @@ PEMChain *certchain;
 void
 usage(void)
 {
-	fprint(2, "usage: httpd [-c certificate] [-C CAchain] [-a srvaddress] "
-		"[-d domain] [-n namespace] [-w webroot]\n");
+	fprint(2, "usage: httpd [-N] [-c certificate] [-C CAchain] [-a srvaddress] [-d domain] [-n namespace] [-w webroot] \n");
 	exits("usage");
 }
 
@@ -47,6 +46,7 @@ void
 main(int argc, char **argv)
 {
 	char *address;
+	int gonone = 1;
 
 	namespace = nil;
 	address = nil;
@@ -65,6 +65,9 @@ main(int argc, char **argv)
 		certchain = readcertchain(EARGF(usage()));
 		if (certchain == nil)
 			sysfatal("reading certificate chain: %r");
+		break;
+	case 'u' :
+		gonone = 0;
 		break;
 	case 'n':
 		namespace = EARGF(usage());
@@ -122,7 +125,8 @@ main(int argc, char **argv)
 	urlinit();
 	statsinit();
 
-	becomenone(namespace);
+	if(gonone)
+		becomenone(namespace);
 	dolisten(netmkaddr(address, "tcp", certificate == nil ? "http" : "https"));
 	exits(nil);
 }
@@ -324,7 +328,7 @@ top:
 		newuri = nil;
 	}else
 		newuri = redirect(c, origuri, &flags);
-
+	
 	if(newuri != nil){
 		if(flags & Redirsilent) {
 			c->req.uri = uri = newuri;
@@ -398,10 +402,8 @@ send(HConnect *c)
 	char *w, *w2, *p, *masque;
 	int fd, fd1, n, force301, ok;
 
-/*
 	if(c->req.search)
 		return hfail(c, HNoSearch, c->req.uri);
- */
 	if(strcmp(c->req.meth, "GET") != 0 && strcmp(c->req.meth, "HEAD") != 0)
 		return hunallowed(c, "GET, HEAD");
 	if(c->head.expectother || c->head.expectcont)
@@ -448,8 +450,12 @@ send(HConnect *c)
 		strcat(w, c->req.uri);
 		fd = open(w, OREAD);
 	}
-	if(fd < 0)
+
+	if(fd < 0) { // tell someone what we didn't find
+		syslog(0, HTTPLOG, "%r: %s", w);
 		return notfound(c, c->req.uri);
+	}
+
 	dir = dirfstat(fd);
 	if(dir == nil){
 		close(fd);

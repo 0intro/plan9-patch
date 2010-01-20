@@ -3,6 +3,7 @@
 httpd, mirror, save, imagemap, man2html, webls \- HTTP server
 .SH SYNOPSIS
 .B ip/httpd/httpd
+.RB [ -u ]
 .RB [ -a
 .IR srvaddr ]
 .RB [ -c
@@ -95,7 +96,10 @@ It announces the service
 .I srvaddr
 (default
 .BR tcp!*!http ),
-and listens for incoming calls.
+and listens for incoming calls as user none unless
+.B -u
+is specified on the command line in which case it as 
+as the current user.
 If an X.509 certificate is supplied with the
 .B -c
 option, then the service is instead
