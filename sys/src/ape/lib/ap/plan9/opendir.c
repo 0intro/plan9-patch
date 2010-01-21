@@ -102,7 +102,7 @@ readdir(DIR *d)
 			d->dirsize = _dirread(d->dd_fd, &d->dirs);
 			d->dirloc = 0;
 		}
-		if(d->dirs == NULL)
+		if(d->dirs == NULL || d->dirsize == -1)
 			return NULL;
 		dr = (struct dirent *)(d->dd_buf);
 		dirs = d->dirs;
