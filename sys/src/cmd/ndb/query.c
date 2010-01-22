@@ -58,7 +58,7 @@ search(Ndb *db, char *attr, char *val, char *rattr)
 	/* all entries */
 	for(t = ndbsearch(db, &s, attr, val); t; t = ndbsnext(&s, attr, val)){
 		for(nt = t; nt; nt = nt->entry)
-			Bprint(&bout, "%s=%s ", nt->attr, nt->val);
+			Bprint(&bout, "%s=%q ", nt->attr, nt->val);
 		Bprint(&bout, "\n");
 		ndbfree(t);
 	}
@@ -99,6 +99,7 @@ main(int argc, char **argv)
 		usage();
 	}
 
+	quotefmtinstall();
 	if(Binit(&bout, 1, OWRITE) == -1)
 		sysfatal("Binit: %r");
 	db = ndbopen(dbfile);

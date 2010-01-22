@@ -22,7 +22,7 @@ search(Ndb *db, char *attr, char *val, char **rattr, int nrattr)
 
 	tt = ndbipinfo(db, attr, val, rattr, nrattr);
 	for(t = tt; t; t = t->entry)
-		print("%s=%s ", t->attr, t->val);
+		print("%s=%q ", t->attr, t->val);
 	print("\n");
 	ndbfree(tt);
 }
@@ -42,6 +42,7 @@ main(int argc, char **argv)
 	if(argc < 3)
 		usage();
 
+	quotefmtinstall();
 	db = ndbopen(dbfile);
 	if(db == 0){
 		fprint(2, "no db files\n");

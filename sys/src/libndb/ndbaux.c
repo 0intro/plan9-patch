@@ -5,6 +5,31 @@
 #include <ndb.h>
 #include "ndbhf.h"
 
+/*
+ * strip quotes, deals with adjacent quotes
+ * implies a single quote.
+ * beware: modifies the source string
+ */
+static int
+unquote(char **buf)
+{
+	char q, *base, *w, *r;
+
+	base = *buf;
+	q = *base++;
+	r = w = base;
+	while(*r && *r != '\n'){
+		if(r[0] == q)
+			if(r[1] == q)
+				r++;
+			else
+				break;
+		*w++ = *r++;
+	}
+	*buf = r;
+	return w - base;
+}
+
 
 /*
  *  parse a single tuple
@@ -38,13 +63,9 @@ _ndbparsetuple(char *cp, Ndbtuple **tp)
 	EATWHITE(cp);
 	if(*cp == '='){
 		cp++;
-		if(*cp == '"'){
-			p = ++cp;
-			while(*cp != '\n' && *cp != '"')
-				cp++;
-			len = cp - p;
-			if(*cp == '"')
-				cp++;
+		if(*cp == '"' || *cp == '\''){
+			p = cp+1;
+			len = unquote(&cp);
 		} else if(*cp == '#'){
 			len = 0;
 		} else {
