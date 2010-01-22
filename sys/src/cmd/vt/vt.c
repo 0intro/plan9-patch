@@ -137,6 +137,7 @@ emulate(void)
 	int i;
 	int n;
 	int c;
+	int uc;
 	int operand[10];
 	int noperand;
 	int savex, savey, saveattr, saveisgraphics;
@@ -855,15 +856,19 @@ Default:
 			}
 			n = 1;
 			c = 0;
-			while (!cs->raw && host_avail() && x+n<=xmax && n<BUFS
-			    && (c = get_next_char())>=' ' && c<'\177') {
+			uc = 0;
+			while (host_avail() && x+n<=xmax && n<BUFS
+			    && (c = get_next_char())>=' ' && c!='\177') {
+				if((c&0xC0)==0x80){
+					uc++;
+				}
 				buf[n++] = c;
 				c = 0;
 			}
 			buf[n] = 0;
 //			clear(Rpt(pt(x,y), pt(x+n, y+1)));
 			drawstring(pt(x, y), buf, attr);
-			x += n;
+			x += n-uc;
 			peekc = c;
 			break;
 		}
