@@ -53,6 +53,8 @@ enum {
 	SCrshift		= 0x36,
 	SCctrl		= 0x1d,
 	SCcompose	= 0x38,
+	SClgui		= 0x5b,
+	SCrgui		= 0x5c,
 	Keyup		= 0x80,		/* flag bit */
 	Keymask		= 0x7f,		/* regular scan code bits */
 };

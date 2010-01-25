@@ -349,11 +349,14 @@ putkeys(KDev *f, uchar buf[], uchar obuf[], int n, uchar dk)
 	int fd;
 
 	fd = f->in->fd;
-	putmod(fd, buf[0], obuf[0], Mctrl, 0, SCctrl);
+	putmod(fd, buf[0], obuf[0], (1<<Mlctrl), 0, SCctrl);
+	putmod(fd, buf[0], obuf[0], (1<<Mrctrl), 1, SCctrl);
 	putmod(fd, buf[0], obuf[0], (1<<Mlshift), 0, SClshift);
 	putmod(fd, buf[0], obuf[0], (1<<Mrshift), 0, SCrshift);
 	putmod(fd, buf[0], obuf[0], Mcompose, 0, SCcompose);
 	putmod(fd, buf[0], obuf[0], Maltgr, 1, SCcompose);
+	putmod(fd, buf[0], obuf[0], (1<<Mlgui), 1, SClgui);
+	putmod(fd, buf[0], obuf[0], (1<<Mrgui), 1, SCrgui);
 
 	/* Report key downs */
 	for(i = 2; i < n; i++){
