@@ -78,10 +78,10 @@ casf(void)
 }
 
 long
-outlstring(ushort *s, long n)
+outlstring(Rune *s, long n)
 {
-	char buf[2];
-	int c;
+	char buf[UTFmax];
+	int c, i;
 	long r;
 
 	if(suppress)
@@ -92,14 +92,14 @@ outlstring(ushort *s, long n)
 	while(n > 0) {
 		c = *s++;
 		if(align(0, types[TCHAR], Aarg1)) {
-			buf[0] = c>>8;
-			buf[1] = c;
+			for(i = 0; i < sizeof buf; i++)
+				buf[i] = c>>8*(sizeof buf - i - 1);
 		} else {
-			buf[0] = c;
-			buf[1] = c>>8;
+			for(i = 0; i < sizeof buf; i++)
+				buf[i] = c>>8*i;
 		}
-		outstring(buf, 2);
-		n -= sizeof(ushort);
+		outstring(buf, sizeof(Rune));
+		n -= sizeof(Rune);
 	}
 	return r;
 }
