@@ -25,7 +25,7 @@ void
 main(int argc, char **argv)
 {
 	Biobuf in;
-	int fd;
+	int fd, l;
 	char *p, *t;
 	char buf[Bsize];
 
@@ -46,7 +46,9 @@ main(int argc, char **argv)
 
 	for(;;){
 		if(p = Brdline(&in, '\n')){
-			p[Blinelen(&in)-1] = 0;
+			p[l =Blinelen(&in)-1] = 0;
+			if(l && p[l-1] == '\r')
+				p[l-1] = 0;
 			t = ctime(time(0));
 			t[19] = 0;
 			while(fprint(fd, "%s: %s\n", t, p) < 0) {
