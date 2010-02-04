@@ -75,16 +75,16 @@ ischeme(char *s)
 
 /*
  * For server-based naming authorities (RFC2396 Sec 3.2.2):
- *    server        = [ [ userinfo "@" ] hostport ]
+ *    server        = [ userinfo "@" ] hostport
  *    userinfo      = *( unreserved | escaped |
  *                      ";" | ":" | "&" | "=" | "+" | "$" | "," )
  *    hostport      = host [ ":" port ]
  *    host          = hostname | IPv4address
  *    hostname      = *( domainlabel "." ) toplabel [ "." ]
- *    domainlabel   = alphanum | alphanum *( alphanum | "-" ) alphanum
- *    toplabel      = alpha | alpha *( alphanum | "-" ) alphanum
- *    IPv4address   = 1*digit "." 1*digit "." 1*digit "." 1*digit
- *    port          = *digit
+ *    domainlabel	= ( alphanum | "-" | "_" )+
+ *    toplabel      = alpha | alpha ( alphanum | "-" | "_" )* alphanum
+ *    IPv4address   = digit+ "." digit+ "." digit+ "." digit+
+ *    port          = digit*
  *
  *  The host is a domain name of a network host, or its IPv4 address as a
  *  set of four decimal digit groups separated by ".".  Literal IPv6
@@ -111,11 +111,12 @@ ischeme(char *s)
  */
 
 /* RE character-class components -- these go in brackets */
+#define UNWISE		"\\[\\]|\\\\^{}`"
 #define PUNCT			"\\-_.!~*'()"
 #define RES			";/?:@&=+$,"
 #define ALNUM		"a-zA-Z0-9"
 #define HEX			"0-9a-fA-F"
-#define UNRES			ALNUM PUNCT
+#define UNRES			ALNUM PUNCT UNWISE
 
 /* RE components; _N => has N parenthesized subexpressions when expanded */
 #define ESCAPED_1			"(%[" HEX "][" HEX "])"
@@ -173,7 +174,7 @@ Retab retab[] =	/* view in constant width Font */
 	{  3,                    7,                              11, },
 
 [REhost]
-	"^(([a-zA-Z0-9\\-.]+)|(\\[([a-fA-F0-9.:]+)\\]))$", nil, 0,
+	"^(([a-zA-Z0-9_\\-.]+)|(\\[([a-fA-F0-9.:]+)\\]))$", nil, 0,
 	/* |--regular host--|     |-IPv6 literal-| */
 	{  2,                     4, },
 
