@@ -1449,6 +1449,13 @@ e228wfp=1680x1050	# 60Hz
 	vrs=1053 vre=1059 vt=1089
 	hsync=- vsync=+
 
+# Philips 220BW flat panel
+p220bw=1680x1050	#60Hz
+	clock=119
+	shb=1728 ehb=1760 ht=1840
+	vrs=1053 vre=1059 vt=1080
+	hsync=- vsync=+ 
+
 #
 # HannsG JC199D LCD monitor (1280x1024 native)
 #
