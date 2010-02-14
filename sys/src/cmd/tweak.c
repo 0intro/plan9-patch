@@ -160,6 +160,7 @@ int		invert = 0;
 Image		*values[256];
 Image		*greyvalues[256];
 uchar		data[8192];
+int		base;
 
 Thing*	tget(char*);
 void	mesg(char*, ...);
@@ -172,11 +173,28 @@ void	drawall(void);
 void	tclose1(Thing*);
 
 void
+usage(void)
+{
+	fprint(2, "usage: tweak [-b base] [file] ...\n");
+	exits("usage");
+}
+
+void
 main(int argc, char *argv[])
 {
 	int i;
 	Event e;
 	Thing *t;
+
+	ARGBEGIN{
+	case 'b':
+		base = atoi(EARGF(usage()));
+		if((uint)base > Runemax)
+			usage();
+		break;
+	default:
+		usage();
+	}ARGEND
 
 	mag = Mag;
 	if(initdraw(error, 0, "tweak") < 0){
@@ -191,9 +209,8 @@ main(int argc, char *argv[])
 	}
 	einit(Emouse|Ekeyboard);
 	eresized(0);
-	i = 1;
 	setjmp(err);
-	for(; i<argc; i++){
+	for(i = 0; i<argc; i++){
 		file = argv[i];
 		t = tget(argv[i]);
 		if(t)
@@ -334,8 +351,9 @@ cntl(void)
 void
 stext(Thing *t, char *l0, char *l1)
 {
+	char buf[256], buf1[10];
+	int r;
 	Fontchar *fc;
-	char buf[256];
 
 	l1[0] = 0;
 	sprint(buf, "depth:%d r:%d %d  %d %d ", 
@@ -346,9 +364,16 @@ stext(Thing *t, char *l0, char *l1)
 	sprint(l0, "%s file: %s", buf, t->name);
 	if(t->c >= 0){
 		fc = &t->parent->s->info[t->c];
-		sprint(l1, "c(hex): %x c(char): %C x: %d "
+		r = base+t->c+t->parent->off;
+		if((uint)r > Runemax)
+			snprint(buf1, sizeof buf1, "<ill>");
+		else if(r == 0)
+			snprint(buf1, sizeof buf1, "<nil>");
+		else
+			snprint(buf1, sizeof buf1, "%C", (Rune)r);
+		sprint(l1, "c(hex): %x c(char): %s x: %d "
 			   "top: %d bottom: %d left: %d width: %d iwidth: %d",
-			(int)(t->c+t->parent->off), (int)(t->c+t->parent->off),
+			r, buf1,
 			fc->x, fc->top, fc->bottom, fc->left,
 			fc->width, Dx(t->b->r));
 	}else if(t->s)

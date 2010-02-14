@@ -5,6 +5,10 @@ tweak \- edit image files, subfont files, face files, etc.
 .SH SYNOPSIS
 .B tweak
 [
+.B -b
+.I baseoff
+]
+[
 .I file ...
 ]
 .SH DESCRIPTION
@@ -43,6 +47,10 @@ and
 .B ascent
 as defined in
 .IR cachechars (2).
+It is assumed that the first character in the first file
+is character 0 unless
+.I baseoff
+is given.
 .PP
 By means described below, magnified views of portions of the images
 may be displayed.
@@ -165,3 +173,8 @@ The program will complain once about modified but unwritten files.
 For a program written to adjust width tables in fonts,
 .I tweak
 has been pushed unreasonably far.
+.PP
+Fonts with discontinuities will display incorrect character
+values.  It would be necessary to parse
+.IR font (6)
+files instead of subfonts.
