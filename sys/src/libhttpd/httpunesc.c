@@ -4,32 +4,23 @@
 #include <httpd.h>
 
 /*
- *  go from http with latin1 escapes to utf,
- *  we assume that anything >= Runeself is already in utf
+ *  go from http with escapes to utf,
  */
 char *
 httpunesc(HConnect *cc, char *s)
 {
-	char *t, *v;
+	char *t, *v, *p;
 	int c;
+	Rune r;
 	Htmlesc *e;
 
 	v = halloc(cc, UTFmax*strlen(s) + 1);
 	for(t = v; c = *s;){
 		if(c == '&'){
-			if(s[1] == '#' && s[2] && s[3] && s[4] && s[5] == ';'){
-				c = atoi(s+2);
-				if(c < Runeself){
-					*t++ = c;
-					s += 6;
-					continue;
-				}
-				if(c < 256 && c >= 161){
-					e = &htmlesc[c-161];
-					t += runetochar(t, &e->value);
-					s += 6;
-					continue;
-				}
+			if(s[1] == '#' && (c = strtoul(s+1, &p, 10)) != 0 && *p == ';'){
+				r = c;
+				t += runetochar(t, &r);
+				s = p+1;
 			} else {
 				for(e = htmlesc; e->name != nil; e++)
 					if(strncmp(e->name, s, strlen(e->name)) == 0)

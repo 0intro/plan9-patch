@@ -1,0 +1,19 @@
+--- sys/src/cmd/ip/httpd/init.c	Thu Jul 15 21:32:36 2010
++++ sys/src/cmd/ip/httpd/init.c	Fri Nov  7 14:17:15 2008
+@@ -50,12 +50,13 @@
+ 		netdir = EARGF(usage());
+ 		break;
+ 	case 'L':
+-		logall[0] = strtol(EARGF(usage()), nil, 10);
+-		logall[1] = strtol(EARGF(usage()), nil, 10);
++		logall[0] = atoi(EARGF(usage()));
++		logall[1] = atoi(EARGF(usage()));
+ 		break;
+ 	case 'R':
+ 		s = EARGF(usage());
+-		snprint((char*)connect.header, sizeof(connect.header), "%s", s);
++		connect.hin.stop = connect.hin.start + 
++			snprint((char*)connect.hin.start, sizeof connect.hin.buf, "%s", s);
+ 		break;
+ 	default:
+ 		usage();
