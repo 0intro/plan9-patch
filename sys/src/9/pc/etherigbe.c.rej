@@ -1,0 +1,10 @@
+--- sys/src/9/pc/etherigbe.c	Sat Apr 17 18:59:34 2004
++++ sys/src/9/pc/etherigbe.c	Sat Apr 17 18:59:34 2004
+@@ -1853,6 +1860,7 @@
+ 
+ 	edev->arg = edev;
+ 	edev->promiscuous = igbepromiscuous;
++	edev->shutdown = igbeshutdown;
+ 	edev->multicast = igbemulticast;
+ 
+ 	return 0;

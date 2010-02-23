@@ -1,0 +1,33 @@
+--- sys/src/9/pc/etherelnk3.c	Sat Apr 17 18:59:33 2004
++++ sys/src/9/pc/etherelnk3.c	Sat Apr 17 18:59:32 2004
+@@ -1928,21 +1957,7 @@
+ 	case 0x9200:
+ 	case 0x9201:
+ 		ctlr->xcvr = xcvrMii;
+-		txrxreset(port);
+-		x = ins(port+ResetOp905B);
+-		XCVRDEBUG("905[BC] reset ops 0x%uX\n", x);
+-		x &= ~0x4010;
+-		if(ctlr->did == 0x5157){
+-			x |= 0x0010;			/* Invert LED */
+-			outs(port+ResetOp905B, x);
+-		}
+-		if(ctlr->did == 0x6056){
+-			x |= 0x4000;
+-			outs(port+ResetOp905B, x);
+-
+-			COMMAND(port, SelectRegisterWindow, Wsetup);
+-			outs(port, 0x0800);
+-		}
++		resetctlr(ctlr);
+ 		break;
+ 	}
+ 	XCVRDEBUG("xcvr selected: %uX, did 0x%uX\n", ctlr->xcvr, ctlr->did);
+@@ -2131,6 +2146,7 @@
+ 
+ 	ether->promiscuous = promiscuous;
+ 	ether->multicast = multicast;
++	ether->shutdown = shutdown;
+ 	ether->arg = ether;
+ 
+ 	return 0;

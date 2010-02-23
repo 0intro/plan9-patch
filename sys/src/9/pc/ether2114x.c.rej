@@ -1,0 +1,20 @@
+--- sys/src/9/pc/ether2114x.c	Sat Apr 17 18:59:30 2004
++++ sys/src/9/pc/ether2114x.c	Sat Apr 17 18:59:30 2004
+@@ -609,7 +615,7 @@
+ 	ctlr->mask = Nis|Ais|Fbe|Rwt|Rps|Ru|Ri|Unf|Tjt|Tps|Ti;
+ 	csr32w(ctlr, 5, ctlr->mask);
+ 	csr32w(ctlr, 7, ctlr->mask);
+-	ctlr->csr6 |= St;
++	ctlr->csr6 |= St|Pm;
+ 	csr32w(ctlr, 6, ctlr->csr6);
+ 
+ 	for(i = 0; i < Eaddrlen/2; i++){
+@@ -1813,6 +1828,8 @@
+ 	ether->ifstat = ifstat;
+ 
+ 	ether->arg = ether;
++	ether->shutdown = shutdown;
++	ether->multicast = multicast;
+ 	ether->promiscuous = promiscuous;
+ 
+ 	return 0;
