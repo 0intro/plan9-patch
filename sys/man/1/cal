@@ -14,8 +14,8 @@ cal \- print calendar
 prints a calendar.
 .I Month
 is either a number from 1 to 12,
-a lower case month name,
-or a lower case three-letter prefix of a month name.
+a month name,
+or a three-letter abbreviation of a month name.
 .I Year
 can be between 1
 and 9999.

@@ -166,7 +166,7 @@ number(char *str)
 	char *s;
 
 	for(n=0; s=dict[n].word; n++)
-		if(strcmp(s, str) == 0)
+		if(cistrcmp(s, str) == 0)
 			return -dict[n].val;
 	n = 0;
 	s = str;
