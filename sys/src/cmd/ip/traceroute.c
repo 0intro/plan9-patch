@@ -29,7 +29,7 @@ void
 usage(void)
 {
 	fprint(2,
-"usage: %s [-n][-a tries][-h buckets][-t ttl][-x net] [protocol!]destination\n",
+"usage: %s [-a tries][-h buckets][-l port][-n][-t ttl][-x net][-T tout] [[proto!]destination!port]\n",
 		argv0);
 	exits("usage");
 }
@@ -118,7 +118,7 @@ dodnsquery(DS *ds, char *ip, char *dom)
  *  to try dialing.  resending is up to it.
  */
 static int
-tcpilprobe(int cfd, int dfd, char *dest, int interval)
+tcpilprobe(int cfd, int dfd, int local, char *dest, int interval)
 {
 	int n;
 	char msg[Maxstring];
@@ -126,6 +126,8 @@ tcpilprobe(int cfd, int dfd, char *dest, int interval)
 	USED(dfd);
 
 	n = snprint(msg, sizeof msg, "connect %s", dest);
+	if(local)
+		n += snprint(msg+n, sizeof(msg)-n, " %d", local);
 	alarm(interval);
 	n = write(cfd, msg, n);
 	alarm(0);
@@ -137,7 +139,7 @@ tcpilprobe(int cfd, int dfd, char *dest, int interval)
  *  till we timeout or someone complains
  */
 static int
-udpprobe(int cfd, int dfd, char *dest, int interval)
+udpprobe(int cfd, int dfd, int local, char *dest, int interval)
 {
 	int n, i, rv;
 	char msg[Maxstring];
@@ -145,6 +147,9 @@ udpprobe(int cfd, int dfd, char *dest, int interval)
 
 	seek(cfd, 0, 0);
 	n = snprint(msg, sizeof msg, "connect %s", dest);
+	if(local)
+		n += snprint(msg+n, sizeof(msg)-n, " %d", local);
+print("%s\n", msg);
 	if(write(cfd, msg, n)< 0)
 		return -1;
 
@@ -242,7 +247,7 @@ catch(void *a, char *msg)
 }
 
 static int
-call(DS *ds, char *clone, char *dest, int ttl, long *interval)
+call(DS *ds, char *clone, int local, char *dest, int ttl, long *interval, int tout)
 {
 	int cfd, dfd, rv, n;
 	char msg[Maxstring];
@@ -280,11 +285,11 @@ call(DS *ds, char *clone, char *dest, int ttl, long *interval)
 
 	/* probe */
 	if(strcmp(ds->proto, "udp") == 0)
-		rv = udpprobe(cfd, dfd, dest, 3000);
+		rv = udpprobe(cfd, dfd, local, dest, tout);
 	else if(strcmp(ds->proto, "icmp") == 0)
-		rv = icmpprobe(cfd, dfd, dest, 3000);
+		rv = icmpprobe(cfd, dfd, dest, tout);
 	else	/* il and tcp */
-		rv = tcpilprobe(cfd, dfd, dest, 3000);
+		rv = tcpilprobe(cfd, dfd, local, dest, tout);
 out:
 	/* turn off alarms */
 	alarm(0);
@@ -332,7 +337,7 @@ dial_string_parse(char *str, DS *ds)
 void
 main(int argc, char **argv)
 {
-	int buckets, ttl, j, done, tries, notranslate;
+	int tout, local, buckets, ttl, j, done, tries, notranslate;
 	long lo, hi, sum, x;
 	long *t;
 	char *net, *p;
@@ -340,12 +345,17 @@ main(int argc, char **argv)
 	char err[Maxstring];
 	DS ds;
 
+	local = 0;
 	buckets = 0;
 	tries = 3;
 	notranslate = 0;
 	net = "/net";
 	ttl = 1;
+	tout = 3000;
 	ARGBEGIN{
+	case 'l':
+		local = atoi(EARGF(usage()));
+		break;
 	case 'a':
 		tries = atoi(EARGF(usage()));
 		break;
@@ -360,6 +370,9 @@ main(int argc, char **argv)
 		break;
 	case 't':
 		ttl = atoi(EARGF(usage()));
+		break;
+	case 'T':
+		tout = atoi(EARGF(usage()));
 		break;
 	case 'x':
 		net = EARGF(usage());
@@ -389,7 +402,7 @@ main(int argc, char **argv)
 	done = 0;
 	for(; ttl < 32; ttl++){
 		for(j = 0; j < tries; j++){
-			if(call(&ds, clone, dest, ttl, &t[j]) >= 0){
+			if(call(&ds, clone, local, dest, ttl, &t[j], tout) >= 0){
 				if(debug)
 					print("%ld %s\n", t[j], dest);
 				strcpy(hop, dest);

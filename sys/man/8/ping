@@ -46,6 +46,9 @@ ping, gping, traceroute, hogports \- probe the Internet
 ][
 .B -t
 .I sttl
+][
+.B -T
+.I tout
 ]
 .I dest
 .PP
@@ -181,6 +184,11 @@ to response at each TTL value.  The histogram
 contains
 .I nbuck
 buckets.
+.TP
+.B T
+set the timeout for packets to
+.I tout
+(default 3000 milliseconds).
 .PD
 .PP
 .I Hogports
