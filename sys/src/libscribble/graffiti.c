@@ -58,18 +58,18 @@ recognize (Scribble *s)
 	if (c != -1)
 		delete_rec_alternative_array(nr, ret, false);
 
-	rune = '\0';
+	rune = L'\0';
 
 	switch (c) {
 	case '\0':
 		if(ScribbleDebug)fprint(2, "(case '\\0')\n");
 		break;
 	case 'A':	/* space */
-		rune = ' ';
+		rune = L' ';
 		if(ScribbleDebug)fprint(2, "(case A) character = ' %C' (0x%x)\n", rune, rune);
 		break;
 	case 'B':	/* backspace */
-		rune = '\b';
+		rune = L'\b';
 		if(ScribbleDebug)fprint(2, "(case B) character = \\b (0x%x)\n", rune);
 		break;
 	case 'N': /* numlock */
@@ -90,7 +90,7 @@ recognize (Scribble *s)
 		s->puncShift = 0;
 		break;
 	case 'R':	/* newline */
-		rune = '\n';
+		rune = L'\n';
 		if(ScribbleDebug)fprint(2, "(case R) character = \\n (0x%x)\n", rune);
 		break;
 	case 'S': /* shift */
@@ -120,26 +120,23 @@ recognize (Scribble *s)
 			s->tmpShift = 0;
 			return rune;
 		}		  	
-		rune = '.';
+		rune = L'.';
 		if(0)fprint(2, "(case .) character = %c (0x%x)\n", rune, rune);
 		break;
 	default:
-		if ('A' <= c && c <= 'Z') {
+		if (L'A' <= c && c <= L'Z') {
 			if(ScribbleDebug)fprint(2, "(bad case?) character = %c (0x%x)\n", c, c);
 			return rune;
 		}
 		rune = c;
-		if (s->ctrlShift) 
-		{
-			if (c < 'a' || 'z' < c)
-			{
+		if (s->ctrlShift) {
+			if (c < L'a' || L'z' < c){
 				if(ScribbleDebug)fprint(2, "(default) character = %c (0x%x)\n", rune, rune);
 				return rune;
 			}
 			rune = rune & 0x1f;
 		} else if ((s->capsLock && !s->tmpShift) || 
-				 (!s->capsLock && s->tmpShift)) 
-		{
+				 (!s->capsLock && s->tmpShift)) {
 			if (rune < 0xff)
 				rune = toupper(rune);
 		} 
