@@ -676,7 +676,7 @@ if(chatty) print("%s @%lluX\n", d->name, seek(disk->wfd, 0LL, 1));
 		/*
 		 * Add the filename to the root.
 		 */
-fprint(2, "add %s at clust %lux\n", d->name, x);
+fprint(2, "add %s at clust %lux\n", *argv, x);
 		addrname(p, d, *argv, x);
 		free(d);
 	}
