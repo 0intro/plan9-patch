@@ -8,7 +8,7 @@ case 0
 case *
 	subscribers=`{cat /sys/lib/subscribers}
 	for(i in $subscribers)
-		touch /usr/$i/lib/newstime
+		touch /usr/$i/lib/newstime >[2] /dev/null
 	for(file in $files){
 		switch($file){
 		case news:
