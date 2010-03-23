@@ -36,6 +36,7 @@ enum
 	Od,	/* destination */
 	Oa,	/* source or destination */
 	Ot,	/* type */
+	Ol,	/* len */
 };
 
 static Field p_fields[] =
@@ -45,6 +46,7 @@ static Field p_fields[] =
 	{"a",	Fether,	Oa,	"source|destination address" } ,
 	{"sd",	Fether,	Oa,	"source|destination address" } ,
 	{"t",	Fnum,	Ot,	"type" } ,
+	{"ln",	Fnum,	Ol,	"length"} ,
 	{0}
 };
 
@@ -70,9 +72,11 @@ p_compile(Filter *f)
 static int
 p_filter(Filter *f, Msg *m)
 {
+	int len;
 	Hdr *h;
 
-	if(m->pe - m->ps < ETHERHDRSIZE)
+	len = m->pe - m->ps;
+	if(len < ETHERHDRSIZE)
 		return 0;
 
 	h = (Hdr*)m->ps;
@@ -87,6 +91,8 @@ p_filter(Filter *f, Msg *m)
 		return memcmp(h->s, f->a, 6) == 0 || memcmp(h->d, f->a, 6) == 0;
 	case Ot:
 		return NetS(h->type) == f->ulv;
+	case Ol:
+		return len == f->ulv;
 	}
 	return 0;
 }
