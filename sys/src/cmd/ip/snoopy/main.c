@@ -756,10 +756,10 @@ compile_cmp(char *proto, Filter *f, Field *fld)
 				v = csgetvalue(nil, "sys", (char*)f->r->s,
 					"ether", 0);
 				if(v){
-					parseether(f->a, v);
-					free(v);
-				} else
-					parseether(f->a, f->r->s);
+					free(f->r->s);
+					f->r->s = v;
+				}
+				parseether(f->a, f->r->s);
 				break;
 			case Fv4ip:
 				v = csgetvalue(nil, "sys", (char*)f->r->s,
