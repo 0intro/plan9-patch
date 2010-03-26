@@ -32,7 +32,7 @@ enum {
 	i82542		= (0x1000<<16)|0x8086,
 	i82543gc	= (0x1004<<16)|0x8086,
 	i82544ei	= (0x1008<<16)|0x8086,
-	i82544eif	= (0x1009<<16)|0x8086,
+	i82544gc	= (0x100D<<16)|0x8086,
 	i82547ei	= (0x1019<<16)|0x8086,
 	i82540em	= (0x100E<<16)|0x8086,
 	i82540eplp	= (0x101E<<16)|0x8086,
@@ -599,7 +599,7 @@ igbeifstat(Ether* edev, void* a, long n, ulong offset)
 
 	ctlr = edev->ctlr;
 	qlock(&ctlr->slock);
-	p = malloc(READSTR);
+	p = malloc(2*READSTR);
 	l = 0;
 	for(i = 0; i < Nstatistics; i++){
 		r = csr32r(ctlr, Statistics+i*4);
@@ -619,7 +619,7 @@ igbeifstat(Ether* edev, void* a, long n, ulong offset)
 				continue;
 			ctlr->statistics[i] = tuvl;
 			ctlr->statistics[i+1] = tuvl>>32;
-			l += snprint(p+l, READSTR-l, "%s: %llud %llud\n",
+			l += snprint(p+l, 2*READSTR-l, "%s: %llud %llud\n",
 				s, tuvl, ruvl);
 			i++;
 			break;
@@ -628,40 +628,40 @@ igbeifstat(Ether* edev, void* a, long n, ulong offset)
 			ctlr->statistics[i] += r;
 			if(ctlr->statistics[i] == 0)
 				continue;
-			l += snprint(p+l, READSTR-l, "%s: %ud %ud\n",
+			l += snprint(p+l, 2*READSTR-l, "%s: %ud %ud\n",
 				s, ctlr->statistics[i], r);
 			break;
 		}
 	}
 
-	l += snprint(p+l, READSTR-l, "lintr: %ud %ud\n",
+	l += snprint(p+l, 2*READSTR-l, "lintr: %ud %ud\n",
 		ctlr->lintr, ctlr->lsleep);
-	l += snprint(p+l, READSTR-l, "rintr: %ud %ud\n",
+	l += snprint(p+l, 2*READSTR-l, "rintr: %ud %ud\n",
 		ctlr->rintr, ctlr->rsleep);
-	l += snprint(p+l, READSTR-l, "tintr: %ud %ud\n",
+	l += snprint(p+l, 2*READSTR-l, "tintr: %ud %ud\n",
 		ctlr->tintr, ctlr->txdw);
-	l += snprint(p+l, READSTR-l, "ixcs: %ud %ud %ud\n",
+	l += snprint(p+l, 2*READSTR-l, "ixcs: %ud %ud %ud\n",
 		ctlr->ixsm, ctlr->ipcs, ctlr->tcpcs);
-	l += snprint(p+l, READSTR-l, "rdtr: %ud\n", ctlr->rdtr);
-	l += snprint(p+l, READSTR-l, "Ctrlext: %08x\n", csr32r(ctlr, Ctrlext));
+	l += snprint(p+l, 2*READSTR-l, "rdtr: %ud\n", ctlr->rdtr);
+	l += snprint(p+l, 2*READSTR-l, "Ctrlext: %08x\n", csr32r(ctlr, Ctrlext));
 
-	l += snprint(p+l, READSTR-l, "eeprom:");
+	l += snprint(p+l, 2*READSTR-l, "eeprom:");
 	for(i = 0; i < 0x40; i++){
 		if(i && ((i & 0x07) == 0))
-			l += snprint(p+l, READSTR-l, "\n       ");
-		l += snprint(p+l, READSTR-l, " %4.4uX", ctlr->eeprom[i]);
+			l += snprint(p+l, 2*READSTR-l, "\n       ");
+		l += snprint(p+l, 2*READSTR-l, " %4.4uX", ctlr->eeprom[i]);
 	}
-	l += snprint(p+l, READSTR-l, "\n");
+	l += snprint(p+l, 2*READSTR-l, "\n");
 
 	if(ctlr->mii != nil && ctlr->mii->curphy != nil){
-		l += snprint(p+l, READSTR-l, "phy:   ");
+		l += snprint(p+l, 2*READSTR, "phy:   ");
 		for(i = 0; i < NMiiPhyr; i++){
 			if(i && ((i & 0x07) == 0))
-				l += snprint(p+l, READSTR-l, "\n       ");
+				l += snprint(p+l, 2*READSTR-l, "\n       ");
 			r = miimir(ctlr->mii, i);
-			l += snprint(p+l, READSTR-l, " %4.4uX", r);
+			l += snprint(p+l, 2*READSTR-l, " %4.4uX", r);
 		}
-		snprint(p+l, READSTR-l, "\n");
+		snprint(p+l, 2*READSTR-l, "\n");
 	}
 	n = readstr(offset, a, n, p);
 	free(p);
@@ -768,7 +768,6 @@ igberballoc(void)
 	if((bp = igberbpool) != nil){
 		igberbpool = bp->next;
 		bp->next = nil;
-		_xinc(&bp->ref);	/* prevent bp from being freed */
 	}
 	iunlock(&igberblock);
 
@@ -780,7 +779,6 @@ igberbfree(Block* bp)
 {
 	bp->rp = bp->lim - Rbsz;
 	bp->wp = bp->rp;
- 	bp->flag &= ~(Bipck | Budpck | Btcpck | Bpktck);
 
 	ilock(&igberblock);
 	bp->next = igberbpool;
@@ -835,7 +833,6 @@ igbelproc(void* arg)
 		switch(ctlr->id){
 		case i82543gc:
 		case i82544ei:
-		case i82544eif:
 		default:
 			if(!(ctrl & Asde)){
 				ctrl &= ~(SspeedMASK|Ilos|Fd);
@@ -900,7 +897,7 @@ igbetxinit(Ctlr* ctlr)
 		break;
 	case i82543gc:
 	case i82544ei:
-	case i82544eif:
+	case i82544gc:
 	case i82547ei:
 	case i82540em:
 	case i82540eplp:
@@ -1482,7 +1479,7 @@ igbemii(Ctlr* ctlr)
 		ctlr->mii->miw = i82543miimiw;
 		break;
 	case i82544ei:
-	case i82544eif:
+	case i82544gc:
 	case i82547ei:
 	case i82540em:
 	case i82540eplp:
@@ -1922,7 +1919,7 @@ igbepci(void)
 			continue;
 		case i82543gc:
 		case i82544ei:
-		case i82544eif:
+		case i82544gc:
 		case i82547ei:
 		case i82540em:
 		case i82540eplp:
@@ -1949,7 +1946,7 @@ igbepci(void)
 				break;
 			case 0x00:
 			case 0xFF:
-				print("igbe: unusable CLS - %d\n", cls*4);
+				print("igbe: unusable CLS\n");
 				continue;
 			case 0x08:
 			case 0x10:
