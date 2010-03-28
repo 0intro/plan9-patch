@@ -77,6 +77,9 @@ main(int argc, char **argv)
 	case 'a':
 		doabort = 1;
 		break;
+	case 'B':
+		info.flags |= CDbootnoemu;
+		/* no break */
 	case 'b':
 		if(!mk9660)
 			usage();
