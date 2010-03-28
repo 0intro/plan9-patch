@@ -129,11 +129,12 @@ typedef struct {
 	int	safelen;
 } Nvrwhere;
 
+static char *nvrfile = nil, *cputype = nil;
 /* returns with *locp filled in and locp->fd open, if possible */
 static void
 findnvram(Nvrwhere *locp)
 {
-	char *cputype, *nvrfile, *nvrlen, *nvroff, *v[2];
+	char *nvrlen, *nvroff, *v[2];
 	int fd, i, safeoff, safelen;
 
 	nvrfile = getenv("nvram");
@@ -158,7 +159,7 @@ findnvram(Nvrwhere *locp)
 		}
 		fd = open(v[0], ORDWR);
 		if (fd < 0)
-			fd = open(v[0], OREAD);
+			fd = open(v[0], OREAD);		
 		safelen = sizeof(Nvrsafe);
 		if(strstr(v[0], "/9fat") == nil)
 			safeoff = 0;
@@ -199,8 +200,6 @@ findnvram(Nvrwhere *locp)
 			}
 			break;
 		}
-	free(nvrfile);
-	free(cputype);
 	locp->fd = fd;
 	locp->safelen = safelen;
 	locp->safeoff = safeoff;
@@ -241,12 +240,14 @@ readnvram(Nvrsafe *safep, int flag)
 		safe = safep;
 	else {
 		memset(safep, 0, sizeof(*safep));
-		if(loc.fd < 0
-		|| seek(loc.fd, loc.safeoff, 0) < 0
-		|| read(loc.fd, buf, loc.safelen) != loc.safelen){
+		if(loc.fd < 0) {
+			fprint(2, "Could not open %s: %r\n", nvrfile);
+		} else if (seek(loc.fd, loc.safeoff, 0) < 0) {
+			fprint(2, "Could not seek %s to %d\n", nvrfile, loc.safeoff);
+		} else if (read(loc.fd, buf, loc.safelen) != loc.safelen){
 			err = 1;
 			if(flag&(NVwrite|NVwriteonerr))
-				fprint(2, "can't read nvram: %r\n");
+				fprint(2, "can't read %s for %d bytes: %r\n", nvrfile, loc.safelen);
 			/* start from scratch */
 			memset(safep, 0, sizeof(*safep));
 			safe = safep;
