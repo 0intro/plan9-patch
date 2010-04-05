@@ -1,9 +1,6 @@
 #include <u.h>
 #include <libc.h>
 #include <bio.h>
-#include <auth.h>
-#include <fcall.h>
-#include <disk.h>
 
 enum {
 	LEN	= 8*1024,

@@ -1,7 +1,6 @@
 #include <u.h>
 #include <libc.h>
 #include <bio.h>
-#include <disk.h>
 
 static void
 enm(char *new, char *old, Dir *d, void*)
