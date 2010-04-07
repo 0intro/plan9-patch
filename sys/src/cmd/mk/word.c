@@ -184,6 +184,6 @@ dumpw(char *s, Word *w)
 {
 	Bprint(&bout, "%s", s);
 	for(; w; w = w->next)
-		Bprint(&bout, " '%s'", w->s);
+		Bprint(&bout, " %q", w->s);
 	Bputc(&bout, '\n');
 }

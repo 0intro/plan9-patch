@@ -69,14 +69,14 @@ sched(void)
 				if(!(n->flags&VIRTUAL))
 					touch(n->name);
 				else if(explain)
-					Bprint(&bout, "no touch of virtual '%s'\n", n->name);
+					Bprint(&bout, "no touch of virtual %q\n", n->name);
 			}
 			n->time = time((long *)0);
 			MADESET(n, MADE);
 		}
 	} else {
 		if(DEBUG(D_EXEC))
-			fprint(1, "recipe='%s'\n", j->r->recipe);	/**/
+			fprint(1, "recipe=%q\n", j->r->recipe);	/**/
 		Bflush(&bout);
 		if(j->r->attr&NOMINUSE)
 			flags = 0;
@@ -154,7 +154,7 @@ again:		/* rogue processes */
 			if(n->flags&DELETE){
 				if(done++ == 0)
 					fprint(2, ", deleting");
-				fprint(2, " '%s'", n->name);
+				fprint(2, " %q", n->name);
 				delete(n->name);
 			}
 		fprint(2, "\n");

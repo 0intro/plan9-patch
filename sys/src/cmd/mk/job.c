@@ -24,9 +24,9 @@ dumpj(char *s, Job *j, int all)
 {
 	Bprint(&bout, "%s\n", s);
 	while(j){
-		Bprint(&bout, "job@%p: r=%p n=%p stem='%s' nproc=%d\n",
+		Bprint(&bout, "job@%p: r=%p n=%p stem=%q nproc=%d\n",
 			j, j->r, j->n, j->stem, j->nproc);
-		Bprint(&bout, "\ttarget='%s' alltarget='%s' prereq='%s' nprereq='%s'\n",
+		Bprint(&bout, "\ttarget=%q alltarget=%q prereq=%q nprereq=%q\n",
 			wtos(j->t, ' '), wtos(j->at, ' '), wtos(j->p, ' '), wtos(j->np, ' '));
 		j = all? j->next : 0;
 	}

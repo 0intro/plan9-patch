@@ -75,12 +75,12 @@ dumpr(char *s, Rule *r)
 {
 	Bprint(&bout, "%s: start=%p\n", s, r);
 	for(; r; r = r->next){
-		Bprint(&bout, "\tRule %p: %s:%d attr=%x next=%p chain=%p alltarget='%s'",
+		Bprint(&bout, "\tRule %p: %s:%d attr=%x next=%p chain=%p alltarget=%q",
 			r, r->file, r->line, r->attr, r->next, r->chain, wtos(r->alltargets, ' '));
 		if(r->prog)
-			Bprint(&bout, " prog='%s'", r->prog);
+			Bprint(&bout, " prog=%q", r->prog);
 		Bprint(&bout, "\n\ttarget=%s: %s\n", r->target, wtos(r->tail,' '));
-		Bprint(&bout, "\trecipe@%p='%s'\n", r->recipe, r->recipe);
+		Bprint(&bout, "\trecipe@%p=%q\n", r->recipe, r->recipe);
 	}
 }
 

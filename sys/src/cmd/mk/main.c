@@ -35,6 +35,8 @@ main(int argc, char **argv)
 	Bufblock *buf;
 	Bufblock *whatif;
 
+	quotefmtinstall();
+
 	/*
 	 *  start with a copy of the current environment variables
 	 *  instead of sharing them

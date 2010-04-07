@@ -21,10 +21,10 @@ dumpa(char *s, Arc *a)
 {
 	char buf[1024];
 
-	Bprint(&bout, "%sArc@%p: n=%p r=%p flag=0x%x stem='%s'",
+	Bprint(&bout, "%sArc@%p: n=%p r=%p flag=0x%x stem=%q",
 		s, a, a->n, a->r, a->flag, a->stem);
 	if(a->prog)
-		Bprint(&bout, " prog='%s'", a->prog);
+		Bprint(&bout, " prog=%q", a->prog);
 	Bprint(&bout, "\n");
 
 	if(a->n){
