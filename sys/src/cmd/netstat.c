@@ -147,7 +147,9 @@ pip(char *net, Dir *db)
 	p = strchr(buf, ' ');
 	if(p != 0)
 		*p = 0;
-	
+	p = strrchr(buf, '\n');
+	if(p != 0)
+		*p = 0;
 	Bprint(&out, "%-4s %-4s %-10s %-12s ", net, db->name, db->uid, buf);
 
 	sprint(buf, "%s/%s/%s/local", netroot, net, db->name);
@@ -185,7 +187,8 @@ pip(char *net, Dir *db)
 	buf[n-1] = 0;
 	close(fd);
 	p = strchr(buf, '!');
-	*p++ = '\0';
+	if(p != nil)
+		*p++ = '\0';
 
 	if(notrans){
 		Bprint(&out, "%-10s %s\n", getport(net, p), buf);
