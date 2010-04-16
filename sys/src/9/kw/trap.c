@@ -452,7 +452,7 @@ trap(Ureg *ureg)
 			if(rv == 0){
 				ldrexvalid = 0;
 				snprint(buf, sizeof buf,
-					"undefined instruction: pc %#ux\n",
+					"undefined instruction: pc %#ux",
 					ureg->pc);
 				postnote(up, 1, buf, NDebug);
 			}
