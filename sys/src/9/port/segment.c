@@ -676,19 +676,24 @@ segattach(Proc *p, ulong attr, char *name, ulong va, ulong len)
 	 * Starting at the lowest possible stack address - len,
 	 * check for an overlapping segment, and repeat at the
 	 * base of that segment - len until either a hole is found
-	 * or the address space is exhausted.
+	 * or the address space is exhausted. make sure we dont
+	 * map the zero page.
 	 */
 	if(va == 0) {
-		va = p->seg[SSEG]->base - len;
-		for(;;) {
-			os = isoverlap(p, va, len);
-			if(os == nil)
-				break;
+		os = p->seg[SSEG];
+		do {
 			va = os->base;
-			if(len > va)
+			if(len >= va)
 				error(Enovmem);
 			va -= len;
-		}
+			os = isoverlap(p, va, len);
+		} while(os != nil);
+	} else {
+		va = va&~(BY2PG-1);
+		if(va == 0 || va >= USTKTOP)
+			error(Ebadarg);
+		if(isoverlap(p, va, len) != nil)
+			error(Esoverlap);
 	}
 
 	va = va&~(BY2PG-1);
