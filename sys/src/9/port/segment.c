@@ -465,6 +465,15 @@ ibrk(ulong addr, int seg)
 	newtop = PGROUND(addr);
 	newsize = (newtop-s->base)/BY2PG;
 	if(newtop < s->top) {
+		/*
+		 * do not shrink when shared with other procs, as the freed
+		 * address space may have been passed to the kernel already 
+		 * by another proc and is past the validaddr stage.
+		 */
+		if(s->ref > 1){
+			qunlock(&s->lk);
+			error(Einuse);
+		}
 		mfreeseg(s, newtop, (s->top-newtop)/BY2PG);
 		s->top = newtop;
 		s->size = newsize;
@@ -676,19 +685,24 @@ segattach(Proc *p, ulong attr, char *name, ulong va, ulong len)
 	 * Starting at the lowest possible stack address - len,
 	 * check for an overlapping segment, and repeat at the
 	 * base of that segment - len until either a hole is found
-	 * or the address space is exhausted.
+	 * or the address space is exhausted. make sure we dont
+	 * map the zero page.
 	 */
 	if(va == 0) {
-		va = p->seg[SSEG]->base - len;
-		for(;;) {
-			os = isoverlap(p, va, len);
-			if(os == nil)
-				break;
+		os = p->seg[SSEG];
+		do {
 			va = os->base;
-			if(len > va)
+			if(len >= va)
 				error(Enovmem);
 			va -= len;
-		}
+			os = isoverlap(p, va, len);
+		} while(os != nil);
+	} else {
+		va = va&~(BY2PG-1);
+		if(va == 0 || va >= USTKTOP)
+			error(Ebadarg);
+		if(isoverlap(p, va, len) != nil)
+			error(Esoverlap);
 	}
 
 	va = va&~(BY2PG-1);

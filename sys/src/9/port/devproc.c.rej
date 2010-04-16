@@ -1,0 +1,11 @@
+--- sys/src/9/port/devproc.c	Wed Feb  2 18:21:37 2005
++++ sys/src/9/port/devproc.c	Wed Feb  2 18:21:37 2005
+@@ -1097,7 +1097,7 @@
+ 		}
+ 		t = proctab(0);
+ 		for(et = t+conf.nproc; t < et; t++) {
+-			if(id == t->noteid) {
++			if(id == t->noteid && t->state != Dead) {
+ 				if(strcmp(p->user, t->user) != 0)
+ 					error(Eperm);
+ 				p->noteid = id;
