@@ -316,6 +316,7 @@ struct Page
 	ulong	pa;			/* Physical address in memory */
 	ulong	va;			/* Virtual address for user */
 	ulong	daddr;			/* Disc address on swap */
+	ulong	gen;			/* Generation counter for swap */
 	ushort	ref;			/* Reference count */
 	char	modref;			/* Simulated modify/reference bits */
 	char	color;			/* Cache coloring */

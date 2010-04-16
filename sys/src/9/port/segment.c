@@ -64,8 +64,6 @@ newseg(int type, ulong base, ulong size)
 	if(size > (SEGMAPSIZE*PTEPERTAB))
 		error(Enovmem);
 
-	if(swapfull())
-		error(Enoswap);
 	s = smalloc(sizeof(Segment));
 	s->ref = 1;
 	s->type = type;
@@ -471,11 +469,6 @@ ibrk(ulong addr, int seg)
 		qunlock(&s->lk);
 		flushmmu();
 		return 0;
-	}
-
-	if(swapfull()){
-		qunlock(&s->lk);
-		error(Enoswap);
 	}
 
 	for(i = 0; i < NSEG; i++) {
