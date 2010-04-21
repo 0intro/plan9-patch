@@ -200,7 +200,7 @@ main(int argc, char **argv)
 
 	if(na){
 		if(srv == nil)
-			sysfatal("-B requires -s");
+			sysfatal("-B requires -r");
 
 		local = "me";
 		remote = na;
@@ -253,7 +253,7 @@ main(int argc, char **argv)
 	if(srvfd != -1) {
 		/* do nothing */
 	}
-	else if(srv) {
+	else if(na) {
 		chdir(srv);
 		DEBUG(DFD, "invoked as server for %s", srv);
 		strncpy(buf, srv, sizeof buf);
@@ -269,6 +269,10 @@ main(int argc, char **argv)
 			exits(buf);
 		}
 		buf[n] = 0;
+		if(srv) {
+			/* Ignore requested tree. */
+			strncpy(buf, srv, sizeof buf);
+		}
 		if(chdir(buf) < 0) {
 			errstr(ebuf, sizeof ebuf);
 			fprint(0, "chdir(%d:\"%s\"): %s", n, buf, ebuf);
@@ -282,7 +286,7 @@ main(int argc, char **argv)
 
 	DEBUG(DFD, "exportfs: %s\n", buf);
 
-	if(srv == nil && srvfd == -1 && write(0, "OK", 2) != 2)
+	if(na == nil && srvfd == -1 && write(0, "OK", 2) != 2)
 		fatal("open ack write");
 
 	if (readn(netfd, &initial, sizeof(ulong)) < sizeof(ulong))
