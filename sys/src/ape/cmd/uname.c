@@ -19,6 +19,7 @@ char *argv0;
 
 main(int argc, char **argv)
 {
+	char *pad;
 	struct utsname u;
 
 	uname(&u);
@@ -26,25 +27,32 @@ main(int argc, char **argv)
 		printf("%s\n", u.sysname);
 		exit(0);
 	}
-	ARGBEGIN {
+	pad = "";
+	ARGBEGIN{
 	case 'a':
-		printf("%s %s %s %s %s ", u.sysname, u.nodename,
+		printf("%s%s %s %s %s %s", pad, u.sysname, u.nodename,
 			u.release, u.version, u.machine);
+		pad = " ";
 		break;
 	case 'm':
-		printf("%s ", u.machine);
+		printf("%s%s", pad, u.machine);
+		pad = " ";
 		break;
 	case 'n':
-		printf("%s ", u.nodename);
+		printf("%s%s", pad, u.nodename);
+		pad = " ";
 		break;
 	case 'r':
-		printf("%s ", u.release);
+		printf("%s%s", pad, u.release);
+		pad = " ";
 		break;
 	case 's':
-		printf("%s ", u.sysname);
+		printf("%s%s", pad, u.sysname);
+		pad = " ";
 		break;
 	case 'v':
-		printf("%s ", u.version);
+		printf("%s%s", pad, u.version);
+		pad = " ";
 		break;
 	} ARGEND
 	printf("\n");
