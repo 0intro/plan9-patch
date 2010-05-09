@@ -497,7 +497,7 @@ rread(Fid *f)
 {
 	Ram *r;
 	uchar *buf;
-	long off;
+	vlong off;
 	int n, m, cnt;
 
 	if(f->ram->busy == 0)
@@ -544,7 +544,7 @@ char*
 rwrite(Fid *f)
 {
 	Ram *r;
-	ulong off;
+	uvlong off;
 	int cnt;
 
 	r = f->ram;
