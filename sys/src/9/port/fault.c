@@ -337,8 +337,10 @@ okaddr(ulong addr, ulong len, int write)
 void
 validaddr(ulong addr, ulong len, int write)
 {
-	if(!okaddr(addr, len, write))
-		pexit("Suicide", 0);
+	if(!okaddr(addr, len, write)){
+		postnote(up, 1, "sys: bad address in syscall", NDebug);
+		error(Ebadarg);
+	}
 }
 
 /*
