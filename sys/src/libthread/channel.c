@@ -225,6 +225,8 @@ chanclose(Channel *c)
 {
 	Alt *a;
 	int i, s, some;
+	char stags[16];
+	char *q = stags;
 
 	s = _procsplhi();	/* note handlers; see :/^alt */
 	lock(&chanlock);
@@ -246,7 +248,7 @@ chanclose(Channel *c)
 	do{
 		some = 0;
 		for(i = 0; i < c->nentry; i++){
-			if((a = c->qentry[i]) == nil || *a->tag != nil)
+			if(q[i] != 0 || (a = c->qentry[i]) == nil || *a->tag != nil)
 				continue;
 			if(a->op != CHANSND && (a->op != CHANRCV || c->n != 0))
 				continue;
@@ -255,6 +257,11 @@ chanclose(Channel *c)
 			_procsplx(s);
 			while(_threadrendezvous(a->tag, Closed) == Intred)
 				;
+			if(i >= nelem(stags)){		/* should happen seldom */
+				q = mallocz(c->nentry, 1);
+				memmove(q, stags, nelem(stags));
+			}
+			q[i] = 1;
 			s = _procsplhi();
 			lock(&chanlock);
 			some++;
@@ -266,6 +273,8 @@ chanclose(Channel *c)
 		_chanfree(c);
 	unlock(&chanlock);
 	_procsplx(s);
+	if(q != stags)
+		free(q);
 	return 0;
 }
 
