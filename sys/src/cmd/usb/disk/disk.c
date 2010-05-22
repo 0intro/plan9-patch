@@ -59,7 +59,7 @@ getmaxlun(Dev *dev)
 		dprint(2, "disk: %s: getmaxlun failed: %r\n", dev->dir);
 	}else
 		dprint(2, "disk: %s: maxlun %d\n", dev->dir, max);
-	return max;
+	return max&0xF;
 }
 
 static int
