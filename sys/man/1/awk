@@ -74,6 +74,9 @@ options may be present.
 .IR fs
 option defines the input field separator to be the regular expression
 .IR fs .
+If
+.IR fs
+is a single metacharacter, it does not need to be escaped.
 .PP
 An input line is normally made up of fields separated by white space,
 or by regular expression
