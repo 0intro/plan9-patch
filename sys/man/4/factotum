@@ -235,13 +235,14 @@ See the sections on key confirmation and key prompting below.
 .PP
 A
 .I "key tuple
-is a space delimited list of 
+is a whitespace delimited list of 
 .IB attribute = value
 pairs.  An attribute whose name begins with an exclamation point
 .RB ( ! )
 does not appear when reading the
 .B ctl
-file.
+file.  Values with embedded whitespace or single quotes are quoted as in
+.IR rc (1).
 The required attributes depend on the authentication protocol.
 .PP
 .BR P9sk1 ,
@@ -724,5 +725,7 @@ where
 is the reason for the error.
 .PD
 .RE
+.SH "SEE ALSO"
+.IR secstore (1).
 .SH SOURCE
 .B /sys/src/cmd/auth/factotum
