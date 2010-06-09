@@ -318,6 +318,26 @@ struct Kbscan {
 
 Kbscan kbscans[2];	/* kernel and external scan code state */
 static int kdebug;
+
+static void
+setleds(Kbscan *kbscan)
+{
+	int leds;
+
+	leds = 0;
+	if(kbscan->num)
+		leds |= 1<<1;
+	if(0 && kbscan->caps)
+		leds |= 1<<2;
+	ilock(&i8042lock);
+	outready();
+	outb(Data, 0xed);		/* talk directly to kbd, not ctlr */
+	outready();
+	outb(Data, leds);
+	outready();
+	iunlock(&i8042lock);
+}
+
 /*
  * Scan code processing
  */
@@ -436,6 +456,8 @@ if(kdebug)
 			return;
 		case Num:
 			kbscan->num ^= 1;
+			if(!external)
+				setleds(kbscan);
 			return;
 		case Shift:
 			kbscan->shift = 1;
@@ -615,6 +637,9 @@ kbdenable(void)
 	ioalloc(Cmd, 1, 0, "kbd");
 
 	intrenable(IrqKBD, i8042intr, 0, BUSUNKNOWN, "kbd");
+
+	/* clears num-lock */
+	setleds(kbscans + 0);
 }
 
 void
