@@ -122,7 +122,7 @@ sizeallocs(Allocs opt, Config *cfg)
 	all = allocbypcnt(20, opt.stfree);
 
 	/* config file parameters override */
-	if (cfg->mem)
+	if (cfg->mem != 0xffffffffUL)
 		all.mem = cfg->mem;
 	if (cfg->bcmem)
 		all.bcmem = cfg->bcmem;
@@ -172,7 +172,6 @@ threadmain(int argc, char *argv[])
 	mem = 0;
 	icmem = 0;
 	bcmem = 0;
-	stfree = 0;
 	ARGBEGIN{
 	case 'a':
 		vaddr = EARGF(usage());
@@ -246,8 +245,7 @@ threadmain(int argc, char *argv[])
 	if(configfile == nil)
 		configfile = "venti.conf";
 
-	if(mempcnt > 0)
-		stfree = freemem();   /* remember free memory for auto-sizing */
+	stfree = freemem();   /* remember free memory for auto-sizing */
 	fprint(2, "conf...");
 	if(initventi(configfile, &config) < 0)
 		sysfatal("can't init server: %r");
