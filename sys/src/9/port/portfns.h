@@ -45,6 +45,7 @@ void		(*consdebug)(void);
 void		copen(Chan*);
 Block*		concatblock(Block*);
 Block*		copyblock(Block*, int);
+Block*		copyblist(Block*);
 void		copypage(Page*, Page*);
 void		countpagerefs(ulong*, int);
 int		cread(Chan*, uchar*, int, vlong);

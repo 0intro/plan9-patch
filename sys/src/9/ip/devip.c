@@ -756,7 +756,8 @@ setluniqueport(Conv* c, int lport)
 		&& xp->lport == lport
 		&& xp->rport == c->rport
 		&& ipcmp(xp->raddr, c->raddr) == 0
-		&& ipcmp(xp->laddr, c->laddr) == 0){
+		&& ipcmp(xp->laddr, c->laddr) == 0
+		&& (!xp->reuse || !c->reuse) ){
 			qunlock(p);
 			return "address in use";
 		}

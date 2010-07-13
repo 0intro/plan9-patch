@@ -84,6 +84,31 @@ freeblist(Block *b)
 }
 
 /*
+ * copy a list of blocks
+ */
+Block*
+copyblist(Block *bp)
+{
+	int len;
+	Block *nb;
+	Block **ptr;
+
+	if(bp == nil)
+		return nil;
+
+	ptr = &nb;
+	for(; bp; bp = bp->next) {
+		len = BLEN(bp);
+		*ptr = allocb(len);
+		memmove((*ptr)->wp, bp->rp, len);
+		(*ptr)->wp += len;
+		ptr = &(*ptr)->next;
+	}
+
+	return nb;
+}
+
+/*
  *  pad a block to the front (or the back if size is negative)
  */
 Block*

@@ -138,6 +138,11 @@ udpannounce(Conv *c, char** argv, int argc)
 	Udppriv *upriv;
 
 	upriv = c->p->priv;
+	/* Set reuse. */
+	if(argc == 3 && 0 == strcmp(argv[2], "reuse")) {
+		argc = 2;
+		c->reuse = 1;
+	}
 	e = Fsstdannounce(c, argv, argc);
 	if(e != nil)
 		return e;
@@ -322,9 +327,9 @@ udpkick(void *x, Block *bp)
 }
 
 void
-udpiput(Proto *udp, Ipifc *ifc, Block *bp)
+udpiput(Proto *udp, Ipifc *ifc, Block *bptr)
 {
-	int len;
+	int len, tlen;
 	Udp4hdr *uh4;
 	Udp6hdr *uh6;
 	Conv *c;
@@ -336,12 +341,14 @@ udpiput(Proto *udp, Ipifc *ifc, Block *bp)
 	int version;
 	int ottl, oviclfl, olen;
 	uchar *p;
+	uint cidx;
+	Block* bp;
 
 	upriv = udp->priv;
 	f = udp->f;
 	upriv->ustats.udpInDatagrams++;
 
-	uh4 = (Udp4hdr*)(bp->rp);
+	uh4 = (Udp4hdr*)(bptr->rp);
 	version = ((uh4->vihl&0xF0)==IP_VER6) ? 6 : 4;
 
 	/* Put back pseudo header for checksum
@@ -360,11 +367,11 @@ udpiput(Proto *udp, Ipifc *ifc, Block *bp)
 		rport = nhgets(uh4->udpsport);
 
 		if(nhgets(uh4->udpcksum)) {
-			if(ptclcsum(bp, UDP4_PHDR_OFF, len+UDP4_PHDR_SZ)) {
+			if(ptclcsum(bptr, UDP4_PHDR_OFF, len+UDP4_PHDR_SZ)) {
 				upriv->ustats.udpInErrors++;
 				netlog(f, Logudp, "udp: checksum error %I\n", raddr);
 				DPRINT("udp: checksum error %I\n", raddr);
-				freeblist(bp);
+				freeblist(bptr);
 				return;
 			}
 		}
@@ -372,7 +379,7 @@ udpiput(Proto *udp, Ipifc *ifc, Block *bp)
 		hnputs(uh4->udpplen, olen);
 		break;
 	case V6:
-		uh6 = (Udp6hdr*)(bp->rp);
+		uh6 = (Udp6hdr*)(bptr->rp);
 		len = nhgets(uh6->udplen);
 		oviclfl = nhgetl(uh6->viclfl);
 		olen = nhgets(uh6->len);
@@ -384,11 +391,11 @@ udpiput(Proto *udp, Ipifc *ifc, Block *bp)
 		memset(uh6, 0, 8);
 		hnputl(uh6->viclfl, len);
 		uh6->hoplimit = IP_UDPPROTO;
-		if(ptclcsum(bp, UDP6_PHDR_OFF, len+UDP6_PHDR_SZ)) {
+		if(ptclcsum(bptr, UDP6_PHDR_OFF, len+UDP6_PHDR_SZ)) {
 			upriv->ustats.udpInErrors++;
 			netlog(f, Logudp, "udp: checksum error %I\n", raddr);
 			DPRINT("udp: checksum error %I\n", raddr);
-			freeblist(bp);
+			freeblist(bptr);
 			return;
 		}
 		hnputl(uh6->viclfl, oviclfl);
@@ -401,114 +408,120 @@ udpiput(Proto *udp, Ipifc *ifc, Block *bp)
 		return;	/* to avoid a warning */
 	}
 
-	qlock(udp);
+	for(cidx = 0; ; ++cidx) {
 
-	c = iphtlook(&upriv->ht, raddr, rport, laddr, lport);
-	if(c == nil){
-		/* no conversation found */
-		upriv->ustats.udpNoPorts++;
-		qunlock(udp);
-		netlog(f, Logudp, "udp: no conv %I!%d -> %I!%d\n", raddr, rport,
-		       laddr, lport);
+		bp = copyblist(bptr);
 
-		switch(version){
-		case V4:
-			icmpnoconv(f, bp);
-			break;
-		case V6:
-			icmphostunr(f, ifc, bp, Icmp6_port_unreach, 0);
-			break;
-		default:
-			panic("udpiput2: version %d", version);
-		}
-
-		freeblist(bp);
-		return;
-	}
-	ucb = (Udpcb*)c->ptcl;
-
-	if(c->state == Announced){
-		if(ucb->headers == 0){
-			/* create a new conversation */
-			if(ipforme(f, laddr) != Runi) {
+		qlock(udp);
+		c = iphtlookn(&upriv->ht, cidx, raddr, rport, laddr, lport);
+		if(c == nil){
+			/* no conversation found */
+			if(cidx == 0)
+				upriv->ustats.udpNoPorts++;
+			qunlock(udp);
+			if(cidx == 0){
+				netlog(f, Logudp, "udp: no conv %I!%d -> %I!%d\n", raddr, rport,
+				       laddr, lport);
+		
 				switch(version){
 				case V4:
-					v4tov6(laddr, ifc->lifc->local);
+					icmpnoconv(f, bp);
 					break;
 				case V6:
-					ipmove(laddr, ifc->lifc->local);
+					icmphostunr(f, ifc, bp, Icmp6_port_unreach, 0);
 					break;
 				default:
-					panic("udpiput3: version %d", version);
+					panic("udpiput2: version %d", version);
 				}
 			}
-			c = Fsnewcall(c, raddr, rport, laddr, lport, version);
-			if(c == nil){
-				qunlock(udp);
-				freeblist(bp);
-				return;
-			}
-			iphtadd(&upriv->ht, c);
-			ucb = (Udpcb*)c->ptcl;
+			freeblist(bp);
+			break; /*return;*/
 		}
-	}
+		ucb = (Udpcb*)c->ptcl;
 
-	qlock(c);
-	qunlock(udp);
-
-	/*
-	 * Trim the packet down to data size
-	 */
-	len -= UDP_UDPHDR_SZ;
-	switch(version){
-	case V4:
-		bp = trimblock(bp, UDP4_IPHDR_SZ+UDP_UDPHDR_SZ, len);
-		break;
-	case V6:
-		bp = trimblock(bp, UDP6_IPHDR_SZ+UDP_UDPHDR_SZ, len);
-		break;
-	default:
-		bp = nil;
-		panic("udpiput4: version %d", version);
-	}
-	if(bp == nil){
+		if(c->state == Announced){
+			if(ucb->headers == 0){
+				/* create a new conversation */
+				if(ipforme(f, laddr) != Runi) {
+					switch(version){
+					case V4:
+						v4tov6(laddr, ifc->lifc->local);
+						break;
+					case V6:
+						ipmove(laddr, ifc->lifc->local);
+						break;
+					default:
+						panic("udpiput3: version %d", version);
+					}
+				}
+				c = Fsnewcall(c, raddr, rport, laddr, lport, version);
+				if(c == nil){
+					qunlock(udp);
+					freeblist(bp);
+					continue; /*return;*/
+				}
+				iphtadd(&upriv->ht, c);
+				ucb = (Udpcb*)c->ptcl;
+			}
+		}
+	
+		qlock(c);
+		qunlock(udp);
+	
+		/*
+		 * Trim the packet down to data size
+		 */
+		tlen = len - UDP_UDPHDR_SZ;
+		switch(version){
+		case V4:
+			bp = trimblock(bp, UDP4_IPHDR_SZ+UDP_UDPHDR_SZ, tlen);
+			break;
+		case V6:
+			bp = trimblock(bp, UDP6_IPHDR_SZ+UDP_UDPHDR_SZ, tlen);
+			break;
+		default:
+			bp = nil;
+			panic("udpiput4: version %d", version);
+		}
+		if(bp == nil){
+			qunlock(c);
+			netlog(f, Logudp, "udp: len err %I.%d -> %I.%d\n", raddr, rport,
+			       laddr, lport);
+			upriv->lenerr++;
+			break; /*return;*/
+		}
+	
+		netlog(f, Logudpmsg, "udp: %I.%d -> %I.%d l %d\n", raddr, rport,
+		       laddr, lport, tlen);
+	
+		switch(ucb->headers){
+		case 7:
+			/* pass the src address */
+			bp = padblock(bp, UDP_USEAD7);
+			p = bp->rp;
+			ipmove(p, raddr); p += IPaddrlen;
+			ipmove(p, laddr); p += IPaddrlen;
+			ipmove(p, ifc->lifc->local); p += IPaddrlen;
+			hnputs(p, rport); p += 2;
+			hnputs(p, lport);
+			break;
+		}
+	
+		if(bp->next)
+			bp = concatblock(bp);
+	
+		if(qfull(c->rq)){
+			qunlock(c);
+			netlog(f, Logudp, "udp: qfull %I.%d -> %I.%d\n", raddr, rport,
+			       laddr, lport);
+			freeblist(bp);
+			continue; /*return;*/
+		}
+	
+		qpass(c->rq, bp);
 		qunlock(c);
-		netlog(f, Logudp, "udp: len err %I.%d -> %I.%d\n", raddr, rport,
-		       laddr, lport);
-		upriv->lenerr++;
-		return;
 	}
-
-	netlog(f, Logudpmsg, "udp: %I.%d -> %I.%d l %d\n", raddr, rport,
-	       laddr, lport, len);
-
-	switch(ucb->headers){
-	case 7:
-		/* pass the src address */
-		bp = padblock(bp, UDP_USEAD7);
-		p = bp->rp;
-		ipmove(p, raddr); p += IPaddrlen;
-		ipmove(p, laddr); p += IPaddrlen;
-		ipmove(p, ifc->lifc->local); p += IPaddrlen;
-		hnputs(p, rport); p += 2;
-		hnputs(p, lport);
-		break;
-	}
-
-	if(bp->next)
-		bp = concatblock(bp);
-
-	if(qfull(c->rq)){
-		qunlock(c);
-		netlog(f, Logudp, "udp: qfull %I.%d -> %I.%d\n", raddr, rport,
-		       laddr, lport);
-		freeblist(bp);
-		return;
-	}
-
-	qpass(c->rq, bp);
-	qunlock(c);
-
+	freeblist(bptr);
 }
 
 char*

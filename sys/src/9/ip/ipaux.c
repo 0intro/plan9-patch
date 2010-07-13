@@ -298,7 +298,7 @@ iphtrem(Ipht *ht, Conv *c)
  *	announced && *,*
  */
 Conv*
-iphtlook(Ipht *ht, uchar *sa, ushort sp, uchar *da, ushort dp)
+iphtlookn(Ipht *ht, uint cidx, uchar *sa, ushort sp, uchar *da, ushort dp)
 {
 	ulong hv;
 	Iphash *h;
@@ -313,8 +313,12 @@ iphtlook(Ipht *ht, uchar *sa, ushort sp, uchar *da, ushort dp)
 		c = h->c;
 		if(sp == c->rport && dp == c->lport
 		&& ipcmp(sa, c->raddr) == 0 && ipcmp(da, c->laddr) == 0){
-			unlock(ht);
-			return c;
+			if(cidx == 0) {
+				unlock(ht);
+				return c;
+			}
+			else
+				--cidx;
 		}
 	}
 
@@ -325,8 +329,12 @@ iphtlook(Ipht *ht, uchar *sa, ushort sp, uchar *da, ushort dp)
 			continue;
 		c = h->c;
 		if(dp == c->lport && ipcmp(da, c->laddr) == 0){
-			unlock(ht);
-			return c;
+			if(cidx == 0) {
+				unlock(ht);
+				return c;
+			}
+			else
+				--cidx;
 		}
 	}
 
@@ -337,8 +345,12 @@ iphtlook(Ipht *ht, uchar *sa, ushort sp, uchar *da, ushort dp)
 			continue;
 		c = h->c;
 		if(dp == c->lport){
-			unlock(ht);
-			return c;
+			if(cidx == 0) {
+				unlock(ht);
+				return c;
+			}
+			else
+				--cidx;
 		}
 	}
 
@@ -349,8 +361,12 @@ iphtlook(Ipht *ht, uchar *sa, ushort sp, uchar *da, ushort dp)
 			continue;
 		c = h->c;
 		if(ipcmp(da, c->laddr) == 0){
-			unlock(ht);
-			return c;
+			if(cidx == 0) {
+				unlock(ht);
+				return c;
+			}
+			else
+				--cidx;
 		}
 	}
 
@@ -360,9 +376,19 @@ iphtlook(Ipht *ht, uchar *sa, ushort sp, uchar *da, ushort dp)
 		if(h->match != IPmatchany)
 			continue;
 		c = h->c;
-		unlock(ht);
-		return c;
+		if(cidx == 0) {
+			unlock(ht);
+			return c;
+		}
+		else
+			--cidx;
 	}
 	unlock(ht);
 	return nil;
+}
+
+Conv*
+iphtlook(Ipht *ht, uchar *sa, ushort sp, uchar *da, ushort dp)
+{
+	return iphtlookn(ht, 0, sa, sp, da, dp);
 }

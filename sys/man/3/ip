@@ -600,7 +600,7 @@ Otherwise a free port number starting at 5000 is chosen.
 The connect fails if the combination of local and remote address/port pairs
 are already assigned to another port.
 .TP
-.BI announce\  X
+.BI announce\  "X [ reuse ]"
 .I X
 is a decimal port number or
 .LR * .
@@ -617,7 +617,7 @@ accept
 calls for any port that no process has explicitly announced.
 The local IP address cannot be set.
 .B Announce
-fails if the connection is already announced or connected.
+fails if the connection is already announced or connected except in the case of reuse (see UDP below).
 .TP
 .BI bind\  X
 .I X
@@ -768,6 +768,30 @@ after an
 each datagram coming from a different remote address/port pair
 establishes a new incoming connection.
 However, many-to-one semantics is also possible.
+
+.PP
+The
+.BR reuse
+flag of
+.BR announce
+allows multiple clients to receive datagrams destined for the same address/port pair.
+In order to
+.BR announce
+with the
+.BR reuse
+flag, all previous clients using the same address/port must specify the
+.BR reuse
+flag.
+Once an address/port has been
+.BR announced
+with
+.BR reuse ,
+subsequent
+.BR announce
+attempts will fail without the
+.BR reuse
+flag.
+
 .PP
 If, after an
 .BR announce ,

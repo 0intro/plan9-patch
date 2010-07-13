@@ -197,6 +197,7 @@ struct Conv
 	/* udp specific */
 	int	headers;		/* data src/dst headers in udp */
 	int	reliable;		/* true if reliable udp */
+	int	reuse;		/* true if others can reuse address */
 
 	Conv*	incall;			/* calls waiting to be listened for */
 	Conv*	next;
@@ -376,6 +377,7 @@ struct Ipht
 };
 void iphtadd(Ipht*, Conv*);
 void iphtrem(Ipht*, Conv*);
+Conv* iphtlookn(Ipht *ht, uint cidx, uchar *sa, ushort sp, uchar *da, ushort dp);
 Conv* iphtlook(Ipht *ht, uchar *sa, ushort sp, uchar *da, ushort dp);
 
 /*
