@@ -1472,6 +1472,7 @@ atapnp(void)
 		case (0x4379<<16)|0x1002:	/* ATI 4379 SATA*/
 		case (0x3112<<16)|0x1095:	/* SiL 3112 SATA (DMA busted?) */
 		case (0x3114<<16)|0x1095:	/* SiL 3114 SATA/RAID */
+		case (0x0680<<16)|0x1095:	/* SiI 0680/680A PATA133 ATAPI/RAID */
 			pi = 0x85;
 			break;
 		case (0x0004<<16)|0x1103:	/* HighPoint HPT-370 */

@@ -1935,6 +1935,7 @@ atapnp(void)
 			span = 8*1024;
 			/*FALLTHROUGH*/
 		case (0x3114<<16)|0x1095:	/* SiI 3114 SATA/RAID */
+		case (0x0680<<16)|0x1095:	/* SiI 0680/680A PATA133 ATAPI/RAID */
 			pi = 0x85;
 			break;
 		case (0x0004<<16)|0x1103:	/* HighPoint HPT366 */
