@@ -183,7 +183,7 @@ etheriq(Ether* ether, Block* bp, int fromwire)
 					memmove(xbp->wp, pkt, len);
 					xbp->wp += len;
 					if(qpass(f->in, xbp) < 0) {
-						print("soverflow for f->in\n");
+						/* print("soverflow for f->in\n"); */
 						ether->soverflows++;
 					}
 				}
