@@ -206,7 +206,7 @@ lockscreen(void)
 	char buf[Nfld*Fldlen], *flds[Nfld], newcmd[128], cbuf[Cursorlen];
 	int fd, dx, dy;
 	Image *i;
-	Point p;
+	Point p, tmp;
 	Rectangle r;
 	Tm *tm;
 
@@ -251,7 +251,8 @@ lockscreen(void)
 		/* identify the user on screen, centered */
 		tm = localtime(time(0));
 		s = smprint("user %s at %d:%2d", getuser(), tm->hour, tm->min);
-		p = subpt(p, Pt(stringsize(font, "m").x * strlen(s) / 2, 0));
+		tmp = stringsize(font, "m");
+		p = subpt(p, Pt(tmp.x * strlen(s) / 2, 0));
 		screenstring(p, s);
 	}
 
