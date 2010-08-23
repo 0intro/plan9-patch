@@ -101,6 +101,7 @@ openfile(SmbSession *s, SmbTree *t, char *path, ushort mode, ushort attr, ushort
 		else if (createoptions & SMB_CO_DIRECTORY) {
 			attr &= ~SMB_ATTR_NORMAL;
 			attr |= SMB_ATTR_DIRECTORY;
+			p9mode = OREAD;
 		}
 //smblogprint(-1, "creating: before conversion attr 0x%.4ux\n", attr);
 		p9attr = smbdosattr2plan9mode(attr);
@@ -193,7 +194,6 @@ smbcomopenandx(SmbSession *s, SmbHeader *h, uchar *pdata, SmbBuffer *b)
 		goto done;
 	}
 
-	smbloglock();
 	smblogprint(h->command, "flags 0x%.4ux", flags);
 	if (flags & SMB_OPEN_FLAGS_ADDITIONAL)
 		smblogprint(h->command, " additional");
@@ -264,7 +264,6 @@ smbcomopenandx(SmbSession *s, SmbHeader *h, uchar *pdata, SmbBuffer *b)
 	smblogprint(h->command, "createsize 0x%.8lux\n", createsize);
 	smblogprint(h->command, "timeout 0x%.8lux\n", timeout);
 	smblogprint(h->command, "path %s\n", path);
-	smblogunlock();
 
 	t = smbidmapfind(s->tidmap, h->tid);
 	if (t == nil) {
@@ -395,13 +394,11 @@ smbcomcreate(SmbSession *s, SmbHeader *h, uchar *pdata, SmbBuffer *b)
 		goto done;
 	}
 
-	smbloglock();
 	smblogprint(h->command, "path %s\n", path);
 	smblogprint(h->command, "attr 0x%.4ux", attr);
 	smblogprintattr(h->command, attr);
 	smblogprint(h->command, "\n");
 	smblogprint(h->command, "createtime 0x%.8lux\n", createtime);
-	smblogunlock();
 
 	t = smbidmapfind(s->tidmap, h->tid);
 	if (t == nil) {
