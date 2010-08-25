@@ -27,7 +27,7 @@ dev
 ##	mouse		mouse
 ##	vga
 #	kbmap
-##	kbin
+#	kbin	kbd
 
 	uart
 	usb
