@@ -339,7 +339,7 @@ filetype(int fd)
 		return;
 	}
 	if(mbuf->type != 'M' && mbuf->type != '|') {
-		print(mime ? OCTET : "special file #%c/%s\n",
+		print(mime ? OCTET : "special file #%C/%s\n",
 			mbuf->type, mbuf->name);
 		return;
 	}
