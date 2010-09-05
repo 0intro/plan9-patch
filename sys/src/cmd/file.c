@@ -601,6 +601,8 @@ Filemagic long0tab[] = {
 	 * thus the numbers appear reversed in this table.
 	 */
 	0xad4e5cd1,	0xFFFFFFFF,	"venti arena\n", OCTET,
+	0xfeedface,	0xFFFFFFFF,	"32-bit Mach-O executable\n",	OCTET,
+	0xfeedfacf,	0xFFFFFFFF,	"64-bit Mach-O executable\n",	OCTET,
 };
 
 int
