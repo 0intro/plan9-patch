@@ -969,7 +969,6 @@ fmt(Node *r, Node *args)
 void
 patom(char type, Store *res)
 {
-	int i;
 	char buf[512];
 	extern char *typenames[];
 
@@ -987,14 +986,7 @@ patom(char type, Store *res)
 		Bprint(bout, "%C", (int)res->ival);
 		break;
 	case 'B':
-		memset(buf, '0', 34);
-		buf[1] = 'b';
-		for(i = 0; i < 32; i++) {
-			if(res->ival & (1<<i))
-				buf[33-i] = '1';
-		}
-		buf[35] = '\0';
-		Bprint(bout, "%s", buf);
+		Bprint(bout, "%#.32llub", res->ival);
 		break;
 	case 'b':
 		Bprint(bout, "%.2x", (int)res->ival&0xff);
