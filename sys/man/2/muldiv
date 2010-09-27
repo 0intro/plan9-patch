@@ -28,4 +28,8 @@ final result does not fit in a
 .B long
 or
 .BR ulong ;
-on others they will silently truncate.
+on others
+.BR abort (2)
+is called to avoid slient truncation.
+.SH SOURCE
+.B /sys/src/libc/port
