@@ -1,0 +1,14 @@
+--- sys/src/cmd/ratrace.c	Tue Oct  5 00:25:41 2010
++++ sys/src/cmd/ratrace.c	Tue Oct  5 00:25:37 2010
+@@ -175,9 +175,9 @@
+ 			sysfatal("exec %s failed: %r", cmd);
+ 		}
+ 	} else {
+-		if(argc != 1)
++		if(argc != 2)
+ 			usage();
+-		pid = atoi(argv[0]);
++		pid = atoi(argv[1]);
+ 	}
+ 
+ 	out   = chancreate(sizeof(char*), 0);
