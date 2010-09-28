@@ -34,7 +34,7 @@ setup(int argc, char **argv)
 			print("can't mount(%s, %s): %r\n", srv, mtpt);
 			exits(0);
 		}
-		fd = open(mtpt, ORDWR);
+		fd = open(dns, ORDWR);
 		if(fd < 0){
 			print("can't open %s: %r\n", mtpt);
 			exits(0);
