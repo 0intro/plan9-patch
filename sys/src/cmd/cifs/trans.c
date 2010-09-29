@@ -279,7 +279,7 @@ RAPsessionenum(Session *s, Share *sp, Sessinfo **sip)
 	}
 
 	q = *sip + ngot;
-	while(nret-- != 0){
+	while(nret-- > 0){
 		gconv(p, conv, tmp, sizeof tmp);
 		q->wrkstn = estrdup9p(tmp);
 		gconv(p, conv, tmp, sizeof tmp);
@@ -338,7 +338,7 @@ RAPgroupenum(Session *s, Share *sp, Namelist **nlp)
 	memset(*nlp, 0, sizeof(Namelist) * navail);
 
 	q = *nlp + ngot;
-	while(ngot < navail && nret--){
+	while(ngot < navail && nret-- > 0){
  		gmem(p, tmp, 21);
 		tmp[21] = 0;
 		q->name = estrdup9p(tmp);
@@ -394,7 +394,7 @@ RAPgroupusers(Session *s, Share *sp, char *group, Namelist **nlp)
 	memset(*nlp, 0, sizeof(Namelist) * navail);
 
 	q = *nlp + ngot;
-	while(ngot < navail && nret--){
+	while(ngot < navail && nret-- > 0){
  		gmem(p, tmp, 21);
 		tmp[21] = 0;
 		q->name = estrdup9p(tmp);
@@ -448,7 +448,7 @@ RAPuserenum(Session *s, Share *sp, Namelist **nlp)
 	memset(*nlp, 0, sizeof(Namelist) * navail);
 
 	q = *nlp + ngot;
-	while(ngot < navail && nret--){
+	while(ngot < navail && nret-- > 0){
  		gmem(p, tmp, 21);
 		tmp[21] = 0;
 		q->name = estrdup9p(tmp);
@@ -507,7 +507,7 @@ more:
 		memset(*nlp, 0, sizeof(Namelist) * navail);
 	}
 	q = *nlp + ngot;
-	while(ngot < navail && nret--){
+	while(ngot < navail && nret-- > 0){
  		gmem(p, tmp, 21);
 		tmp[21] = 0;
 		q->name = estrdup9p(tmp);

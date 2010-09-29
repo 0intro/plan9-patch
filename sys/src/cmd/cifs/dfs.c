@@ -5,7 +5,7 @@
  *
  * The domain.dom is resolved in XP/Win2k etc using AD to do
  * a lookup (this is a consensus view, I don't think anyone
- * has proved it).  I cannot do this as AD needs Kerberos and
+ * has proved it). I cannot do this as AD needs Kerberos and
  * LDAP which I don't have.
  *
  * Instead I just use the NetBios names passed in the paths
@@ -15,34 +15,33 @@
  *
  * I have not added support for starting another instance of
  * cifs to connect to other servers referenced in DFS links,
- * this is not a problem for me and I think it hides a load
+ * this is not a problem for me and I think it hides a load 
  * of problems of its own wrt plan9's private namespaces.
  *
  * The proximity of my test server (AD enabled) is always 0 but some
- * systems may report more meaningful values.  The expiry time is
- * similarly zero, so I guess at 5 mins.
+ * systems may report more meaningful values. The expiry time my is
+ * similarly zero so I guess at 5 mins.
  *
- * If the redirection points to a "hidden" share (i.e., its name
+ * If the redirection points to a "hidden" share (I.E. its name
  * ends in a $) then the type of the redirection is 0 (unknown) even
  * though it is a CIFS share.
  *
  * It would be nice to add a check for which subnet a server is on
  * so our first choice is always the the server on the same subnet
- * as us which replies to a ping (i.e., is up).  This could short-
- * circuit the tests as the a server on the same subnet will always
+ * as us which replies to a ping (I.E. is up). This could short
+ * circuit the tests as the a server on the same sumnet will always
  * be the fastest to get to.
  *
  * If I set Flags2_DFS then I don't see DFS links, I just get
- * path not found (?!).
+ * path not found (?!). 
  *
  * If I do a QueryFileInfo of a DFS link point (IE when I'am doing a walk)
  * Then I just see a directory, its not until I try to walk another level
- * That I get  "IO reparse tag not handled" error rather than
- * "Path not covered".
+ * That I get  "IO reparse tag not handled" error rather than "Path not covered".
  *
  * If I check the extended attributes of the QueryFileInfo in walk() then I can
- * see this is a reparse point and so I can get the referral.  The only
- * problem here is that samba and the like may not support this.
+ * see this is a reparse point and so I can get the referral. The only problem here
+ * is that samba and the like may not support this.
  */
 #include <u.h>
 #include <libc.h>
@@ -53,18 +52,24 @@
 #include <9p.h>
 #include "cifs.h"
 
-#define SINT_MAX	0x7fffffff
+enum {
+	Nomatch,	/* not found in cache */
+	Exactmatch,	/* perfect match found */
+	Badmatch	/* matched but wrong case */
+};
+	
+#define SINT_MAX	(0x7fffffff)
 
 typedef struct Dfscache Dfscache;
 struct Dfscache {
-	Dfscache*next;		/* next entry */
-	char	*src;
-	char	*host;
-	char	*share;
-	char	*path;
-	long	expiry;		/* expiry time in sec */
-	long	rtt;		/* round trip time, nsec */
-	int	prox;		/* proximity, lower = closer */
+	Dfscache *next;		/* next entry */
+	char *src;
+	char *host;
+	char *share;
+	char *path;
+	long expiry;		/* expiry time in sec */
+	long rtt;		/* round trip time, nsec */
+	int prox;		/* proximity, lower = closer */
 };
 
 Dfscache *Cache;
@@ -100,27 +105,30 @@ trimshare(char *s)
 }
 
 static Dfscache *
-lookup(char *opath, int *exact)
+lookup(char *path, int *match)
 {
-	char *path;
 	int len, n, m;
 	Dfscache *cp, *best;
 
-	*exact = 0;
+	if(match)
+		*match = Nomatch;
 
 	len = 0;
 	best = nil;
-	path = opath;
-	m = strlen(opath);
+	m = strlen(path);
 	for(cp = Cache; cp; cp = cp->next){
 		n = strlen(cp->src);
-		if(n < len || cistrncmp(path, cp->src, n) != 0 ||
-		    path[n] != 0 && path[n] != '/')
+		if(n < len)
+			continue;
+		if(strncmp(path, cp->src, n) != 0)
+			continue;
+		if(path[n] != 0 && path[n] != '/')
 			continue;
 		best = cp;
 		len = n;
 		if(n == m){
-			*exact = 1;
+			if(match)
+				*match = Exactmatch;
 			break;
 		}
 	}
@@ -130,21 +138,23 @@ lookup(char *opath, int *exact)
 char *
 mapfile(char *opath)
 {
-	int exact;
-	char *p, *path;
 	Dfscache *cp;
+	char *p, *path;
 	static char npath[MAX_DFS_PATH];
 
 	path = opath;
-	if((cp = lookup(path, &exact)) != nil){
-		snprint(npath, sizeof npath, "/%s%s%s%s", cp->share,
-			*cp->path? "/": "", cp->path, path + strlen(cp->src));
+	if((cp = lookup(path, nil)) != nil){
+		snprint(npath, sizeof(npath), "/%s%s%s%s",
+			cp->share,
+			(*cp->path)? "/": "", 
+			cp->path,
+			path+strlen(cp->src));
 		path = npath;
 	}
 
 	if((p = strchr(path+1, '/')) == nil)
 		p = "/";
-	if(Debug && strstr(Debug, "dfs") != nil)
+	if(Debug && strstr(Debug, "dfs"))
 		print("mapfile src=%q => dst=%q\n", opath, p);
 	return p;
 }
@@ -152,47 +162,50 @@ mapfile(char *opath)
 int
 mapshare(char *path, Share **osp)
 {
-	int i, exact;
-	char *try, *tail[] = { "", "$" };
-	Dfscache *cp;
+	int i;
 	Share *sp;
+	Dfscache *cp;
+	char *s, *try;
+	char *tail[] = { "", "$" };
 
-	if((cp = lookup(path, &exact)) == nil)
+	if((cp = lookup(path, nil)) == nil)
 		return 0;
 
-	for(sp = Shares; sp < Shares+Nshares; sp++)
-		if(cistrcmp(cp->share, trimshare(sp->name)) == 0){
-			if(Debug && strstr(Debug, "dfs") != nil)
-				print("mapshare, already connected, src=%q => dst=%q\n",
-					path, sp->name);
-			*osp = sp;
-			return 0;
-		}
+	for(sp = Shares; sp < Shares+Nshares; sp++){
+		s = trimshare(sp->name);
+		if(cistrcmp(cp->share, s) != 0)
+			continue;
+		if(Checkcase && strcmp(cp->share, s) != 0)
+			continue;
+		if(Debug && strstr(Debug, "dfs"))
+			print("mapshare, already connected, src=%q => dst=%q\n", path, sp->name);
+		*osp = sp;
+		return 0;
+	}
 	/*
-	 * Try to autoconnect to share if it is not known.  Note even if you
-	 * didn't specify any shares and let the system autoconnect you may
-	 * not already have the share you need as RAP (which we use) throws
-	 * away names > 12 chars long.  If we where to use RPC then this block
-	 * of code would be less important, though it would still be useful
-	 * to catch Shares added since cifs(1) was started.
+	 * Try to autoconnect to share if it is not known. Note even if you didn't
+	 * specify any shares and let the system autoconnect you may not already have
+	 * the share you need as RAP (which we use) throws away names > 12 chars long.
+	 * If we where to use RPC then this block of code would be less important,
+	 * though it would still be useful to catch Shares added since cifs(1) was started.
 	 */
-	sp = Shares + Nshares;
+	sp = Shares+Nshares;
 	for(i = 0; i < 2; i++){
 		try = smprint("%s%s", cp->share, tail[i]);
 		if(CIFStreeconnect(Sess, Sess->cname, try, sp) == 0){
 			sp->name = try;
 			*osp = sp;
 			Nshares++;
-			if(Debug && strstr(Debug, "dfs") != nil)
-				print("mapshare connected, src=%q dst=%q\n",
-					path, cp->share);
+			if(Debug && strstr(Debug, "dfs"))
+				print("mapshare connected, src=%q dst=%q\n", path, cp->share);
 			return 0;
 		}
 		free(try);
 	}
 
-	if(Debug && strstr(Debug, "dfs") != nil)
+	if(Debug && strstr(Debug, "dfs"))
 		print("mapshare failed src=%s\n", path);
+	werrstr("not found");
 	return -1;
 }
 
@@ -200,7 +213,7 @@ mapshare(char *path, Share **osp)
  * Rtt_tol is the fractional tollerance for RTT comparisons.
  * If a later (further down the list) host's RTT is less than
  * 1/Rtt_tol better than my current best then I don't bother
- * with it.  This biases me towards entries at the top of the list
+ * with it. This biases me towards entries at the top of the list
  * which Active Directory has already chosen for me and prevents
  * noise in RTTs from pushing me to more distant machines.
  */
@@ -212,12 +225,13 @@ remap(Dfscache *cp, Refer *re)
 	char *p, *a[4];
 	enum {
 		Hostname = 1,
-		Shre = 2,
-		Path = 3,
-		Rtt_tol = 10,
+		Sharename = 2,
+		Pathname = 3,
+
+		Rtt_tol = 10
 	};
 
-	if(Debug && strstr(Debug, "dfs") != nil)
+	if(Debug && strstr(Debug, "dfs"))
 		print("	remap %s\n", re->addr);
 
 	for(p = re->addr; *p; p++)
@@ -225,29 +239,29 @@ remap(Dfscache *cp, Refer *re)
 			*p = '/';
 
 	if(cp->prox < re->prox){
-		if(Debug && strstr(Debug, "dfs") != nil)
+		if(Debug && strstr(Debug, "dfs"))
 			print("	remap %d < %d\n", cp->prox, re->prox);
 		return -1;
 	}
 	if((n = getfields(re->addr, a, sizeof(a), 0, "/")) < 3){
-		if(Debug && strstr(Debug, "dfs") != nil)
+		if(Debug && strstr(Debug, "dfs"))
 			print("	remap nfields=%d\n", n);
 		return -1;
 	}
 	if((rtt = ping(a[Hostname], Dfstout)) == -1){
-		if(Debug && strstr(Debug, "dfs") != nil)
+		if(Debug && strstr(Debug, "dfs"))
 			print("	remap ping failed\n");
 		return -1;
 	}
 	if(cp->rtt < rtt && (rtt/labs(rtt-cp->rtt)) < Rtt_tol){
-		if(Debug && strstr(Debug, "dfs") != nil)
-			print("	remap bad ping %ld < %ld && %ld < %d\n",
-				cp->rtt, rtt, (rtt/labs(rtt-cp->rtt)), Rtt_tol);
+		if(Debug && strstr(Debug, "dfs"))
+			print("	remap bad ping %ld < %ld && %ld < %d\n", cp->rtt, 
+				rtt, (rtt/labs(rtt-cp->rtt)), Rtt_tol);
 		return -1;
 	}
 
 	if(n < 4)
-		a[Path] = "";
+		a[Pathname] = "";
 	if(re->ttl == 0)
 		re->ttl = 60*5;
 
@@ -258,10 +272,10 @@ remap(Dfscache *cp, Refer *re)
 	cp->prox = re->prox;
 	cp->expiry = time(nil)+re->ttl;
 	cp->host = estrdup9p(a[Hostname]);
-	cp->share = estrdup9p(trimshare(a[Shre]));
-	cp->path = estrdup9p(a[Path]);
-	if(Debug && strstr(Debug, "dfs") != nil)
-		print("	remap ping OK prox=%d host=%s share=%s path=%s\n",
+	cp->share = estrdup9p(trimshare(a[Sharename]));
+	cp->path = estrdup9p(a[Pathname]);
+	if(Debug && strstr(Debug, "dfs"))
+		print("	remap ping OK prox=%d host=%s share=%s path=%s\n", 
 			cp->prox, cp->host, cp->share, cp->path);
 	return 0;
 }
@@ -275,8 +289,7 @@ redir1(Session *s, char *path, Dfscache *cp, int level)
 	if(level > 8)
 		return -1;
 
-	if((n = T2getdfsreferral(s, &Ipc, path, &gflags, &used, retab,
-	    nelem(retab))) == -1)
+	if((n = T2getdfsreferral(s, &Ipc, path, &gflags, &used, retab, nelem(retab))) == -1)
 		return -1;
 
 	if(! (gflags & DFS_HEADER_ROOT))
@@ -284,23 +297,25 @@ redir1(Session *s, char *path, Dfscache *cp, int level)
 
 	found = 0;
 	for(re = retab; re < retab+n; re++){
-		if(Debug && strstr(Debug, "dfs") != nil)
-			print("referal level=%d prox=%d path=%q addr=%q\n",
+		if(Debug && strstr(Debug, "dfs"))
+			print("referal level=%d prox=%d path=%q addr=%q\n", 
 				level, re->prox, re->path, re->addr);
 
 		if(gflags & DFS_HEADER_STORAGE){
 			if(remap(cp, re) == 0)
 				found = 1;
-		} else{
-			if(redir1(s, re->addr, cp, level+1) != -1)  /* ???? */
+		}
+		else{
+			if(redir1(s, re->addr, cp, level+1) != -1)		/* ???? */
+
 				found = 1;
 		}
 		free(re->addr);
 		free(re->path);
 	}
-
-	if(Debug && strstr(Debug, "dfs") != nil)
-		print("referal level=%d path=%q found=%d used=%d\n",
+	
+	if(Debug && strstr(Debug, "dfs"))
+		print("referal level=%d path=%q found=%d used=%d\n", 
 			level, path, found, used);
 	if(!found)
 		return -1;
@@ -315,49 +330,60 @@ redir1(Session *s, char *path, Dfscache *cp, int level)
 int
 redirect(Session *s, Share *sp, char *path)
 {
-	int exact;
+	int match;
 	char *unc;
 	Dfscache *cp;
 
-	if(Debug && strstr(Debug, "dfs") != nil)
+	if(Debug && strstr(Debug, "dfs"))
 		print("redirect name=%q path=%q\n", sp->name, path);
 
-	cp = lookup(path, &exact);
-	if(cp && exact){
-		if(cp->expiry >= time(nil)){	/* cache hit */
-			if(Debug && strstr(Debug, "dfs") != nil)
+	cp = lookup(path, &match);
+	if(match == Badmatch)
+		return -1;
+
+	if(cp && match == Exactmatch){
+		if(cp->expiry >= time(nil)){		/* cache hit */
+			if(Debug && strstr(Debug, "dfs"))
 				print("redirect cache=hit src=%q => share=%q path=%q\n",
 					cp->src, cp->share, cp->path);
 			return 0;
 
-		} else{				/* cache hit, but entry stale */
+		}
+		else{					/* cache hit, but entry stale */
 			cp->rtt = SINT_MAX;
 			cp->prox = SINT_MAX;
-
-			unc = smprint("//%s/%s/%s%s%s", s->auth->windom,
-				cp->share, cp->path, *cp->path? "/": "",
-				path + strlen(cp->src) + 1);
+	
+			unc = smprint("//%s/%s/%s%s%s",
+				s->auth->windom,
+				cp->share,
+				cp->path, 
+				(*cp->path)? "/": "", 
+				path +strlen(cp->src)+1);
 			if(unc == nil)
 				sysfatal("no memory: %r");
 			if(redir1(s, unc, cp, 1) == -1){
-				if(Debug && strstr(Debug, "dfs") != nil)
-					print("redirect refresh failed unc=%q\n",
-						unc);
+				if(Debug && strstr(Debug, "dfs"))
+					print("redirect refresh failed unc=%q\n", unc);
 				free(unc);
 				return -1;
 			}
 			free(unc);
-			if(Debug && strstr(Debug, "dfs") != nil)
+			if(Debug && strstr(Debug, "dfs"))
 				print("redirect refresh cache=stale src=%q => share=%q path=%q\n",
 					cp->src, cp->share, cp->path);
 			return 0;
 		}
 	}
+	
 
 	/* in-exact match or complete miss */
 	if(cp)
-		unc = smprint("//%s/%s/%s%s%s", s->auth->windom, cp->share,
-			cp->path, *cp->path? "/": "", path + strlen(cp->src) + 1);
+		unc = smprint("//%s/%s/%s%s%s",
+			s->auth->windom,
+			cp->share,
+			cp->path, 
+			(*cp->path)? "/": "", 
+			path +strlen(cp->src)+1);
 	else
 		unc = smprint("//%s%s", s->auth->windom, path);
 	if(unc == nil)
@@ -369,7 +395,7 @@ redirect(Session *s, Share *sp, char *path)
 	cp->prox = SINT_MAX;
 
 	if(redir1(s, unc, cp, 1) == -1){
-		if(Debug && strstr(Debug, "dfs") != nil)
+		if(Debug && strstr(Debug, "dfs"))
 			print("redirect new failed unc=%q\n", unc);
 		free(unc);
 		free(cp);
@@ -380,8 +406,9 @@ redirect(Session *s, Share *sp, char *path)
 	cp->src = estrdup9p(path);
 	cp->next = Cache;
 	Cache = cp;
-	if(Debug && strstr(Debug, "dfs") != nil)
+	if(Debug && strstr(Debug, "dfs"))
 		print("redirect cache=miss src=%q => share=%q path=%q\n",
 			cp->src, cp->share, cp->path);
 	return 0;
 }
+

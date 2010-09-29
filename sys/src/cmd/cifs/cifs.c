@@ -39,7 +39,7 @@ cifsdial(char *host, char *called, char *sysname)
 	s->seq = 0;
 	s->seqrun = 0;
 	s->secmode = SECMODE_SIGN_ENABLED;	/* hope for the best */
-	s->flags2 = FL2_KNOWS_LONG_NAMES | FL2_HAS_LONG_NAMES | FL2_PAGEING_IO;
+	s->flags2 = FL2_KNOWS_LONG_NAMES | FL2_HAS_LONG_NAMES | FL2_PAGEING_IO | FL2_UNICODE;
 	s->macidx = -1;
 
 	return s;
@@ -137,7 +137,7 @@ dmp(int seq, uchar *buf)
 int
 cifsrpc(Pkt *p)
 {
-	int flags2, got, err;
+	int got, err;
 	uint tid, uid, seq;
 	uchar *pos;
 	char m[nelem(magic)];
@@ -160,7 +160,7 @@ cifsrpc(Pkt *p)
 
 	gmem(p, m, nelem(magic));
 	if(memcmp(m, magic, nelem(magic)) != 0){
-		werrstr("cifsrpc: bad magic number in packet %20ux%02ux%02ux%02ux",
+		werrstr("cifsrpc: bad magic number in packet 0x%02ux%02ux%02ux%02ux",
 			m[0], m[1], m[2], m[3]);
 		return -1;
 	}
@@ -168,7 +168,7 @@ cifsrpc(Pkt *p)
 	g8(p);				/* cmd */
 	err = gl32(p);			/* errcode */
 	g8(p);				/* flags */
-	flags2 = gl16(p);		/* flags2 */
+	p->flags2 = gl16(p);		/* flags2 */
 	gl16(p);			/* PID MS bits */
 	seq = gl32(p);			/* reserved */
 	gl32(p);			/* MAC (if in use) */
@@ -205,7 +205,7 @@ print("MAC signature bad\n");
 	if(p->s->uid == NO_UID)
 		p->s->uid = uid;
 
-	if(flags2 & FL2_NT_ERRCODES){
+	if(p->flags2 & FL2_NT_ERRCODES){
 		/* is it a real error rather than info/warning/chatter? */
 		if((err & 0xF0000000) == 0xC0000000){
 			werrstr("%s", nterrstr(err));
@@ -247,7 +247,7 @@ CIFSnegotiate(Session *s, long *svrtime, char *domain, int domlen, char *cname,
 	pbytes(p);
 	for(i = 0; i < nelem(dialects); i++){
 		p8(p, STR_DIALECT);
-		pstr(p, dialects[i]);
+		pascii(p, dialects[i]);
 	}
 
 	if(cifsrpc(p) == -1){
@@ -277,7 +277,7 @@ CIFSnegotiate(Session *s, long *svrtime, char *domain, int domlen, char *cname,
 	gl32(p);				/* Session key */
 	s->caps = gl32(p);			/* Server capabilities */
 	*svrtime = gvtime(p);			/* fileserver time */
-	s->tz = (short)gl16(p) * 60; /* TZ in mins, is signed (SNIA doc is wrong) */
+	s->tz = (short)gl16(p) * 60; 		/* TZ in mins, is signed (SNIA doc is wrong) */
 	s->challen = g8(p);			/* Encryption key length */
 	gl16(p);
 	gmem(p, s->chal, s->challen);		/* Get the challenge */
@@ -368,7 +368,7 @@ CIFSsession(Session *s)
 	gl16(p);
 	gl16(p);
 	/* no security blob here - we don't understand extended security anyway */
-	gstr(p, os, sizeof(os));
+	gstr(p, os, sizeof os);
 	s->remos = estrdup9p(os);
 
 	free(p);
@@ -386,9 +386,9 @@ CIFStreeconnect(Session *s, char *cname, char *tree, Share *sp)
 	resp = Sess->auth->resp[0];
 	len  = Sess->auth->len[0];
 	if((s->secmode & SECMODE_USER) != SECMODE_USER){
-		memset(zeros, 0, sizeof(zeros));
+		memset(zeros, 0, sizeof zeros);
 		resp = zeros;
-		len = sizeof(zeros);
+		len = sizeof zeros;
 	}
 
 	p = cifshdr(s, nil, SMB_COM_TREE_CONNECT_ANDX);
@@ -408,11 +408,11 @@ CIFStreeconnect(Session *s, char *cname, char *tree, Share *sp)
 	}
 
 	path = smprint("//%s/%s", cname, tree);
-	strupr(path);
+
 	ppath(p, path);			/* path */
 	free(path);
 
-	pascii(p, "?????");	/* service type any (so we can do RAP calls) */
+	pascii(p, "?????");		/* service type any (so we can do RAP calls) */
 
 	if(cifsrpc(p) == -1){
 		free(p);

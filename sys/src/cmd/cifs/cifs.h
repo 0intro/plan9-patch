@@ -350,10 +350,10 @@ typedef struct {
 	int	uid;		/* user (authentication) ID  */
 	int	seq;		/* sequence number */
 	int	seqrun;		/* sequence numbering active */
-	int	caps;		/* server capabilities */
+	int	caps;		/* server's capabilities */
 	int	support;	/* support bits */
-	int	flags;		/* SMB flags  */
-	int	flags2;		/* SMB flags 2  */
+	int	flags;		/* SMB flags that we will send in the next packet   */
+	int	flags2;		/* SMB flags 2 that we will send in the next packet */
 	int	nocache;	/* disable write behind caching in server */
 	int	pid;		/* process ID  */
 	int	mid;		/* multiplex ID */
@@ -378,6 +378,7 @@ typedef struct {
 
 	int tid;		/* tree ID received from server */
 	int seq;		/* sequence number expected in reply */
+	int flags2;		/* flags2 received with this packet */
 
 	uchar *seqbase; 	/* cifs: pos of sequence number in packet */
 	uchar *wordbase; 	/* cifs: base of words section of data  */

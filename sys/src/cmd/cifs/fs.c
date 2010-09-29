@@ -8,6 +8,7 @@
 
 static char *period(long sec);
 
+
 int
 shareinfo(Fmt *f)
 {
@@ -30,20 +31,22 @@ shareinfo(Fmt *f)
 				sp = &Shares[j];
 				break;
 			}
-		sp->tid = Ipc.tid;
+		if(j >= Nshares)
+			sp->tid = Ipc.tid;
 
 		if(RAPshareinfo(Sess, sp, sp->name, &si2) != -1){
 			switch(si2.type){
-			case STYPE_DISKTREE:	type = "disk"; break;
-			case STYPE_PRINTQ:	type = "printq"; break;
-			case STYPE_DEVICE:	type = "device"; break;
-			case STYPE_IPC:		type = "ipc"; break;
-			case STYPE_SPECIAL:	type = "special"; break;
-			case STYPE_TEMP:	type = "temp"; break;
-			default:		type = "unknown"; break;
+			case STYPE_DISKTREE: type = "disk"; break;
+			case STYPE_PRINTQ: type = "printq"; break;
+			case STYPE_DEVICE: type = "device"; break;
+			case STYPE_IPC: type = "ipc"; break;
+			case STYPE_SPECIAL: type = "special"; break;
+			case STYPE_TEMP: type = "temp"; break;
+			default: type = "unknown"; break;
 			}
 
-			fmtprint(f, "%-8s %s", type, si2.comment);
+			fmtprint(f, "%-8s %5d/%-5d %s", type,
+				si2.activeusrs, si2.maxusrs, si2.comment);
 			free(si2.name);
 			free(si2.comment);
 			free(si2.path);
@@ -64,12 +67,15 @@ openfileinfo(Fmt *f)
 
 	fi = nil;
 	if((got = RAPFileenum2(Sess, &Ipc, "", "", &fi)) == -1){
-		fmtprint(f, "RAPfileenum: %r (Only Administrator has permission)\n");
+		fmtprint(f, "RAPfileenum: %r\n");
 		return 0;
 	}
 
 	for(i = 0; i < got; i++){
-		fmtprint(f, "0x%02x %-4d %-24q %q ", fi[i].perms,
+		fmtprint(f, "%c%c%c %-4d %-24q %q ",
+			(fi[i].perms & 1)? 'r': '-',
+			(fi[i].perms & 2)? 'w': '-',
+			(fi[i].perms & 4)? 'c': '-',
 			fi[i].locks, fi[i].user, fi[i].path);
 		free(fi[i].path);
 		free(fi[i].user);
@@ -83,10 +89,11 @@ conninfo(Fmt *f)
 {
 	int i;
 	typedef struct {
-		int	val;
-		char	*name;
+		int val;
+		char *name;
 	} Tab;
-	static Tab captab[] = {
+
+	Tab captab[] = {
 		{ 1,		"raw-mode" },
 		{ 2,		"mpx-mode" },
 		{ 4,		"unicode" },
@@ -106,7 +113,8 @@ conninfo(Fmt *f)
 		{ 0x40000000,	"compressed" },
 		{ 0x80000000,	"extended-security" },
 	};
-	static Tab sectab[] = {
+
+	Tab sectab[] = {
 		{ 1,		"user-auth" },
 		{ 2,		"challange-response" },
 		{ 4,		"signing-available" },
@@ -116,7 +124,7 @@ conninfo(Fmt *f)
 	fmtprint(f, "%q %q %q %q %+ldsec %dmtu %s\n",
 		Sess->auth->user, Sess->cname,
 		Sess->auth->windom, Sess->remos,
-		Sess->slip, Sess->mtu, Sess->isguest? "as guest": "");
+		Sess->slip, Sess->mtu, (Sess->isguest)? "as guest": "");
 
 	fmtprint(f, "caps: ");
 	for(i = 0; i < nelem(captab); i++)
@@ -169,10 +177,11 @@ sessioninfo(Fmt *f)
  * names of the domain controllers for that domain.
  *
  * We get a DNS domain name for each domain controller as well as a
- * netbios name.  I THINK I am correct in saying that a name
- * containing a dot ('.') must be a DNS name, as the NetBios
- * name munging cannot encode one.  Thus names which contain no
+ * netbios name. I THINK I am correct in saying that a name
+ * containing a dot ('.') must be a DNS name  as the NetBios
+ * name munging cannot encode one. Thus names which contain no
  * dots must be netbios names.
+ * 
  */
 static void
 dfsredir(Fmt *f, char *path, int depth)
@@ -180,14 +189,14 @@ dfsredir(Fmt *f, char *path, int depth)
 	Refer *re, retab[128];
 	int n, used, flags;
 
-	n = T2getdfsreferral(Sess, &Ipc, path, &flags, &used, retab, nelem(retab));
-	if(n == -1)
+	if((n = T2getdfsreferral(Sess, &Ipc, path, &flags, &used, retab, nelem(retab))) == -1)
 		return;
 	for(re = retab; re < retab+n; re++){
 		if(strcmp(path, re->path) != 0)
 			dfsredir(f, re->path, depth+1);
 		else
 			fmtprint(f, "%-32q %q\n", re->path, re->addr);
+
 		free(re->addr);
 		free(re->path);
 	}
@@ -219,7 +228,8 @@ userinfo(Fmt *f)
 		fmtprint(f, "%-24q ", nl[i].name);
 
 		if(RAPuserinfo(Sess, &Ipc, nl[i].name, &ui) != -1){
-			fmtprint(f, "%-48q %q", ui.fullname, ui.comment);
+			fmtprint(f, "%-48q %q",
+			    ui.fullname, ui.comment);
 			free(ui.user);
 			free(ui.comment);
 			free(ui.fullname);
@@ -266,32 +276,32 @@ nodelist(Fmt *f, int type)
 {
 	int more, got, i, j;
 	Serverinfo *si;
-	static char *types[] = {
+	char *types[] = {
 		[0]	"workstation",
 		[1]	"server",
-		[2]	"SQL server",
+		[2]	"SQL",
 		[3]	"DC",
-		[4]	"backup DC",
-		[5]	"time source",
-		[6]	"Apple server",
-		[7]	"Novell server",
-		[8]	"domain member",
+		[4]	"BDC",
+		[5]	"time",
+		[6]	"Apple",
+		[7]	"NetWare",
+		[8]	nil,			// domain member
 		[9]	"printer server",
 		[10]	"dial-up server",
 		[11]	"Unix",
 		[12]	"NT",
 		[13]	"WFW",
-		[14]	"MFPN (?)",
+		[14]	"MFPN",			// DEC pathworks ?
 		[15]	"NT server",
-		[16]	"potential browser",
-		[17]	"backup browser",
+		[16]	nil,			// potential master browser
+		[17]	"BMB",
 		[18]	"LMB",
 		[19]	"DMB",
 		[20]	"OSF Unix",
 		[21]	"VMS",
 		[22]	"Win95",
 		[23]	"DFS",
-		[24]	"NT cluster",
+		[24]	"Cluster",
 		[25]	"Terminal server",
 		[26]	"[26]",
 		[27]	"[27]",
@@ -299,14 +309,12 @@ nodelist(Fmt *f, int type)
 	};
 
 	si = nil;
-	if((got = RAPServerenum2(Sess, &Ipc, Sess->auth->windom, type, &more,
-	    &si)) == -1){
+	if((got = RAPServerenum2(Sess, &Ipc, Sess->auth->windom, type, &more, &si)) == -1){
 		fmtprint(f, "RAPServerenum2: %r\n");
 		return 0;
 	}
 	if(more)
-		if((got = RAPServerenum3(Sess, &Ipc, Sess->auth->windom, type,
-		    got-1, si)) == -1){
+		if((got = RAPServerenum3(Sess, &Ipc, Sess->auth->windom, type, got-1, si)) == -1){
 			fmtprint(f, "RAPServerenum3: %r\n");
 			return 0;
 		}
@@ -345,7 +353,7 @@ period(long sec)
 	int days, hrs, min;
 	static char when[32];
 
-	days = sec  / (60L * 60L * 24L);
+	days = sec / (60L * 60L * 24L);
 	sec -= days * (60L * 60L * 24L);
 	hrs  = sec / (60L * 60L);
 	sec -= hrs * (60L * 60L);
@@ -357,3 +365,5 @@ period(long sec)
 		snprint(when, sizeof(when), "%d:%d:%ld ", hrs, min, sec);
 	return when;
 }
+
+

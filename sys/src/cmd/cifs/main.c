@@ -25,8 +25,9 @@ struct Aux {
 };
 
 extern int chatty9p;
+extern int Checkcase = 1;
 
-int Dfstout = 100; /* timeout (in ms) for ping of dfs servers (assume they are local) */
+int Dfstout = 100; 		/* timeout (in ms) for ping of dfs servers (assume they are local) */
 int Billtrog = 1;		/* enable file owner/group resolution */
 int Attachpid;			/* pid of proc that attaches (ugh !) */
 char *Debug = nil;		/* messages */
@@ -112,7 +113,7 @@ V2D(Dir *d, Qid qid, char *name)
 	memset(d, 0, sizeof(Dir));
 	d->type = 'C';
 	d->dev = 1;
-	d->name = strlwr(estrdup9p(name));
+	d->name = estrdup9p(name);
 	d->uid = estrdup9p("bill");
 	d->muid = estrdup9p("boyd");
 	d->gid = estrdup9p("trog");
@@ -329,63 +330,137 @@ fsclone(Fid *ofid, Fid *fid)
 	return nil;
 }
 
+/*
+ * for some weird reason T2queryall() returns share names
+ * in lower case so we have to do an extra test against
+ * our share table to validate filename case.
+ *
+ * on top of this here (snell & Wilcox) most of our
+ * redirections point to a share of the same name,
+ * but some do not, thus the tail of the filename
+ * returned by T2queryall() is not the same as
+ * the name we wanted.
+ *
+ * We work around this by not validating the names
+ * or files which resolve to share names as they must
+ * be correct, having been enforced in the dfs layer.
+ */
+static int
+validfile(char *found, char *want, char *winpath, Share *sp)
+{
+	char *share;
+
+	if(strcmp(want, "..") == 0)
+		return 1;
+	if(strcmp(winpath, "/") == 0){
+		share = trimshare(sp->name);
+		if(cistrcmp(want, share) == 0){
+			if(strcmp(want, share) == 0)
+				return 1;
+			else
+				return 0;
+		}
+		/*
+		 * OK, a DFS redirection points us from a directory XXX
+		 * to a share named YYY. There is no casechecking we can
+		 * do so we allow either case - its all we can do
+		 */
+		return 1;
+	}
+	if(cistrcmp(found, want) != 0)
+		return 0;
+	if(! Checkcase)
+		return 1;
+	if(strcmp(found, want) == 0)
+		return 1;
+	return 0;
+}
+
 static char*
 fswalk1(Fid *fid, char *name, Qid *qid)
 {
 	int rc, n, i;
-	char *npath;
+	char *p, *npath, *winpath;
 	Aux *a = fid->aux;
 	FInfo fi;
 	static char e[ERRMAX];
 
 	*e = 0;
 	npath = newpath(a->path, name);
-	if(strcmp(npath, "/") == 0)
+	if(strcmp(npath, "/") == 0){			/* root dir */
 		*qid = mkqid("/", 1, 1, Proot, 0);
-	else if(strrchr(npath, '/') == npath){
-		if((n = walkinfo(name)) != -1)
+		free(a->path);
+		a->path = npath;
+		fid->qid = *qid;
+		return nil;
+	}
+
+	if(strrchr(npath, '/') == npath){		/* top level dir */
+		if((n = walkinfo(name)) != -1){		/* info file */
 			*qid = mkqid(npath, 0, 1, Pinfo, n);
-		else {
+		}
+		else {					/* share name */
 			for(i = 0; i < Nshares; i++){
 				n = strlen(Shares[i].name);
-				if(cistrncmp(npath+1, Shares[i].name, n) != 0 ||
-				    npath[n+1] != 0 && npath[n+1] != '/')
+				if(cistrncmp(npath+1, Shares[i].name, n) != 0)
+					continue;
+				if(Checkcase && strncmp(npath+1, Shares[i].name, n) != 0)
+					continue;
+				if(npath[n+1] != 0 && npath[n+1] != '/')
 					continue;
 				break;
 			}
-			if(i < Nshares){
-				a->sp = Shares+i;
-				*qid = mkqid(npath, 1, 1, Pshare, i);
-			} else {
+			if(i >= Nshares){
 				free(npath);
 				return "not found";
 			}
+			a->sp = Shares+i;
+			*qid = mkqid(npath, 1, 1, Pshare, i);
 		}
-	} else {
-again:
-		if(mapshare(npath, &a->sp) == -1){
-			free(npath);
-			return "not found";
-		}
-
-		memset(&fi, 0, sizeof fi);
-
-		if(Sess->caps & CAP_NT_SMBS)
-			rc = T2queryall(Sess, a->sp, mapfile(npath), &fi);
-		else
-			rc = T2querystandard(Sess, a->sp, mapfile(npath), &fi);
-
-		if((a->sp->options & SMB_SHARE_IS_IN_DFS) != 0 &&
-		    (fi.attribs & ATTR_REPARSE) != 0 &&
-		    redirect(Sess, a->sp, npath) != -1)
-			goto again;
-		if(rc == -1){
-			rerrstr(e, sizeof(e));
-			free(npath);
-			return e;
-		}
-		*qid = mkqid(npath, fi.attribs & ATTR_DIRECTORY, fi.changed, 0, 0);
+		free(a->path);
+		a->path = npath;
+		fid->qid = *qid;
+		return nil;
 	}
+
+	/* must be a vanilla file or directory */
+again:
+	if(mapshare(npath, &a->sp) == -1){
+		rerrstr(e, sizeof(e));
+		free(npath);
+		return e;
+	}
+
+	winpath = mapfile(npath);
+	memset(&fi, 0, sizeof fi);
+	if(Sess->caps & CAP_NT_SMBS)
+		rc = T2queryall(Sess, a->sp, winpath, &fi);
+	else
+		rc = T2querystandard(Sess, a->sp, winpath, &fi);
+
+	if(rc == -1){
+		rerrstr(e, sizeof(e));
+		free(npath);
+		return e;
+	}
+
+	if((a->sp->options & SMB_SHARE_IS_IN_DFS) != 0 &&
+	    (fi.attribs & ATTR_REPARSE) != 0){
+		if(redirect(Sess, a->sp, npath) != -1)
+			goto again;
+	}
+
+	if((p = strrchr(fi.name, '/')) == nil && (p = strrchr(fi.name, '\\')) == nil)
+		p = fi.name;
+	else
+		p++;
+	
+	if(! validfile(p, name, winpath, a->sp)){
+		free(npath);
+		return "not found";
+
+	}
+	*qid = mkqid(npath, fi.attribs & ATTR_DIRECTORY, fi.changed, 0, 0);
 
 	free(a->path);
 	a->path = npath;
@@ -463,8 +538,15 @@ smbcreateopen(Aux *a, char *path, int mode, int perm, int is_create,
 		access = 2;
 		break;
 	case OEXEC:
-		access = 3;
-		break;
+		werrstr("will not exec via cifs");
+		return -1;
+		/* Files called ls or cat are possible on a Windows share,
+		 * however they are unlikely to be plan9 exeutables,
+		 * so we fail attempts to exec(2) them.
+		 *
+		 * access = 3;
+		 * break;
+		 */
 	default:
 		werrstr("%d bad open mode", mode & OMASK);
 		return -1;
@@ -540,8 +622,15 @@ ntcreateopen(Aux *a, char *path, int mode, int perm, int is_create,
 		access = GENERIC_ALL;
 		break;
 	case OEXEC:
-		access = GENERIC_EXECUTE;
-		break;
+		werrstr("will not exec via cifs");
+		return -1;
+		/* Files called ls or cat are possible on a Windows share,
+		 * however they are unlikely to be plan9 exeutables.
+		 * so we fail attempts to exec(2) them.
+		 *
+		 * access = GENERIC_EXECUTE;
+		 * break;
+		 */
 	default:
 		werrstr("%d bad open mode", mode & OMASK);
 		return -1;
@@ -1078,6 +1167,9 @@ main(int argc, char **argv)
 	case 'd':
 		Debug = EARGF(usage());
 		break;
+	case 'i':
+		Checkcase = 0;
+		break;
 	case 'k':
 		keyp = EARGF(usage());
 		break;
@@ -1140,7 +1232,7 @@ connected:
 	Sess->cname = strlwr(estrdup9p(cname));
 
 	if(CIFStreeconnect(Sess, cname, "IPC$", &Ipc) == -1)
-		fprint(2, "IPC$, %r - can't connect\n");
+		fprint(2, "%s, %r - can't connect\n", "IPC$");
 
 	Nshares = 0;
 	if(argc == 1){
@@ -1153,7 +1245,6 @@ connected:
 		for(i = 0; i < n; i++){
 #ifdef NO_HIDDEN_SHARES
 			int l = strlen(sip[i].name);
-
 			if(l > 1 && sip[i].name[l-1] == '$'){
 				free(sip[i].name);
 				continue;
@@ -1176,7 +1267,7 @@ connected:
 					", %r\n", argv0, Host, argv[i]);
 				continue;
 			}
-			Shares[Nshares].name = strlwr(estrdup9p(argv[i]));
+			Shares[Nshares].name = estrdup9p(argv[i]);
 			Nshares++;
 		}
 
