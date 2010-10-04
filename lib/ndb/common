@@ -180,6 +180,7 @@ tcp=discard port=9
 tcp=systat port=11
 tcp=daytime port=13
 tcp=netstat port=15
+tcp=qotd port=17
 tcp=chargen port=19
 tcp=ftp-data port=20
 tcp=ftp port=21
@@ -236,6 +237,7 @@ tcp=guard port=566
 tcp=ticket port=567
 tcp=ldaps port=636
 tcp=fmclient port=729
+tcp=sftp port=990
 tcp=imaps port=993
 tcp=pop3s port=995
 tcp=ingreslock port=1524
@@ -303,6 +305,9 @@ udp=syslog port=514
 udp=rip port=520
 udp=dhcp6c port=546
 udp=dhcp6s port=547
+udp=activesync port=1034
+udp=groove-dpp port=1211
+udp=hlserver port=1947
 udp=nfs port=2049
 udp=bfs port=2201
 udp=virgil port=2202
@@ -310,6 +315,8 @@ udp=sip port=5060
 udp=bandt2 port=7331		# viaducts
 udp=oradius port=1812
 udp=radius port=1812
+udp=iap-old port=4242
+udp=iap port=9823
 udp=dhash port=11977
 udp=ulctl port=12666
 udp=uldata port=12667
