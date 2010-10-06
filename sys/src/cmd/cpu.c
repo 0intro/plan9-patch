@@ -35,6 +35,7 @@ int	dbg;
 char	*user;
 char	*patternfile;
 char	*origargs;
+char *cert;
 
 char	*srvname = "ncpu";
 char	*exportfs = "/bin/exportfs";
@@ -50,6 +51,8 @@ static int	p9auth(int);
 static int	srvp9auth(int, char*);
 static int	noauth(int);
 static int	srvnoauth(int, char*);
+static int	tlspassauth(int);
+static int	srvtlspassauth(int, char*);
 
 typedef struct AuthMethod AuthMethod;
 struct AuthMethod {
@@ -60,6 +63,7 @@ struct AuthMethod {
 {
 	{ "p9",		p9auth,		srvp9auth,},
 	{ "netkey",	netkeyauth,	netkeysrvauth,},
+	{ "tlspass",	tlspassauth,	srvtlspassauth,},
 //	{ "none",	noauth,		srvnoauth,},
 	{ nil,	nil}
 };
@@ -73,6 +77,7 @@ void
 usage(void)
 {
 	fprint(2, "usage: cpu [-h system] [-u user] [-a authmethod] "
+		"[-p cert.pem ]"
 		"[-e 'crypt hash'] [-k keypattern] [-P patternfile] "
 		"[-c cmd arg ...]\n");
 	exits("usage");
@@ -141,6 +146,7 @@ main(int argc, char **argv)
 	char *av[10];
 
 	quotefmtinstall();
+	fmtinstall('H', encodefmt);		/* tls thumbprints */
 	origargs = procgetname();
 	/* see if we should use a larger message size */
 	fd = open("/dev/draw", OREAD);
@@ -164,6 +170,9 @@ main(int argc, char **argv)
 		ealgs = EARGF(usage());
 		if(*ealgs == 0 || strcmp(ealgs, "clear") == 0)
 			ealgs = nil;
+		break;
+	case 'p':
+		cert = EARGF(usage());
 		break;
 	case 'd':
 		dbg++;
@@ -687,6 +696,99 @@ srvp9auth(int fd, char *user)
 	if(i < 0)
 		werrstr("can't establish ssl connection: %r");
 	return i;
+}
+
+/*
+ * password authentication over tls
+ */
+static int
+tlspassauth(int fd)
+{
+	char response[MaxStr];
+	uchar hash[SHA1dlen];
+	Thumbprint *table;
+	TLSconn *conn;
+	UserPasswd *up;
+
+	conn = mallocz(sizeof(*conn), 1);
+	if((fd = tlsClient(fd, conn)) < 0){
+		werrstr("can't establish tls connection: %r");
+		free(conn);
+		return -1;
+	}
+	sha1(conn->cert, conn->certlen, hash, nil);
+	table = initThumbprints("/sys/lib/tls/cpu", "/sys/lib/tls/cpu.exclude");
+	if(!okThumbprint(hash, table)){
+		werrstr("server certificate %.*H not recognized", SHA1dlen, hash);
+		freeThumbprints(table);
+		close(fd);
+		return -1;
+	}
+	freeThumbprints(table);
+	up = auth_getuserpasswd(auth_getkey, "proto=pass server=%s user=%s service=cpu", system, user);
+	if(up == nil){
+		close(fd);
+		return -1;
+	}
+	writestr(fd, up->user, "user", 1);
+	writestr(fd, up->passwd, "passwd", 1);
+	memset(up->passwd, 0, strlen(up->passwd));
+	free(up);
+	if(readstr(fd, response, sizeof(response)) < 0)
+		rerrstr(response, sizeof(response));
+	if(response[0]){
+		werrstr("can't login: %s", response);
+		close(fd);
+		return -1;
+	}
+	return fd;
+}
+
+static int
+srvtlspassauth(int fd, char *user)
+{
+	char passwd[MaxStr];
+	TLSconn *conn;
+	AuthInfo *ai;
+
+	if(cert == nil){
+		werrstr("no certificate specified for TLS");
+		return -1;
+	}
+	conn = mallocz(sizeof(*conn), 1);
+	conn->cert = readcert(cert, &conn->certlen);
+	if(conn->cert == nil || conn->certlen == 0){
+		werrstr("can't read certificate: %r");
+		free(conn);
+		return -1;
+	}
+	if((fd = tlsServer(fd, conn)) < 0){
+		free(conn);
+		return -1;
+	}
+	if(readstr(fd, user, MaxStr) < 0){
+		werrstr("can't read user: %r");
+		close(fd);
+		return -1;
+	}
+	if(readstr(fd, passwd, sizeof(passwd)) < 0){
+		werrstr("can't read passwd: %r");
+		close(fd);
+		return -1;
+	}
+	ai = auth_userpasswd(user, passwd);
+	memset(passwd, 0, sizeof(passwd));
+	if(ai==nil || auth_chuid(ai, nil)<0){
+		char err[MaxStr];
+
+		rerrstr(err, sizeof(err));
+		auth_freeAI(ai);
+		writestr(fd, err, "login response", 1);
+		return -1;
+	}
+	auth_freeAI(ai);
+	writestr(fd, "", "login response", 0);
+	return fd;
 }
 
 /*
