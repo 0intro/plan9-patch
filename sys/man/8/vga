@@ -35,7 +35,7 @@ and the
 .I mode
 given as argument
 (default
-.BR 640x480x1 ), 
+.BR 640x480x8 ), 
 .I vga
 uses the database of known VGA controllers and monitors in
 .B /lib/vgadb
