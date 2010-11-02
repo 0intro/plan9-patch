@@ -300,4 +300,4 @@ void		privatefactotum(void);
 
 #pragma varargck argpos error 1
 #pragma varargck argpos sshlog 2
-
+#pragma varargck argpos debug 2
