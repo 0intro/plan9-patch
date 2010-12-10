@@ -142,12 +142,20 @@ bytes.
 .fi
 Where sizes are specified,
 a number of bytes is expected.
-A number may end with
-.L k
-or
+A number may end with a sequence
+of
+.LR k ,
+.LR m ,
+.LR g ,
+.LR t ,
+.LR e ,
+.LR z ,
+.L y 
+to specify multiplication by
+1KiB, 1MiB, etc., or
 .LR b
 to specify multiplication by
-1024 or 512 respectively;
+512;
 a pair of numbers may be separated by
 .L x
 to indicate a product.

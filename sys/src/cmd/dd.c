@@ -341,40 +341,45 @@ true:
 	return 1;
 }
 
+static	char	power[]	= "kmgtpezy";
+
 vlong
 number(vlong big)
 {
-	char *cs;
+	char *cs, *q, ch;
+	int c;
 	uvlong n;
 
-	cs = string;
-	n = 0;
-	while(*cs >= '0' && *cs <= '9')
-		n = n*10 + *cs++ - '0';
-	for(;;)
-	switch(*cs++) {
-
-	case 'k':
-		n *= 1024;
-		continue;
-
-	case 'b':
-		n *= 512;
-		continue;
-
-/*	case '*':*/
-	case 'x':
-		string = cs;
-		n *= number(VBIG);
-
-	case '\0':
-		if(n > big) {
-			fprint(2, "dd: argument %llud out of range\n", n);
-			exits("range");
-		}
-		return n;
+	n = strtoull(string, &cs, 0);
+	if(cs == string){
+bad:
+		fprint(2, "dd: bad number %s\n", string);
+		exits("badnum");
 	}
-	/* never gets here */
+	for(;;){
+		switch(ch = *cs++){
+		default:
+			q = strchr(power, ch);
+			if(q == nil)
+				goto bad;
+			for(c = q - power + 1; c--; )
+				n *= 1024;
+			break;
+		case 'b':
+			n *= 512;
+			break;
+		case 'x':
+/*		case '*':*/
+			string = cs;
+			n *= number(VBIG);
+		case '\0':
+			if(n > big) {
+				fprint(2, "dd: argument %llud out of range\n", n);
+				exits("range");
+			}
+			return n;
+		}
+	}
 }
 
 void
