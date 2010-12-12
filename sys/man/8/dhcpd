@@ -66,7 +66,7 @@ an IP address on the originating network or subnetwork.
 .br
 \- a free dynamic address exists on the originating network or subnetwork.
 .PP
-A BOOTP request is honored it all of the following are true:
+A BOOTP request is honored if all of the following are true:
 .br
 \- there exists an NDB entry
 containing both the ethernet address of the requester and
@@ -146,9 +146,7 @@ a POP3 mail server
 an SMTP mail server
 .TP
 .B bootf
-the default boot file;
-see
-.IR ndb (6)
+the default boot file
 .PD
 .PP
 .I Dhcpd
@@ -294,6 +292,4 @@ Restricts access to only those files rooted in the
 .SH SOURCE
 .B /sys/src/cmd/ip
 .SH "SEE ALSO"
-.IR ndb (6),
-.IR 9load (8),
-.IR booting (8)
+.IR ndb (6)
