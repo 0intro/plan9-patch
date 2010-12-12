@@ -1,0 +1,17 @@
+--- sys/src/cmd/grep/main.c	Sun Aug  8 05:39:50 2004
++++ sys/src/cmd/grep/main.c	Sun Aug  8 05:39:50 2004
+@@ -24,12 +24,12 @@
+ 	case 'e':
+ 		flags['e']++;
+ 		lineno = 0;
+-		str2top(ARGF());
++		str2top(EARGF(usage()));
+ 		break;
+ 
+ 	case 'f':
+ 		flags['f']++;
+-		filename = ARGF();
++		filename = EARGF(usage());
+ 		rein = Bopen(filename, OREAD);
+ 		if(rein == 0) {
+ 			fprint(2, "grep: can't open %s: %r\n", filename);
