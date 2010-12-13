@@ -263,6 +263,10 @@ extern Ctlr et4000;
 /* et4000hwgc.c */
 extern Ctlr et4000hwgc;
 
+/* geode.c */
+extern Ctlr geode;
+extern Ctlr geodehwgc;
+
 /* hiqvideo.c */
 extern Ctlr hiqvideo;
 extern Ctlr hiqvideohwgc;
@@ -291,6 +295,8 @@ extern ushort inportw(long);
 extern void outportw(long, ushort);
 extern ulong inportl(long);
 extern void outportl(long, ulong);
+extern uvlong rdmsr(long);
+extern void wrmsr(long, uvlong);
 extern char* vgactlr(char*, char*);
 extern void vgactlw(char*, char*);
 extern char* readbios(long, long);

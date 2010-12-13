@@ -1,0 +1,15 @@
+--- sys/src/cmd/ip/ftpfs/ftpfs.c	Sun May 22 08:05:19 2005
++++ sys/src/cmd/ip/ftpfs/ftpfs.c	Sun May 22 08:05:18 2005
+@@ -177,9 +177,9 @@
+ 		open("/dev/null", OWRITE);
+ 
+ 		close(p[1]);
+-		fmtinstall('F', fcallfmt); /* debugging */
+-		fmtinstall('D', dirfmt); /* expected by %F */
+-		fmtinstall('M', dirmodefmt); /* expected by %F */
++		fmtinstall('D', dirfmt);  /* debugging */
++		fmtinstall('M', dirmodefmt);
++		fmtinstall('F', fcallfmt);
+ 		io();
+ 		quit();
+ 		break;

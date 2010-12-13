@@ -18,6 +18,7 @@ OFILES=\
 	error.$O\
 	et4000.$O\
 	et4000hwgc.$O\
+	geode.$O\
 	hiqvideo.$O\
 	i81x.$O\
 	ibm8514.$O\
@@ -64,7 +65,8 @@ OFILES=\
 
 HFILES=\
 	pci.h\
-	vga.h
+	vga.h\
+	geode_modes.h\
 
 UPDATE=\
 	mkfile\
