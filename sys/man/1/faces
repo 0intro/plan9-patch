@@ -4,6 +4,12 @@ faces, seemail, vwhois \-  mailbox interface
 .SH SYNOPSIS
 .B faces
 [
+.B -f
+.I tinyfont
+] [
+.B -F
+.I mediumfont
+] [
 .B -ih
 ] [
 .B -m
@@ -60,6 +66,18 @@ and right-clicking has no effect.
 .PP
 If arrows are visible, clicking on them will scroll the display.
 Middle-clicking on the arrows scrolls to the end.
+.PP
+The
+.B -f
+and
+.B -F
+options set the fonts used by
+.I faces.
+These default to
+.I $tinyfont
+and
+.I $mediumfont
+respectively.
 .PP
 Starting
 .B faces

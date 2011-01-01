@@ -119,13 +119,14 @@ int ntasks, verbose, triggerproc, paused;
 Task *tasks;
 Image *cols[Ncolor][4];
 Font *mediumfont, *tinyfont;
+char *mediumfontname, *tinyfontname;
 Image *grey, *red, *green, *blue, *bg, *fg;
 char*profdev = "/proc/trace";
 
 static void
 usage(void)
 {
-	fprint(2, "Usage: %s [-d profdev] [-w] [-v] [-t triggerproc] [processes]\n", argv0);
+	fprint(2, "Usage: %s [-f tinyfont] [-F mediumfont] [-d profdev] [-w] [-v] [-t triggerproc] [processes]\n", argv0);
 	exits(nil);
 }
 
@@ -140,6 +141,16 @@ threadmain(int argc, char **argv)
 	case 'd':
 		profdev = EARGF(usage());
 		break;
+	case 'F':
+		mediumfontname = ARGF();
+		if(mediumfontname == nil)
+			usage();
+		break;
+	case 'f':
+		tinyfontname = ARGF();
+		if(tinyfontname == nil)
+			usage();
+		break;
 	case 'v':
 		verbose = 1;
 		break;
@@ -153,6 +164,15 @@ threadmain(int argc, char **argv)
 		usage();
 	}
 	ARGEND;
+
+	if(mediumfontname == nil)
+		mediumfontname = getenv("mediumfont");
+	if(mediumfontname == nil)
+		mediumfontname = "/lib/font/bit/lucidasans/unicode.10.font";
+	if(tinyfontname == nil)
+		tinyfontname = getenv("tinyfont");
+	if(tinyfontname == nil)
+		tinyfontname = "/lib/font/bit/lucidasans/unicode.7.font";
 
 	fname[sizeof fname - 1] = 0;
 	for(i = 0; i < argc; i++){
@@ -185,10 +205,10 @@ mkcol(int i, int c0, int c1, int c2)
 static void
 colinit(void)
 {
-	mediumfont = openfont(display, "/lib/font/bit/lucidasans/unicode.10.font");
+	mediumfont = openfont(display, mediumfontname);
 	if(mediumfont == nil)
 		mediumfont = font;
-	tinyfont = openfont(display, "/lib/font/bit/lucidasans/unicode.7.font");
+	tinyfont = openfont(display, tinyfontname);
 	if(tinyfont == nil)
 		tinyfont = font;
 	topmargin = mediumfont->height+2;

@@ -4,6 +4,14 @@ trace \- show (real-time) process behavior
 .SH SYNOPSIS
 .B trace
 [
+.B -f
+.I tinyfont
+]
+[
+.B -F
+.I mediumfont
+]
+[
 .B -d
 .I file
 ]
@@ -42,6 +50,14 @@ It is assumed that the reader of
 and the kernel providing it have the same byte order.
 .PP
 The options are:
+.TP
+.B -f
+set tiny font for display; default to
+.I $tinyfont.
+.TP
+.B -F
+set medium font for display; default to
+.I $mediumfont.
 .TP
 .B -d
 specify an alternate trace event file

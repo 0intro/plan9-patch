@@ -110,6 +110,10 @@ Upper-case options control details of the display.
 All graphs are affected; there is no mechanism to
 affect only one graph.
 .TP
+.BI -F " mediumfont
+Sets the font for the displays; default to
+.I $mediumfont.
+.TP
 .BI -T " sleepsecs
 Set the number of seconds between samples to
 .I sleepsecs

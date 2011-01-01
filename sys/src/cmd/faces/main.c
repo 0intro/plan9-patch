@@ -58,7 +58,9 @@ Image	*bgrnd;		/* pale blue background color */
 Image	*left;		/* left-pointing arrow mask */
 Image	*right;		/* right-pointing arrow mask */
 Font	*tinyfont;
+char	*tinyfontname;
 Font	*mediumfont;
+char	*mediumfontname;
 Font	*datefont;
 int	first, last;	/* first and last visible face; last is first invisible */
 int	nfaces;
@@ -110,10 +112,10 @@ init(void)
 	loadimage(right, leftright, rightdata, sizeof rightdata);
 
 	/* initialize little fonts */
-	tinyfont = openfont(display, "/lib/font/bit/misc/ascii.5x7.font");
+	tinyfont = openfont(display, tinyfontname);
 	if(tinyfont == nil)
 		tinyfont = font;
-	mediumfont = openfont(display, "/lib/font/bit/pelm/latin1.8.font");
+	mediumfont = openfont(display, mediumfontname);
 	if(mediumfont == nil)
 		mediumfont = font;
 	datefont = font;
@@ -675,7 +677,7 @@ startproc(void (*f)(void), int index)
 void
 usage(void)
 {
-	fprint(2, "usage: faces [-hi] [-m maildir]\n");
+	fprint(2, "usage: faces [-f tinyfont] [-F mediumfont] [-hi] [-m maildir]\n");
 	exits("usage");
 }
 
@@ -685,6 +687,16 @@ main(int argc, char *argv[])
 	int i;
 
 	ARGBEGIN{
+	case 'f':
+		tinyfontname = ARGF();
+		if(tinyfontname == nil)
+			usage();
+		break;
+	case 'F':
+		mediumfontname = ARGF();
+		if(mediumfontname == nil)
+			usage();
+		break;
 	case 'h':
 		history++;
 		break;
@@ -698,6 +710,15 @@ main(int argc, char *argv[])
 	default:
 		usage();
 	}ARGEND
+
+	if(tinyfontname == nil)
+		tinyfontname = getenv("tinyfont");
+	if(tinyfontname == nil)
+		tinyfontname = "/lib/font/bit/misc/ascii.5x7.font";
+	if(mediumfontname == nil)
+		mediumfontname = getenv("mediumfont");
+	if(mediumfontname == nil)
+		mediumfontname = "/lib/font/bit/pelm/latin1.8.font";
 
 	if(initdraw(nil, nil, "faces") < 0){
 		fprint(2, "faces: initdraw failed: %r\n");

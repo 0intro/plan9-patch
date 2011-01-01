@@ -116,6 +116,7 @@ Image		*cols[Ncolor][3];
 Graph		*graph;
 Machine		mach[NMACH];
 Font		*mediumfont;
+char		*mediumfontname;
 int		pids[NPROC];
 int		npid;
 int 		parity;	/* toggled to avoid patterns in textured background */
@@ -190,7 +191,7 @@ mkcol(int i, int c0, int c1, int c2)
 void
 colinit(void)
 {
-	mediumfont = openfont(display, "/lib/font/bit/pelm/latin1.8.font");
+	mediumfont = openfont(display, mediumfontname);
 	if(mediumfont == nil)
 		mediumfont = font;
 
@@ -992,6 +993,11 @@ main(int argc, char *argv[])
 	f = flags;
 	pinginterval = 5000;		/* 5 seconds */
 	ARGBEGIN{
+	case 'f':
+		mediumfontname = ARGF();
+		if(mediumfontname == nil)
+			usage();
+		break;
 	case 'i':
 		p = ARGF();
 		if(p == nil)
@@ -1028,6 +1034,11 @@ main(int argc, char *argv[])
 	for(i=0; i<nmach; i++)
 		for(j=0; j<ngraph; j++)
 			graph[i*ngraph+j].mach = &mach[i];
+
+	if(mediumfontname == nil)
+		mediumfontname = getenv("mediumfont");
+	if(mediumfontname == nil)
+		mediumfontname = "/lib/font/bit/pelm/latin1.8.font";
 
 	if(initdraw(nil, nil, argv0) < 0){
 		fprint(2, "%s: initdraw failed: %r\n", argv0);

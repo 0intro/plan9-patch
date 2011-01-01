@@ -76,8 +76,7 @@ struct Machine
 	uvlong		netetherifstats[2];
 	uvlong		temp[10];
 
-	/* big enough to hold /dev/sysstat even with many processors */
-	char		buf[8*1024];
+	char		buf[1024];
 	char		*bufp;
 	char		*ebufp;
 };
@@ -193,6 +192,7 @@ Image	*cols[Ncolor][3];
 Graph	*graph;
 Machine	*mach;
 Font	*mediumfont;
+char	*mediumfontname;
 char	*mysysname;
 char	argchars[] = "8bceEfiImlnpstwz";
 int	pids[NPROC];
@@ -265,7 +265,7 @@ mkcol(int i, int c0, int c1, int c2)
 void
 colinit(void)
 {
-	mediumfont = openfont(display, "/lib/font/bit/pelm/latin1.8.font");
+	mediumfont = openfont(display, mediumfontname);
 	if(mediumfont == nil)
 		mediumfont = font;
 
@@ -994,7 +994,7 @@ tempval(Machine *m, uvlong *v, uvlong *vmax, int)
 void
 usage(void)
 {
-	fprint(2, "usage: stats [-O] [-S scale] [-LY] [-%s] [machine...]\n", argchars);
+	fprint(2, "usage: stats [-F mediumfont] [-O] [-S scale] [-LY] [-%s] [machine...]\n", argchars);
 	exits("usage");
 }
 
@@ -1303,6 +1303,11 @@ main(int argc, char *argv[])
 
 	nargs = 0;
 	ARGBEGIN{
+	case 'F':
+		mediumfontname = ARGF();
+		if(mediumfontname == nil)
+			usage();
+		break;
 	case 'T':
 		secs = atof(EARGF(usage()));
 		if(secs > 0)
@@ -1327,6 +1332,11 @@ main(int argc, char *argv[])
 			usage();
 		args[nargs++] = ARGC();
 	}ARGEND
+
+	if(mediumfontname == nil)
+		mediumfontname = getenv("mediumfont");
+	if(mediumfontname == nil)
+		mediumfontname = "/lib/font/bit/pelm/latin1.8.font";
 
 	if(argc == 0){
 		mach = emalloc(nmach*sizeof(Machine));
