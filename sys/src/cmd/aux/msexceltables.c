@@ -139,7 +139,7 @@ cell(int r, int c, int f, int type, void *val)
 		Ncols = c;
 
 	if((ncol = malloc(sizeof(Col))) == nil)
-		sysfatal("no memory");
+		sysfatal("no memory for another column");
 	ncol->c = c;
 	ncol->f = f;
 	ncol->type = type;
@@ -156,7 +156,7 @@ cell(int r, int c, int f, int type, void *val)
 
 	if(Root == nil || Root->r > r){
 		if((nrow = malloc(sizeof(Row))) == nil)
-			sysfatal("no memory");
+			sysfatal("no memory for another row");
 		nrow->col = ncol;
 		ncol->next = nil;
 		nrow->r = r;
@@ -184,7 +184,7 @@ cell(int r, int c, int f, int type, void *val)
 
 		if(row->next == nil || row->next->r > r){
 			if((nrow = malloc(sizeof(Row))) == nil)
-				sysfatal("no memory");
+				sysfatal("no memory for anothe row");
 			nrow->col = ncol;
 			nrow->r = r;
 			nrow->next = row->next;
@@ -283,7 +283,7 @@ dump(void)
 
 			switch(c->type){
 			case Tnumber:
-				if(Xf[c->f] == 0)
+				if(Xf == nil || Xf[c->f] == 0)
 					Bprint(bo, "%-*.*g", min, max, c->number);
 				else
 					numfmt(Xf[c->f], min, max, c->number);
@@ -366,7 +366,7 @@ skip(Biff *b, int len)
 {
 	assert(len <= b->len);
 	if(Bseek(b->bp, len, 1) == -1)
-		sysfatal("seek failed - %r");
+		sysfatal("seek %d failed - %r", len);
 	b->len -= len;
 }
 
@@ -506,14 +506,14 @@ gstr(Biff *b, int len_width)
 	ln = gint(b, len_width);
 	if(Biffver != Ver8){
 		if((buf = calloc(ln+1, sizeof(char))) == nil)
-			sysfatal("no memory");
+			sysfatal("no memory for string - wanted %d bytes", (ln+1)*sizeof(char));
 		gmem(b, buf, ln);
 		return buf;
 	}
 
 
 	if((buf = calloc(ln+1, sizeof(char)*UTFmax)) == nil)
-		sysfatal("no memory");
+		sysfatal("no memory for string - wanted %d bytes", (ln+1)*sizeof(char)*UTFmax);
 	p = buf;
 
 	if(ln == 0)
@@ -559,7 +559,7 @@ sst(Biff *b)
 	skip(b, 4);			// total # strings
 	Nstrtab = gint(b, 4);		// # unique strings
 	if((Strtab = calloc(Nstrtab, sizeof(char *))) == nil)
-		sysfatal("no memory");
+		sysfatal("no memory for string table - wanted %d bytes\n", Nstrtab *sizeof(char *));
 	for(n = 0; n < Nstrtab; n++)
 		Strtab[n] = gstr(b, 2);
 
@@ -720,7 +720,7 @@ xf(Biff *b)
 	if(nalloc >= Nxf){
 		nalloc += 20;
 		if((Xf = realloc(Xf, nalloc*sizeof(int))) == nil)
-			sysfatal("no memory");
+			sysfatal("no memory for xf() - wanted %d bytes\n", nalloc*sizeof(int));
 	}
 	Xf[Nxf++] = fmt;
 }
