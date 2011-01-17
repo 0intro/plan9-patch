@@ -229,7 +229,7 @@ struct Isoio
 struct Td
 {
 	ulong	ctrl;
-	ulong	cbp;
+	ulong	cbp;		/* current buffer pointer */
 	ulong	nexttd;
 	ulong	be;
 	ushort	offsets[8];	/* used by Iso Tds only */
@@ -1134,8 +1134,6 @@ qhinterrupt(Ctlr *, Ep *ep, Qio *io, Td *td, int)
 	switch(err){
 	case Tddataovr:			/* Overrun is not an error */
 	case Tdok:
-		if(td->cbp != 0)
-			panic("ohci: full packet but cbp != 0");
 		break;
 	case Tddataund:
 		/* short input packets are ok */
