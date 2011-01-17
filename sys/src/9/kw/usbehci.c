@@ -2229,9 +2229,10 @@ epgettd(Qio *io, int flags, void *a, int count, int maxpkt)
 	 * embedded buffer if count bytes fit in there.
 	 */
 	assert(Align > sizeof(Td));
-	if(count <= Align - sizeof(Td))
+	if(count <= Align - sizeof(Td)){
 		td->data = td->sbuff;
-	else
+		td->buff = nil;
+	}else
 		td->data = td->buff = smalloc(Tdmaxpkt);
 
 	pa = PADDR(td->data);
