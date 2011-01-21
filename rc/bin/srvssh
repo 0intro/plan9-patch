@@ -80,22 +80,6 @@ case 3
 	mtpt=$3
 }
 
-x=(srv $sleephack -e \
+exec srv $sleephack -e \
 	'ssh '$rawflags' '$1' '$rawhack' '$u9fspath' -na none -u ''$''USER -l ''$''HOME/u9fs.log' \
-	$srv $mtpt)
-$x
-
-# Sometimes /srv/whatever can be a closed pipe, in which case
-# srv will have been killed for writing to it, without a chance to
-# defend itself.  Rerun it in this case.
-
-ss=$status
-if(~ $ss *'write on closed pipe'*){
-	rm -f /srv/$srv
-	$x
-	ss=$status
-}
-
-if(! ~ $ss '')
-	echo srvssh: $ss >[1=2]
-exit $ss
+	$srv $mtpt
