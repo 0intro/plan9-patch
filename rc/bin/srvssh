@@ -80,8 +80,12 @@ case 3
 	mtpt=$3
 }
 
+ssh=ssh
+if(test -x /bin/openssh/ssh)
+	ssh=openssh/ssh
+
 x=(srv $sleephack -e \
-	'ssh '$rawflags' '$1' '$rawhack' '$u9fspath' -na none -u ''$''USER -l ''$''HOME/u9fs.log' \
+	$ssh' '$rawflags' '$1' '$rawhack' '$u9fspath' -na none -u ''$''USER -l ''$''HOME/u9fs.log' \
 	$srv $mtpt)
 $x
 
