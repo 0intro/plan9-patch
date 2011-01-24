@@ -132,7 +132,7 @@ char*	addsub[2] =
 	"-",	"+",
 };
 
-int
+static int
 armclass(long w)
 {
 	int op;
