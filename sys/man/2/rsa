@@ -1,18 +1,23 @@
 .TH RSA 2
 .SH NAME
 asn1dump,
+asn1toDSApriv,
 asn1toRSApriv,
 decodePEM,
+decodepemchain,
 rsadecrypt,
 rsaencrypt,
+rsafill
 rsagen,
 rsaprivalloc,
 rsaprivfree,
 rsaprivtopub,
 rsapuballoc,
 rsapubfree,
-X509toRSApub,
+X509dump,
 X509gen,
+X509req,
+X509toRSApub,
 X509verify \- RSA encryption algorithm
 .SH SYNOPSIS
 .B #include <u.h>
@@ -24,6 +29,9 @@ X509verify \- RSA encryption algorithm
 .B #include <libsec.h>
 .PP
 .ta +\w'\fLRSApriv* \fP'u
+.B
+RSApriv*	rsafill(mpint *n, mpint *e, mpint *d, mpint *p, mpint *q)
+.PP
 .B
 RSApriv*	rsagen(int nlen, int elen, int nrep)
 .PP
@@ -52,6 +60,9 @@ RSApub*	rsaprivtopub(RSApriv*)
 RSApub*	X509toRSApub(uchar *cert, int ncert, char *name, int nname)
 .PP
 .B
+RSApriv*	asn1toDSApriv(uchar *priv, int npriv)
+.PP
+.B
 RSApriv*	asn1toRSApriv(uchar *priv, int npriv)
 .PP
 .B
@@ -59,6 +70,12 @@ void		asn1dump(uchar *der, int len)
 .PP
 .B
 uchar*	decodePEM(char *s, char *type, int *len, char **new_s)
+.PP
+.B
+PEMChain*	decodepemchain(char *s, char *type)
+.PP
+.B
+void	X509dump(uchar *cert, int ncert)
 .PP
 .B
 uchar*	X509gen(RSApriv *priv, char *subj, ulong valid[2], int *certlen);
@@ -113,6 +130,9 @@ of rounds.
 .I Rsagen
 returns a newly allocated structure containing both
 public and private keys.
+The key's !kp, !kq, and !c2 attributes may be regenerated
+with
+.IR rsafill.
 .I Rsaprivtopub
 returns a newly allocated copy of the public key
 corresponding to the private key.
@@ -171,11 +191,17 @@ using the quoting conventions of
 .I tokenize
 in
 .IR getfields (2).
+.I X509dump
+prints a human-readble version of the certificate.
 .PP
-.I Asn1toRSApriv
+.I Asn1toDSApriv
+and
+.I asn1toRSApriv
 converts an ASN1 formatted RSA private key into the corresponding
+.B DSApriv
+or
 .B RSApriv
-structure.
+structure, respectively.
 .PP
 .I Asn1dump
 prints an ASN1 object to standard output.
@@ -203,6 +229,11 @@ If not nil,
 is set to the first character beyond the
 .I type
 section.
+.I Pemdecodechain
+decodes a full certificate chain.  Each
+link is
+.IR malloc ed
+storage.
 .SH SOURCE
 .B /sys/src/libsec
 .SH SEE ALSO
