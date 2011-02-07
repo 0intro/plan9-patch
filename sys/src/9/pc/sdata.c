@@ -1929,7 +1929,6 @@ atapnp(void)
 		case (0x4D69<<16)|0x105A:	/* Promise Ultra/133 TX2 */
 		case (0x3373<<16)|0x105A:	/* Promise 20378 RAID */
 		case (0x3149<<16)|0x1106:	/* VIA VT8237 SATA/RAID */
-		case (0x4379<<16)|0x1002:	/* ATI 4379 SATA*/
 		case (0x3112<<16)|0x1095:	/* SiI 3112 SATA/RAID */
 			maxio = 15;
 			span = 8*1024;
@@ -2000,8 +1999,9 @@ atapnp(void)
 			 * address for the registers (0x50?).
 			 */
 			/*FALLTHROUGH*/
-		case (0x1002<<16)|0x4372:	/* ATI SB400 */
-		case (0x4376<<16)|0x1002:	/* ATI Radeon Xpress 200M */
+		case (0x4376<<16)|0x1002:	/* ATI SB400 PATA */
+		case (0x4379<<16)|0x1002:	/* ATI SB400 SATA */
+		case (0x437a<<16)|0x1002:	/* ATI SB400 SATA */
 			break;
 		case (0x0211<<16)|0x1166:	/* ServerWorks IB6566 */
 			{
