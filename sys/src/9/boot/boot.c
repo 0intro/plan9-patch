@@ -167,7 +167,7 @@ boot(int argc, char *argv[])
 
 	cmd = getenv("init");
 	if(cmd == nil){
-		sprint(cmdbuf, "/%s/init -%s%s", cputype,
+		snprint(cmdbuf, sizeof(cmdbuf), "/%s/init -%s%s", cputype,
 			cpuflag ? "c" : "t", mflag ? "m" : "");
 		cmd = cmdbuf;
 	}
@@ -233,10 +233,10 @@ rootserver(char *arg)
 
 	/* make list of methods */
 	mp = method;
-	n = sprint(prompt, "root is from (%s", mp->name);
+	n = snprint(prompt, sizeof(prompt), "root is from (%s", mp->name);
 	for(mp++; mp->name; mp++)
-		n += sprint(prompt+n, ", %s", mp->name);
-	sprint(prompt+n, ")");
+		n += snprint(prompt+n, sizeof(prompt)-n, ", %s", mp->name);
+	snprint(prompt+n, sizeof(prompt)-n, ")");
 
 	/* create default reply */
 	readfile("#e/bootargs", reply, sizeof(reply));

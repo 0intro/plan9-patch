@@ -50,7 +50,7 @@ settime(int islocal, int afd, char *rp)
 		if(stat("/tmp", statbuf, sizeof statbuf) < 0)
 			fatal("stat");
 		convM2D(statbuf, sizeof statbuf, &dir[0], (char*)&dir[1]);
-		sprint(timebuf, "%ld", dir[0].atime);
+		snprint(timebuf, sizeof(timebuf), "%ld", dir[0].atime);
 		unmount(0, "/tmp");
 	}
 
@@ -144,6 +144,6 @@ lusertime(char *argbuf)
 	if(*buf)
 		secs += g2(&buf);
 
-	sprint(argbuf, "%ld", secs);
+	snprint(argbuf, 64, "%ld", secs); /* buffer size taken from timebuf above. */
 	return secs;
 }

@@ -42,12 +42,12 @@ cache(int fd)
 				bd[i-2] = 0;
 			else if(strcmp("fossil", &bd[i-6]) == 0)
 				bd[i-6] = 0;
-			sprint(partition, "%scache", bd);
+			snprint(partition, sizeof(partition), "%scache", bd);
 			if(stat(partition, statbuf, sizeof statbuf) < 0)
 				*bd = 0;
 		}
 		if(*bd == 0){
-			sprint(partition, "%scache", bootdisk);
+			snprint(partition, sizeof(partition), "%scache", bootdisk);
 			if(stat(partition, statbuf, sizeof statbuf) < 0)
 				return fd;
 		}

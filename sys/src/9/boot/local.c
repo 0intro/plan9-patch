@@ -25,7 +25,7 @@ configlocal(Method *mp)
 		 */
 		p = strchr(argv0, ',');
 		n = strtoul(p+1, 0, 10);
-		sprint(diskname, "#w%d/sd%dfs", n, n);
+		snprint(diskname, sizeof(diskname), "#w%d/sd%dfs", n, n);
 		disk = diskname;
 	} else if(mp->arg){
 		/*
