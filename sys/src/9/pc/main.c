@@ -298,10 +298,10 @@ bootargs(void *base)
 	cp[BOOTLINELEN-1] = 0;
 	buf[0] = 0;
 	if(strncmp(cp, "fd", 2) == 0){
-		sprint(buf, "local!#f/fd%lddisk", strtol(cp+2, 0, 0));
+		snprint(buf, sizeof(buf), "local!#f/fd%lddisk", strtol(cp+2, 0, 0));
 		av[ac++] = pusharg(buf);
 	} else if(strncmp(cp, "sd", 2) == 0){
-		sprint(buf, "local!#S/sd%c%c/fs", *(cp+2), *(cp+3));
+		snprint(buf, sizeof(buf), "local!#S/sd%c%c/fs", *(cp+2), *(cp+3));
 		av[ac++] = pusharg(buf);
 	} else if(strncmp(cp, "ether", 5) == 0)
 		av[ac++] = pusharg("-n");

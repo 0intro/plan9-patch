@@ -354,6 +354,7 @@ archread(Chan *c, void *a, long n, vlong offset)
 {
 	char *buf, *p;
 	int port;
+	long pn;
 	ushort *sp;
 	ulong *lp;
 	IOMap *m;
@@ -402,6 +403,7 @@ archread(Chan *c, void *a, long n, vlong offset)
 	if((buf = malloc(n)) == nil)
 		error(Enomem);
 	p = buf;
+	pn = n;
 	n = n/Linelen;
 	offset = offset/Linelen;
 
@@ -409,8 +411,9 @@ archread(Chan *c, void *a, long n, vlong offset)
 	for(m = iomap.m; n > 0 && m != nil; m = m->next){
 		if(offset-- > 0)
 			continue;
-		sprint(p, "%8lux %8lux %-12.12s\n", m->start, m->end-1, m->tag);
+		snprint(p, pn, "%8lux %8lux %-12.12s\n", m->start, m->end-1, m->tag);
 		p += Linelen;
+		pn -= Linelen;
 		n--;
 	}
 	unlock(&iomap);
@@ -706,9 +709,9 @@ cpuidprint(void)
 	int i;
 	char buf[128];
 
-	i = sprint(buf, "cpu%d: %dMHz ", m->machno, m->cpumhz);
+	i = snprint(buf, sizeof(buf), "cpu%d: %dMHz ", m->machno, m->cpumhz);
 	if(m->cpuidid[0])
-		i += sprint(buf+i, "%12.12s ", m->cpuidid);
+		i += snprint(buf+i, sizeof(buf)-i, "%12.12s ", m->cpuidid);
 	seprint(buf+i, buf + sizeof buf - 1,
 		"%s (cpuid: AX 0x%4.4uX DX 0x%4.4uX)\n",
 		m->cpuidtype, m->cpuidax, m->cpuiddx);

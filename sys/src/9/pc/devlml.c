@@ -175,7 +175,7 @@ lmlreset(void)
 
 		memset(&segbuf, 0, sizeof(segbuf));
 		segbuf.attr = SG_PHYSICAL;
-		sprint(name, "lml%d.mjpg", nlml);
+		snprint(name, sizeof(name), "lml%d.mjpg", nlml);
 		kstrdup(&segbuf.name, name);
 		segbuf.pa = PADDR(lml->codedata);
 		segbuf.size = Codedatasize;
@@ -186,7 +186,7 @@ lmlreset(void)
 
 		memset(&segbuf, 0, sizeof(segbuf));
 		segbuf.attr = SG_PHYSICAL;
-		sprint(name, "lml%d.regs", nlml);
+		snprint(name, sizeof(name), "lml%d.regs", nlml);
 		kstrdup(&segbuf.name, name);
 		segbuf.pa = (ulong)regpa;
 		segbuf.size = pcidev->mem[0].size;
