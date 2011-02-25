@@ -1235,8 +1235,8 @@ textselect3(Text *t, uint *q0, uint *q1)
 	return h;
 }
 
-static Rune left1[] =  { L'{', L'[', L'(', L'<', L'«', 0 };
-static Rune right1[] = { L'}', L']', L')', L'>', L'»', 0 };
+static Rune left1[] =  { L'{', L'[', L'(', L'<', L'«', L'“', 0 };
+static Rune right1[] = { L'}', L']', L')', L'>', L'»', L'”', 0 };
 static Rune left2[] =  { L'\n', 0 };
 static Rune left3[] =  { L'\'', L'"', L'`', 0 };
 
