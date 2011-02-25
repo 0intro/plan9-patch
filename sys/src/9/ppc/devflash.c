@@ -361,7 +361,7 @@ flashinit(void)
 		flash->bootprotect = 1;
 		flash->offset = offset;
 		fname = malloc(8);
-		sprint(fname, "flash%d", ctlrno);
+		snprint(fname, 8, "flash%d", ctlrno);
 		addpart(nil, fname, offset, offset + flash->size);
 		offset += flash->size;
 	}
@@ -760,15 +760,15 @@ ise_error(int bank, ulong status)
 	char err[64];
 
 	if(status & (ISEs_lockerr)){
-		sprint(err, "flash%d: block locked %lux", bank, status);
+		snprint(err, sizeof(err), "flash%d: block locked %lux", bank, status);
 		error(err);
 	}
 	if(status & (ISEs_powererr)){
-		sprint(err, "flash%d: low prog voltage %lux", bank, status);
+		snprint(err, sizeof(err), "flash%d: low prog voltage %lux", bank, status);
 		error(err);
 	}
 	if(status & (ISEs_progerr|ISEs_eraseerr)){
-		sprint(err, "flash%d: i/o error %lux", bank, status);
+		snprint(err, sizeof(err), "flash%d: i/o error %lux", bank, status);
 		error(err);
 	}
 }

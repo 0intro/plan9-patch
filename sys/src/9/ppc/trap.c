@@ -109,7 +109,7 @@ char *fpcause[] =
 	"overflow",
 	"invalid operation",
 };
-char	*fpexcname(Ureg*, ulong, char*);
+char	*fpexcname(Ureg*, ulong, char*, int);
 #define FPEXPMASK	0xfff80300		/* Floating exception bits in fpscr */
 
 
@@ -256,7 +256,7 @@ trap(Ureg *ureg)
 		default:
 			if(user){
 				spllo();
-				sprint(buf, "sys: floating point in note handler:");
+				snprint(buf, sizeof(buf), "sys: floating point in note handler:");
 				postnote(up, 1, buf, NDebug);
 				break;
 			}
@@ -275,7 +275,7 @@ trap(Ureg *ureg)
 			s = "undefined program exception";
 		if(user){
 			spllo();
-			sprint(buf, "sys: trap: %s", s);
+			snprint(buf, sizeof(buf), "sys: trap: %s", s);
 			postnote(up, 1, buf, NDebug);
 			break;
 		}
@@ -285,7 +285,7 @@ trap(Ureg *ureg)
 	default:
 		if(ecode < nelem(excname) && user){
 			spllo();
-			sprint(buf, "sys: trap: %s", excname[ecode]);
+			snprint(buf, sizeof(buf), "sys: trap: %s", excname[ecode]);
 			postnote(up, 1, buf, NDebug);
 			break;
 		}
@@ -330,7 +330,7 @@ faultpower(Ureg *ureg, ulong addr, int read)
 			dumpregs(ureg);
 			panic("fault: 0x%lux", addr);
 		}
-		sprint(buf, "sys: trap: fault %s addr=0x%lux", read? "read" : "write", addr);
+		snprint(buf, sizeof(buf), "sys: trap: fault %s addr=0x%lux", read? "read" : "write", addr);
 		postnote(up, 1, buf, NDebug);
 	}
 	up->insyscall = insyscall;
@@ -390,7 +390,7 @@ setmvec(int v, void (*r)(void), void (*t)(void))
 }
 
 char*
-fpexcname(Ureg *ur, ulong fpscr, char *buf)
+fpexcname(Ureg *ur, ulong fpscr, char *buf, int blen)
 {
 	int i;
 	char *s;
@@ -405,7 +405,7 @@ fpexcname(Ureg *ur, ulong fpscr, char *buf)
 			s = fpcause[i];
 	if(s == 0)
 		return "no floating point exception";
-	sprint(buf, "%s fppc=0x%lux", s, fppc);
+	snprint(buf, blen, "%s fppc=0x%lux", s, fppc);
 	return buf;
 }
 
@@ -722,7 +722,7 @@ notify(Ureg* ur)
 		l = strlen(n->msg);
 		if(l > ERRMAX-15)	/* " pc=0x12345678\0" */
 			l = ERRMAX-15;
-		sprint(n->msg+l, " pc=0x%.8lux", ur->pc);
+		snprint(n->msg+l, sizeof(n->msg)-l, " pc=0x%.8lux", ur->pc);
 	}
 
 	if(n->flag!=NUser && (up->notified || up->notify==0)){
