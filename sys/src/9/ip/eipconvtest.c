@@ -52,13 +52,13 @@ eipconv(va_list *arg, Fconv *f)
 	switch(f->chr) {
 	case 'E':		/* Ethernet address */
 		p = va_arg(*arg, uchar*);
-		sprint(buf, efmt, p[0], p[1], p[2], p[3], p[4], p[5]);
+		snprint(buf, sizeof(buf), efmt, p[0], p[1], p[2], p[3], p[4], p[5]);
 		break;
 	case 'I':		/* Ip address */
 		p = va_arg(*arg, uchar*);
 common:
 		if(memcmp(p, v4prefix, 12) == 0)
-			sprint(buf, ifmt, p[12], p[13], p[14], p[15]);
+			snprint(buf, sizeof(buf), ifmt, p[12], p[13], p[14], p[15]);
 		else {
 			/* find longest elision */
 			eln = eli = -1;
@@ -76,14 +76,14 @@ common:
 			n = 0;
 			for(i = 0; i < 16; i += 2){
 				if(i == eli){
-					n += sprint(buf+n, "::");
+					n += snprint(buf+n, sizeof(buf)-n, "::");
 					i += eln;
 					if(i >= 16)
 						break;
 				} else if(i != 0)
-					n += sprint(buf+n, ":");
+					n += snprint(buf+n, sizeof(buf)-n, ":");
 				s = (p[i]<<8) + p[i+1];
-				n += sprint(buf+n, "%ux", s);
+				n += snprint(buf+n, sizeof(buf)-n, "%ux", s);
 			}
 		}
 		break;
@@ -95,7 +95,7 @@ common:
 		goto common;
 	case 'V':		/* v4 ip address */
 		p = va_arg(*arg, uchar*);
-		sprint(buf, ifmt, p[0], p[1], p[2], p[3]);
+		snprint(buf, sizeof(buf), ifmt, p[0], p[1], p[2], p[3]);
 		break;
 	case 'M':		/* ip mask */
 		p = va_arg(*arg, uchar*);
@@ -115,7 +115,7 @@ common:
 			n = 8*16;
 
 		/* got one, use /xx format */
-		sprint(buf, "/%d", n);
+		snprint(buf, sizeof(buf), "/%d", n);
 		break;
 	default:
 		strcpy(buf, "(eipconv)");
