@@ -35,7 +35,7 @@ faultalpha(Ureg *ur)
 		return;
 
 	if(user){
-		sprint(buf, "sys: trap: fault %s addr=0x%lux",
+		snprint(buf, sizeof(buf), "sys: trap: fault %s addr=0x%lux",
 			read? (cause != 0) ? "ifetch" : "read" : "write", (ulong)ur->a0);
 		postnote(up, 1, buf, NDebug);
 		return;

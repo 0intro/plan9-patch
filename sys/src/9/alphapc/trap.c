@@ -337,7 +337,7 @@ trap(Ureg *ur)
 		break;
 	case 6:	/* alignment fault */
 		ur->pc -= 4;
-		sprint(buf, "trap: unaligned addr 0x%lux", (ulong)ur->a0);
+		snprint(buf, sizeof(buf), "trap: unaligned addr 0x%lux", (ulong)ur->a0);
 		fataltrap(ur, buf);
 		break;
 	default:	/* cannot happen */
@@ -379,7 +379,7 @@ fataltrap(Ureg *ur, char *reason)
 
 	if(ur->status&UMODE) {
 		spllo();
-		sprint(buf, "sys: %s", reason);
+		snprint(buf, sizeof(buf), "sys: %s", reason);
 		postnote(up, 1, buf, NDebug);
 		return;
 	}
@@ -539,7 +539,7 @@ notify(Ureg *ur)
 		if(l > ERRMAX-15)	/* " pc=0x12345678\0" */
 			l = ERRMAX-15;
 
-		sprint(n->msg+l, " pc=0x%lux", (ulong)ur->pc);
+		snprint(n->msg+l, sizeof(n->msg)-l, " pc=0x%lux", (ulong)ur->pc);
 	}
 
 	if(n->flag != NUser && (up->notified || up->notify==0)) {

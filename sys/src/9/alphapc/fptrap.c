@@ -29,10 +29,10 @@ fptrap(Ureg *ur)
 	reason = (ulong)ur->a0;
 	for (i = 1; i < 6; i++)
 		if (reason & (1<<i)) {
-			sprint(buf, "fp: %s", fpcause[i-1]);
+			snprint(buf, sizeof(buf), "fp: %s", fpcause[i-1]);
 			goto found;
 		}
-	sprint(buf, "fp: code 0x%lux", reason);
+	snprint(buf, sizeof(buf), "fp: code 0x%lux", reason);
 
 found:
 	fataltrap(ur, buf);
