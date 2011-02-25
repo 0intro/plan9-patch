@@ -71,7 +71,7 @@ etherconfig(int on, char *spec, DevConf *cf)
 	char *p, *e;
 
 	ctlrno = atoi(spec);
-	sprint(name, "ether%d", ctlrno);
+	snprint(name, sizeof(name), "ether%d", ctlrno);
 
 	if(on == 0)
 		return -1;

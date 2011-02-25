@@ -331,7 +331,7 @@ static long
 	switch((ulong)c->qid.path){
 	case Qbattery:
 		sendmsgwithack(BLbattery, nil, 0);		/* send a battery request */
-		sprint(buf, "voltage: %d\nac: %s\nstatus: %s\n", ctlr.voltage,
+		snprint(buf, sizeof(buf), "voltage: %d\nac: %s\nstatus: %s\n", ctlr.voltage,
 			acstatus(ctlr.acstatus),
 			batstatus(ctlr.batstatus));
 		return readstr(off, a, n, buf);
