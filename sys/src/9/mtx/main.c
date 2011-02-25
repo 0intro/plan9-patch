@@ -391,7 +391,7 @@ isaconfig(char *class, int ctlrno, ISAConf *isa)
 	int i;
 	char cc[KNAMELEN], *p;
 
-	sprint(cc, "%s%d", class, ctlrno);
+	snprint(cc, sizeof(cc), "%s%d", class, ctlrno);
 
 	p = getconf(cc);
 	if(p == 0)

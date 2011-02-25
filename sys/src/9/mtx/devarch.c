@@ -309,7 +309,7 @@ archread(Chan *c, void *a, long n, vlong offset)
 			continue;
 		if(strcmp(m->tag, "dummy") == 0)
 			break;
-		sprint(buf, "%8lux %8lux %-12.12s\n", m->start, m->end-1, m->tag);
+		snprint(buf, sizeof(buf), "%8lux %8lux %-12.12s\n", m->start, m->end-1, m->tag);
 		memmove(p, buf, Linelen);
 		p += Linelen;
 		n--;
