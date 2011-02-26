@@ -306,7 +306,7 @@ faultarm(Ureg *ureg, ulong va, int user, int read)
 			panic("fault: kernel accessing 0x%lux", va);
 		}
 //		warnregs(ureg, "user fault");
-		sprint(buf, "sys: trap: fault %s va=0x%lux", read ? "read" : "write", va);
+		snprint(buf, sizeof(buf), "sys: trap: fault %s va=0x%lux", read ? "read" : "write", va);
 		postnote(up, 1, buf, NDebug);
 	}
 	up->insyscall = insyscall;
@@ -411,7 +411,7 @@ trap(Ureg *ureg)
 		case 0xb:
 			/* domain fault, accessing something we shouldn't */
 			if(user){
-				sprint(buf, "sys: access violation: pc 0x%lux va 0x%lux\n",
+				snprint(buf, sizeof(buf), "sys: access violation: pc 0x%lux va 0x%lux\n",
 					ureg->pc, va);
 				postnote(up, 1, buf, NDebug);
 			} else
@@ -432,7 +432,7 @@ trap(Ureg *ureg)
 			rv = fpiarm(ureg);
 			splx(x);
 			if (rv == 0) {
-				sprint(buf, "undefined instruction: pc 0x%lux\n", ureg->pc);
+				snprint(buf, sizeof(buf), "undefined instruction: pc 0x%lux\n", ureg->pc);
 				postnote(up, 1, buf, NDebug);
 			}
 		}else{
@@ -694,7 +694,7 @@ notify(Ureg* ureg)
 		l = strlen(n->msg);
 		if(l > ERRMAX-15)	/* " pc=0x12345678\0" */
 			l = ERRMAX-15;
-		sprint(n->msg+l, " pc=0x%.8lux", ureg->pc);
+		snprint(n->msg+l, sizeof(n->msg)-l, " pc=0x%.8lux", ureg->pc);
 	}
 
 	if(n->flag!=NUser && (up->notified || up->notify==0)){

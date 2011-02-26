@@ -251,7 +251,7 @@ penmouseread(Chan *c, void *va, long n, vlong)
 		return devdirread(c, va, n, mousedir, nelem(mousedir), devgen);
 
 	case Qmousectl:
-		sprint(buf, "c%11ld %11ld %11ld %11ld",
+		snprint(buf, sizeof(buf), "c%11ld %11ld %11ld %11ld",
 				calibration.scalex, calibration.scaley,
 				calibration.transx, calibration.transy);
 		if(n > 1+4*12)
@@ -280,7 +280,7 @@ penmouseread(Chan *c, void *va, long n, vlong)
 		} else {
 			m = mouse.Mousestate;
 		}
-		sprint(buf, "m%11d %11d %11d %11lud",
+		snprint(buf, sizeof(buf), "m%11d %11d %11d %11lud",
 			m.xy.x, m.xy.y,
 			m.buttons,
 			m.msec);
