@@ -21,6 +21,7 @@ Rectangle physgscreenr;
 
 Memdata gscreendata;
 Memimage *gscreen;
+void *softscreen;
 
 VGAscr vgascreen[1];
 
@@ -44,43 +45,45 @@ int
 screensize(int x, int y, int z, ulong chan)
 {
 	VGAscr *scr;
+	void *oldsoft;
 
 	lock(&vgascreenlock);
+	if(waserror()){
+		unlock(&vgascreenlock);
+		nexterror();
+	}
+
 	memimageinit();
 	scr = &vgascreen[0];
+	oldsoft = softscreen;
 
-	/*
-	 * BUG: need to check if any xalloc'ed memory needs to
-	 * be given back if aperture is set.
-	 */
 	if(scr->paddr == 0){
 		int width = (x*z)/BI2WD;
+		void *p;
 
-		gscreendata.bdata = xalloc(width*BY2WD*y);
-		if(gscreendata.bdata == 0)
+		p = xalloc(width*BY2WD*y);
+		if(p == nil)
 			error("screensize: vga soft memory");
-/*		memset(gscreendata.bdata, 0x72, width*BY2WD*y);	/* not really black */
+		softscreen = p;
+		gscreendata.bdata = p;
+		if(scr->dev && scr->dev->page){
+			scr->vaddr = KADDR(VGAMEM());
+			scr->apsize = 1<<16;
+		}
 		scr->useflush = 1;
-		scr->paddr = VGAMEM();
-		scr->vaddr = KADDR(scr->paddr);
-		scr->apsize = 1<<16;
 	}
-	else
+	else{
 		gscreendata.bdata = scr->vaddr;
+		scr->useflush = scr->dev && scr->dev->flush;
+	}
 
+	scr->gscreen = nil;
 	if(gscreen)
 		freememimage(gscreen);
-	scr->gscreen = nil;
-
 	gscreen = allocmemimaged(Rect(0,0,x,y), chan, &gscreendata);
+	if(gscreen == nil)
+		error("screensize: gscreen");
 	vgaimageinit(chan);
-	if(gscreen == nil){
-		unlock(&vgascreenlock);
-		return -1;
-	}
-
-	if(scr->dev && scr->dev->flush)
-		scr->useflush = 1;
 
 	scr->palettedepth = 6;	/* default */
 	scr->gscreendata = &gscreendata;
@@ -89,10 +92,18 @@ screensize(int x, int y, int z, ulong chan)
 
 	physgscreenr = gscreen->r;
 	unlock(&vgascreenlock);
+	poperror();
+	if(oldsoft)
+		xfree(oldsoft);
+
+	memimagedraw(gscreen, gscreen->r, memblack, ZP, nil, ZP, S);
+	flushmemscreen(gscreen->r);
 
 	if(didswcursorinit)
 		swcursorinit();
 	drawcmap();
+
+
 	return 0;
 }
 
@@ -528,6 +539,10 @@ vgalinearaddr(VGAscr *scr, ulong paddr, int size)
 	scr->vaddr = (char*)scr->vaddr+x;
 	scr->paddr = paddr;
 	scr->apsize = nsize;
+	if(!waserror()){
+		mtrr(npaddr, nsize, "wc");
+		poperror();
+	}
 }
 
 

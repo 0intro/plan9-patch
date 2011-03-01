@@ -19,15 +19,17 @@
 #include <cursor.h>
 #include "screen.h"
 
+enum {
+	USESOFTSCREEN = 1,
+};
 
 static void *hardscreen;
+static uchar modebuf[0x1000];
 
 #define WORD(p) ((p)[0] | ((p)[1]<<8))
 #define LONG(p) ((p)[0] | ((p)[1]<<8) | ((p)[2]<<16) | ((p)[3]<<24))
 #define PWORD(p, v) (p)[0] = (v); (p)[1] = (v)>>8
 #define PLONG(p, v) (p)[0] = (v); (p)[1] = (v)>>8; (p)[2] = (v)>>16; (p)[3] = (v)>>24
-
-extern void realmode(Ureg*);
 
 static uchar*
 vbesetup(Ureg *u, int ax)
@@ -35,20 +37,42 @@ vbesetup(Ureg *u, int ax)
 	ulong pa;
 
 	pa = PADDR(RMBUF);
+	memset(modebuf, 0, sizeof modebuf);
 	memset(u, 0, sizeof *u);
 	u->ax = ax;
 	u->es = (pa>>4)&0xF000;
 	u->di = pa&0xFFFF;
-	return (void*)RMBUF;
+	return modebuf;
 }
 
 static void
 vbecall(Ureg *u)
 {
+	Chan *creg, *cmem;
+	ulong pa;
+
+	cmem = namec("/dev/realmodemem", Aopen, ORDWR, 0);
+	if(waserror()){
+		cclose(cmem);
+		nexterror();
+	}
+	creg = namec("/dev/realmode", Aopen, ORDWR, 0);
+	if(waserror()){
+		cclose(creg);
+		nexterror();
+	}
+	pa = PADDR(RMBUF);
+	devtab[cmem->type]->write(cmem, modebuf, sizeof modebuf, pa);
 	u->trap = 0x10;
-	realmode(u);
+	devtab[creg->type]->write(creg, u, sizeof *u, 0);
+	devtab[creg->type]->read(creg, u, sizeof *u, 0);
 	if((u->ax&0xFFFF) != 0x004F)
 		error("vesa bios error");
+	devtab[cmem->type]->read(cmem, modebuf, sizeof modebuf, pa);
+	poperror();
+	cclose(creg);
+	poperror();
+	cclose(cmem);
 }
 
 static void
@@ -91,10 +115,13 @@ vbemodeinfo(int mode)
 static void
 vesalinear(VGAscr *scr, int, int)
 {
+	Pcidev *pci;
 	int i, mode, size;
 	uchar *p;
 	ulong paddr;
-	Pcidev *pci;
+
+	if(hardscreen)
+		goto havehardscreen;
 
 	vbecheck();
 	mode = vbegetmode();
@@ -139,11 +166,16 @@ havesize:
 	if(size > 16*1024*1024)		/* probably arbitrary; could increase */
 		size = 16*1024*1024;
 	vgalinearaddr(scr, paddr, size);
-	hardscreen = scr->vaddr;
-	/* let mtrr harmlessly fail on old CPUs, e.g., P54C */
-	if (!waserror()){
-		mtrr(paddr, size, "wc");
-		poperror();
+	if(scr->apsize)
+		addvgaseg("vesascreen", scr->paddr, scr->apsize);
+
+	if(USESOFTSCREEN){
+		hardscreen = scr->vaddr;
+
+havehardscreen:
+		scr->paddr = 0;
+		scr->vaddr = 0;
+		scr->apsize = 0;
 	}
 }
 
@@ -153,11 +185,10 @@ vesaflush(VGAscr *scr, Rectangle r)
 	int t, w, wid, off;
 	ulong *hp, *sp, *esp;
 
+	if(hardscreen == nil)
+		return;
 	if(rectclip(&r, scr->gscreen->r) == 0)
 		return;
-
-	hp = hardscreen;
-	assert(hp != nil);
 	sp = (ulong*)(scr->gscreendata->bdata + scr->gscreen->zero);
 	t = (r.max.x * scr->gscreen->depth + 2*BI2WD-1) / BI2WD;
 	w = (r.min.x * scr->gscreen->depth) / BI2WD;
@@ -165,6 +196,7 @@ vesaflush(VGAscr *scr, Rectangle r)
 	wid = scr->gscreen->width;
 	off = r.min.y * wid + (r.min.x * scr->gscreen->depth) / BI2WD;
 
+	hp = hardscreen;
 	hp += off;
 	sp += off;
 	esp = sp + Dy(r) * wid;
