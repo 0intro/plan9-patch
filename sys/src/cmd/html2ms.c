@@ -250,10 +250,12 @@ void
 main(void)
 {
 	int c;
+	int pos;
 
 	Binit(&in, 0, OREAD);
 	Binit(&out, 1, OWRITE);
 
+	pos = 0;
 	for(;;){
 		c = Bgetc(&in);
 		if(c < 0)
@@ -266,6 +268,7 @@ main(void)
 			escape();
 			break;
 		case '\r':
+			pos = 0;
 			break;
 		case '\n':
 			if(quoting){
@@ -280,7 +283,15 @@ main(void)
 			lastc = c;
 			break;
 		default:
-			Bputc(&out, c);
+			if(!inpre && isspace(c) && pos > 80){
+				Bputc(&out, '\n');
+				eatwhite();
+				pos = 0;
+			}
+			else{
+				pos++;
+				Bputc(&out, c);
+			}
 			lastc = c;
 			break;
 		}
@@ -290,6 +301,7 @@ main(void)
 void
 escape(void)
 {
+	int c;
 	Entity *e;
 	char buf[8];
 
@@ -302,6 +314,13 @@ escape(void)
 			Bprint(&out, "%C", e->value);
 			return;
 		}
+	if(*buf == '#'){
+		c = atoi(buf+1);
+		if(c > 32 && c < 127){		/* looks ASCII-ish */
+			Bprint(&out, "%c", c);
+			return;
+		}
+	}
 	Bprint(&out, "&%s;", buf);
 }
 
