@@ -52,6 +52,7 @@ reader(void *v)
 		die(smprint("%s: %r", truss));
 
 	cwrite(cfd, ctl, "stop", 4);
+	cwrite(cfd, ctl, "nohang", 6);
 	cwrite(cfd, truss, "startsyscall", 12);
 
 	s = mallocz(sizeof(Str) + Bufsize, 1);
@@ -169,6 +170,15 @@ threadmain(int argc, char **argv)
 		if (pid < 0)
 			sysfatal("fork failed: %r");
 		if(pid == 0) {
+			char *ctl;
+			int cfd;
+			ctl = smprint("/proc/%d/ctl", getpid());
+			if ((cfd = open(ctl, OWRITE)) < 0)
+				die(smprint("%s: %r", ctl));
+			cwrite(cfd, ctl, "hang", 4);
+			/* make sure the cfd is closed! */
+			close(cfd);
+			/* storage leak? we're doing an exec! */
 			exec(cmd, args);
 			if(cmd[0] != '/')
 				exec(smprint("/bin/%s", cmd), args);
