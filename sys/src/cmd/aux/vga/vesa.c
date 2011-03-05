@@ -503,10 +503,45 @@ vbemodeinfo(Vbe *vbe, int id, Vmode *m)
 		m->dx, m->dy, m->depth);
 	if(m->depth <= 8)
 		snprint(m->chan, sizeof m->chan, "m%d", m->depth);
-	else if(m->xo)
-		snprint(m->chan, sizeof m->chan, "x%dr%dg%db%d", m->x, m->r, m->g, m->b);
-	else
-		snprint(m->chan, sizeof m->chan, "r%dg%db%d", m->r, m->g, m->b);
+	else {
+		int o;
+		ulong d, c, x;
+
+		m->xo = m->x = 0;
+		d = 1<<m->depth-1;
+		d |= d-1;
+		c = ((1<<m->r)-1) << m->ro;
+		c |= ((1<<m->g)-1) << m->go;
+		c |= ((1<<m->b)-1) << m->bo;
+		if(x = d ^ c){
+			for(; (x & 1) == 0; x >>= 1)
+				m->xo++;
+			for(; (x & 1) == 1; x >>= 1)
+				m->x++;
+		}
+
+		o = 0;
+		m->chan[0] = 0;
+		while(o < m->depth){
+			char tmp[sizeof m->chan];
+
+			if(m->r && m->ro == o){
+				snprint(tmp, sizeof tmp, "r%d%s", m->r, m->chan);
+				o += m->r;
+			}else if(m->g && m->go == o){
+				snprint(tmp, sizeof tmp, "g%d%s", m->g, m->chan);
+				o += m->g;
+			}else if(m->b && m->bo == o){
+				snprint(tmp, sizeof tmp, "b%d%s", m->b, m->chan);
+				o += m->b;
+			}else if(m->x && m->xo == o){
+				snprint(tmp, sizeof tmp, "x%d%s", m->x, m->chan);
+				o += m->x;
+			}else
+				break;
+			strncpy(m->chan, tmp, sizeof m->chan);
+		}
+	}
 	return 0;
 }
 
