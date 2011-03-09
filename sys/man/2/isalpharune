@@ -22,6 +22,9 @@ int istitlerune(Rune c)
 int isupperrune(Rune c)
 .PP
 .B
+int isdigitrune(Rune c)
+.PP
+.B
 Rune tolowerrune(Rune c)
 .PP
 .B
