@@ -8,9 +8,16 @@ cloadmemimage(Memimage *i, Rectangle r, uchar *data, int ndata)
 {
 	int y, bpl, c, cnt, offs;
 	uchar mem[NMEM], *memp, *omemp, *emem, *linep, *elinep, *u, *eu;
+	Memdrawparam par;
 
 	if(!rectinrect(r, i->r))
 		return -1;
+
+	memset(&par, 0, sizeof par);
+	par.dst = i;
+	par.r = r;
+	hwdraw(&par);
+
 	bpl = bytesperline(r, i->depth);
 	u = data;
 	eu = data+ndata;
