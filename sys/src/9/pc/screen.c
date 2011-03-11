@@ -360,34 +360,25 @@ hwdraw(Memdrawparam *par)
 	Memimage *dst, *src, *mask;
 	int m;
 
-	if(hwaccel == 0)
-		return 0;
-
 	scr = &vgascreen[0];
 	if((dst=par->dst) == nil || dst->data == nil)
 		return 0;
 	if((src=par->src) == nil || src->data == nil)
-		return 0;
+		src = nil;
 	if((mask=par->mask) == nil || mask->data == nil)
-		return 0;
-
+		mask = nil;
 	if(scr->cur == &swcursor){
-		/*
-		 * always calling swcursorhide here doesn't cure
-		 * leaving cursor tracks nor failing to refresh menus
-		 * with the latest libmemdraw/draw.c.
-		 */
 		if(dst->data->bdata == gscreendata.bdata)
 			swcursoravoid(par->r);
-		if(src->data->bdata == gscreendata.bdata)
+		if(src && src->data->bdata == gscreendata.bdata)
 			swcursoravoid(par->sr);
-		if(mask->data->bdata == gscreendata.bdata)
+		if(mask && mask->data->bdata == gscreendata.bdata)
 			swcursoravoid(par->mr);
 	}
-	
-	if(dst->data->bdata != gscreendata.bdata)
+	if(hwaccel == 0)
 		return 0;
-
+	if(dst->data->bdata != gscreendata.bdata || src == nil || mask == nil)
+		return 0;
 	if(scr->fill==nil && scr->scroll==nil)
 		return 0;
 
