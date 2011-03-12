@@ -39,8 +39,7 @@ Cursor	arrow = {
 };
 
 int didswcursorinit;
-
-static void *softscreen;
+void *softscreen;
 
 int
 screensize(int x, int y, int z, ulong chan)
@@ -55,6 +54,7 @@ screensize(int x, int y, int z, ulong chan)
 	}
 
 	memimageinit();
+
 	scr = &vgascreen[0];
 	oldsoft = softscreen;
 
@@ -83,6 +83,7 @@ screensize(int x, int y, int z, ulong chan)
 	gscreen = allocmemimaged(Rect(0,0,x,y), chan, &gscreendata);
 	if(gscreen == nil)
 		error("no memory for vga memimage");
+
 	vgaimageinit(chan);
 
 	scr->palettedepth = 6;	/* default */
@@ -95,10 +96,6 @@ screensize(int x, int y, int z, ulong chan)
 	poperror();
 	if(oldsoft)
 		xfree(oldsoft);
-
-	memimagedraw(gscreen, gscreen->r, memblack, ZP, nil, ZP, S);
-	flushmemscreen(gscreen->r);
-
 	if(didswcursorinit)
 		swcursorinit();
 	drawcmap();
@@ -360,34 +357,25 @@ hwdraw(Memdrawparam *par)
 	Memimage *dst, *src, *mask;
 	int m;
 
-	if(hwaccel == 0)
-		return 0;
-
 	scr = &vgascreen[0];
 	if((dst=par->dst) == nil || dst->data == nil)
 		return 0;
 	if((src=par->src) == nil || src->data == nil)
-		return 0;
+		src = nil;
 	if((mask=par->mask) == nil || mask->data == nil)
-		return 0;
-
+		mask = nil;
 	if(scr->cur == &swcursor){
-		/*
-		 * always calling swcursorhide here doesn't cure
-		 * leaving cursor tracks nor failing to refresh menus
-		 * with the latest libmemdraw/draw.c.
-		 */
 		if(dst->data->bdata == gscreendata.bdata)
 			swcursoravoid(par->r);
-		if(src->data->bdata == gscreendata.bdata)
+		if(src && src->data->bdata == gscreendata.bdata)
 			swcursoravoid(par->sr);
-		if(mask->data->bdata == gscreendata.bdata)
+		if(mask && mask->data->bdata == gscreendata.bdata)
 			swcursoravoid(par->mr);
 	}
-	
-	if(dst->data->bdata != gscreendata.bdata)
+	if(hwaccel == 0)
 		return 0;
-
+	if(dst->data->bdata != gscreendata.bdata || src == nil || mask == nil)
+		return 0;
 	if(scr->fill==nil && scr->scroll==nil)
 		return 0;
 
@@ -693,7 +681,7 @@ swcursorclock(void)
 void
 swcursorinit(void)
 {
-	static int init, warned;
+	static int init;
 	VGAscr *scr;
 
 	didswcursorinit = 1;
@@ -701,17 +689,10 @@ swcursorinit(void)
 		init = 1;
 		addclock0link(swcursorclock, 10);
 	}
-	scr = &vgascreen[0];
-	if(scr==nil || scr->gscreen==nil)
-		return;
 
-	if(scr->dev == nil || scr->dev->linear == nil){
-		if(!warned){
-			print("cannot use software cursor on non-linear vga screen\n");
-			warned = 1;
-		}
+	scr = &vgascreen[0];
+	if(scr->gscreen==nil)
 		return;
-	}
 
 	if(swback){
 		freememimage(swback);
@@ -730,7 +711,7 @@ swcursorinit(void)
 		print("software cursor: allocmemimage fails");
 		return;
 	}
-
+	memfillcolor(swback, DTransparent);
 	memfillcolor(swmask, DOpaque);
 	memfillcolor(swmask1, DOpaque);
 	memfillcolor(swimg, DBlack);
