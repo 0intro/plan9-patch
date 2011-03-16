@@ -593,7 +593,7 @@ pnpwrite(Chan *c, void *va, long n, vlong offset)
 	if(n >= sizeof(buf))
 		n = sizeof(buf)-1;
 	a = va;
-	strncpy(buf, va, n);
+	strncpy(buf, (char*)a, n);
 	buf[n] = 0;
 
 	switch(TYPE(c->qid)){
