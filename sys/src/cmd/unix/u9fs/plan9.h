@@ -24,6 +24,9 @@ typedef unsigned long long int  uint64_t;
 #endif /* IRIX5X */
 #endif /* sgi */
 
+#ifdef _AIX
+#pragma enum(small)	/* for fcall.h:/NOFID/ */
+#endif /* _AIX */
 
 #ifdef sun	/* sparc and __svr4__ are also defined on the offending machine */
 #define __EXTENSIONS__	1	/* for struct timeval */
