@@ -42,6 +42,8 @@ case go
 			echo 'mouseport='^$mouseport
 			echo 'monitor='^$monitor
 			echo 'vgasize='^$vgasize
+			if(! ~ $dmamode yes)
+				echo '*nodma='
 		} >/tmp/plan9.ini
 	}
 	if(! test -f /tmp/plan9ini.bak)

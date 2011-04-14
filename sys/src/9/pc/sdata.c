@@ -571,6 +571,9 @@ atadmamode(Drive* drive)
 			drive->dma |= 'U'<<16;
 	}
 
+	if(getconf("*nodma") == nil)
+		drive->dmactl = drive->dma;
+
 	return dma;
 }
 

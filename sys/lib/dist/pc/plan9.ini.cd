@@ -10,6 +10,7 @@ menuitem=cdboot, Boot Plan 9 from this CD
 # will defeat booting from usb devices.
 *nomp=1
 *nobiosload=1
+*nodma=1
 debugboot=1
 # *noahciload=1
 # *debugload=1
