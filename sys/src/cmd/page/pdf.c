@@ -106,8 +106,10 @@ initpdf(Biobuf *b, int argc, char **argv, uchar *buf, int nbuf)
 	setdim(pdf, Rect(0,0,0,0), ppi, 0);
 	gscmd(pdf, "(%s) (r) file { DELAYSAFER { .setsafe } if } stopped pop pdfopen begin\n", fn);
 	gscmd(pdf, "pdfpagecount PAGE==\n");
-	p = Brdline(&pdf->gsrd, '\n');
-	npage = atoi(p);
+	
+	npage = 0;
+	if(p = Brdline(&pdf->gsrd, '\n'))
+		npage = atoi(p);
 	if(npage < 1) {
 		fprint(2, "no pages?\n");
 		return nil;
