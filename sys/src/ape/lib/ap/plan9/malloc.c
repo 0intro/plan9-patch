@@ -64,7 +64,7 @@ good:
 	if(pow < CUTOFF) {
 		n = (CUTOFF-pow)+2;
 		bp = sbrk(size*n);
-		if((int)bp < 0)
+		if(bp == (Bucket*)-1)
 			return nil;
 
 		next = (uint)bp+size;
@@ -80,7 +80,7 @@ good:
 	}
 	else {
 		bp = sbrk(size);
-		if((int)bp < 0)
+		if(bp == (Bucket*)-1)
 			return nil;
 	}
 		
