@@ -386,7 +386,7 @@ main(int argc, char **argv)
 				if(resolve1=='s')
 					goto DoCreate;
 				else if(resolve1 == 'c')
-					break;
+					goto DoCreateDb;
 				conflict(name, "locally modified; will not overwrite");
 				skip = 1;
 				continue;
@@ -514,7 +514,7 @@ main(int argc, char **argv)
 				if(resolve1 == 's')
 					goto DoCopy;
 				else if(resolve1 == 'c')
-					break;
+					goto DoCopyDb;
 				conflict(name, "locally modified; will not update [%llud %lud -> %llud %lud]", dbd.length, dbd.mtime, ld.length, ld.mtime);
 				skip = 1;
 				continue;
