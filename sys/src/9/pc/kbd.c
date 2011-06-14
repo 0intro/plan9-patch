@@ -349,8 +349,12 @@ setleds(Kbscan *kbscan)
 	ilock(&i8042lock);
 	outready();
 	outb(Data, 0xed);		/* `reset keyboard lock states' */
+	if(inready() == 0)
+		inb(Data);
 	outready();
 	outb(Data, leds);
+	if(inready() == 0)
+		inb(Data);
 	outready();
 	iunlock(&i8042lock);
 }
