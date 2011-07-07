@@ -129,3 +129,20 @@ stdinpipe(uchar *ibuf, int in)
 	_exits(0);
 	return -1;	/* not reached */
 }
+
+/* try to update the label, but don't fail on any errors */
+void
+setlabel(char *label)
+{
+	char *s;
+	int fd;
+	
+	s = smprint("%s/label", display->windir);
+	fd = open(s, OWRITE);
+	free(s);
+	if(fd >= 0){
+		write(fd, label, strlen(label));
+		close(fd);
+	}
+	werrstr("");
+}
