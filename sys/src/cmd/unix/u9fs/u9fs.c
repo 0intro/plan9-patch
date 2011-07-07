@@ -401,6 +401,7 @@ rattach(Fcall *rx, Fcall *tx)
 			seterror(tx, Eauth);
 			return;
 		}
+		rx->uname = none->name;
 	} else {
 		if((e = auth->attach(rx, tx)) != nil){
 			seterror(tx, e);
@@ -1759,6 +1760,8 @@ main(int argc, char **argv)
 			sysfatal("chroot '%s' failed", argv[0]);
 
 	none = uname2user("none");
+	if(none == nil)
+		none = uname2user("nobody");
 
 	serve(0, 1);
 	return 0;
