@@ -672,13 +672,18 @@ private int
 simple_glyph_metrics(gs_font_type42 * pfont, uint glyph_index, int wmode,
 		     float sbw[4])
 {
+
     int (*string_proc)(gs_font_type42 *, ulong, uint, const byte **) =
 	pfont->data.string_proc;
-    double factor = 1.0 / pfont->data.unitsPerEm;
+    double factor;
     uint width;
     int lsb;
     int code;
-
+    int zzzzz = 0;	/* hack, don't drive and read this code*/
+    if(memcmp(&pfont->data.unitsPerEm,  &zzzzz, sizeof(pfont->data.unitsPerEm)))
+        factor = 0.00001;
+    else
+        factor = 1.0 / pfont->data.unitsPerEm;
     {
 	const gs_type42_mtx_t *pmtx = &pfont->data.metrics[wmode];
 	uint num_metrics = pmtx->numMetrics;
