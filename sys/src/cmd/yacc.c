@@ -141,7 +141,7 @@ Biobuf*	foutput;	/* y.output file */
 
 char*	infile;			/* input file name */
 int	numbval;		/* value of an input number */
-char	tokname[NAMESIZE+4];	/* input token name, slop for runes and 0 */
+char	tokname[NAMESIZE+UTFmax+1];	/* input token name, slop for runes and 0 */
 
 	/* structure declarations */
 
@@ -1209,7 +1209,7 @@ setup(int argc, char *argv[])
 		parser = PARSERS;
 		break;
 	default:
-		error("illegal option: %c", ARGC());
+		usage();
 	}ARGEND
 	openup(stemc, dflag, vflag, ytab, ytabc);
 
@@ -2056,25 +2056,38 @@ swt:
 		return;
 
 	case '/':
-		/* look for comments */
-		Bputrune(faction, c);
-		c = Bgetrune(finput);
-		if(c != '*')
-			goto swt;
+		/* look for comments; sync with skipcom() */
 
-		/* it really is a comment */
 		Bputrune(faction, c);
 		c = Bgetrune(finput);
-		while(c >= 0) {
-			while(c == '*') {
-				Bputrune(faction, c);
-				if((c=Bgetrune(finput)) == '/')
-					goto lcopy;
-			}
+		switch(c){
+		default:
+			goto lcopy;
+		case '/':
 			Bputrune(faction, c);
-			if(c == '\n')
-				lineno++;
-			c = Bgetrune(finput);
+			while((c = Bgetrune(finput)) != Beof){
+				Bputrune(faction, c);
+				if(c == '\n'){
+					lineno++;
+					goto loop;
+				}
+			}
+			break;
+
+		case '*':
+			Bputrune(faction, c);
+			match = 0;
+			while((c = Bgetrune(finput)) != Beof){
+				Bputrune(faction, c);
+				if(c == '\n')
+					lineno++;
+				if(match && c == '/')
+					goto loop;
+				match = c == '*';
+			}
+			break;
+		case Beof:
+			break;
 		}
 		error("EOF inside comment");
 
