@@ -14,6 +14,7 @@
 # -c	show ctime
 # -d	dirs
 # -f	no sorting
+# -i	inode numbers
 # -l	long
 # -p	put slash after dir (-F)
 # -r	reverse
@@ -23,7 +24,7 @@
 # -1	single-column
 
 
-flagfmt='A,C,F,H,L,R,U,a,c,d,f,l,p,r,s,t,u,1'
+flagfmt='A,C,F,H,L,R,U,a,c,d,f,i,l,p,r,s,t,u,1'
 args='[file ...]'
 
 if(! ifs=() eval `{aux/getflags $*}){
@@ -36,11 +37,16 @@ fn fixlong {
 	/$cputype/bin/sed 's/^(.).(.........) . [0-9]+ /\1\2 1 /'
 }
 
-post=cat
+fn qid2inode {
+	/$cputype/bin/sed 's/^\(([^ ]+).*\) /\1 /'
+}
+
+post1=cat
+post2=cat
 
 all=()
 # ignore -A
-if(~ $flagC 1) post=mc
+if(~ $flagC 1) post1=mc
 if(~ $flagF 1) all=($all -F)
 # ignore -H, -L
 # save -R for later
@@ -48,7 +54,8 @@ if(~ $flagU 1) all=($all -n)
 # ignore -a, -c
 if(~ $flagd 1) all=($all -d)
 if(~ $flagf 1) all=($all -n)
-if(~ $flagl 1) { all=($all -l); post=fixlong }
+if(~ $flagl 1) { all=($all -l); post1=fixlong }
+if(~ $flagi 1) { all=($all -q); post2=qid2inode }
 if(~ $flagp 1) all=($all -F)
 if(~ $flagr 1) all=($all -r)
 if(~ $flags 1) all=($all -s)
@@ -56,4 +63,4 @@ if(~ $flagt 1) all=($all -t)
 if(~ $flagu 1) all=($all -u)
 # ignore -1
 
-/$cputype/bin/ls $all $* | $post
+/$cputype/bin/ls $all $* | $post1 | $post2
