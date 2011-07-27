@@ -481,6 +481,8 @@ dread(Usbfs *fs, Fid *fid, void *data, long count, vlong offset)
 		count = usbdirread(fs, q, data, count, offset, dirgen, nil);
 		break;
 	case Qctl:
+		if(lun->lbsize <= 0)
+			umscapacity(lun);
 		s = buf;
 		e = buf + sizeof(buf);
 		if(lun->flags & Finqok)
