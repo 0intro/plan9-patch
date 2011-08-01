@@ -305,16 +305,11 @@ _percentfmt(Fmt *f)
 	return _fmtrcpy(f, x, 1);
 }
 
-enum {
-	/* %,#llb could emit a sign, "0b" and 64 digits with 21 commas */
-	Maxintwidth = 1 + 2 + 64 + 64/3,
-};
-
 /* fmt an integer */
 int
 _ifmt(Fmt *f)
 {
-	char buf[Maxintwidth + 1], *p, *conv;
+	char buf[88], *p, *conv;
 	uvlong vu;
 	ulong u;
 	uintptr pu;
@@ -420,12 +415,17 @@ _ifmt(Fmt *f)
 		*p-- = '0';
 		n = 1;
 	}
-	for(w = f->prec; n < w && p > buf+3; n++)
+	for(w = f->prec; n < w && p > buf+4; n++){
+		if((fl & FmtComma) && n % 4 == 3){
+			*p-- = ',';
+			n++;
+		}
 		*p-- = '0';
+	}
 	if(neg || (fl & (FmtSign|FmtSpace)))
 		n++;
 	if(fl & FmtSharp){
-		if(base == 16)
+		if(base == 16 || base == 2)
 			n += 2;
 		else if(base == 8){
 			if(p[1] == '0')
@@ -435,14 +435,19 @@ _ifmt(Fmt *f)
 		}
 	}
 	if((fl & FmtZero) && !(fl & (FmtLeft|FmtPrec))){
-		for(w = f->width; n < w && p > buf+3; n++)
+		for(w = f->width; n < w && p > buf+4; n++){
+			if((fl & FmtComma) && n % 4 == 3){
+				*p-- = ',';
+				n++;
+			}
 			*p-- = '0';
+		}
 		f->width = 0;
 	}
 	if(fl & FmtSharp){
-		if(base == 16)
+		if(base == 16 || base == 2)
 			*p-- = f->r;
-		if(base == 16 || base == 8)
+		if(base == 16 || base == 8 || base == 2)
 			*p-- = '0';
 	}
 	if(neg)
@@ -517,12 +522,13 @@ _flagfmt(Fmt *f)
 int
 _badfmt(Fmt *f)
 {
-	Rune x[3];
+	char x[2+UTFmax];
+	int n;
 
 	x[0] = '%';
-	x[1] = f->r;
-	x[2] = '%';
-	f->prec = 3;
-	_fmtrcpy(f, x, 3);
+	n = 1 + runetochar(x+1, (Rune*)&f->r);
+	x[n++] = '%';
+	f->prec = n;
+	_fmtcpy(f, x, n, n);
 	return 0;
 }
