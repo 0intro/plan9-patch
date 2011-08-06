@@ -48,6 +48,7 @@ struct	Biobuf
 #define	BFILDES(bp)	Bfildes(bp)
 
 int	Bbuffered(Biobufhdr*);
+Biobuf*	Bfdopen(int, int);
 int	Bfildes(Biobufhdr*);
 int	Bflush(Biobufhdr*);
 int	Bgetc(Biobufhdr*);
