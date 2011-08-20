@@ -1515,6 +1515,7 @@ atapnp(void)
 		case (0x4376<<16)|0x1002:	/* ATI SB400 PATA */
 		case (0x4379<<16)|0x1002:	/* ATI SB400 SATA */
 		case (0x437a<<16)|0x1002:	/* ATI SB400 SATA */
+		case (0x438c<<16)|0x1002:	/* ATI SB600 PATA */
 			/*
 			 * This can probably be lumped in with the 768 above.
 			 */
