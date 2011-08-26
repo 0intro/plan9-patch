@@ -18,7 +18,7 @@ digestfmt(Fmt *fmt)
 	return fmtstrcpy(fmt, buf);
 }
 
-static void
+static int
 sum(int fd, char *name)
 {
 	int n;
@@ -29,20 +29,22 @@ sum(int fd, char *name)
 	while((n = read(fd, buf, sizeof buf)) > 0)
 		md5(buf, n, nil, s);
 	if(n < 0){
-		fprint(2, "reading %s: %r\n", name ? name : "stdin");
-		return;
+		werrstr("reading %s: %r", name ? name : "stdin");
+		return -1;
 	}
 	md5(nil, 0, digest, s);
 	if(name == nil)
 		print("%M\n", digest);
 	else
 		print("%M\t%s\n", digest, name);
+	return 0;
 }
 
 void
 main(int argc, char *argv[])
 {
 	int i, fd;
+	char exitstr[ERRMAX];
 
 	ARGBEGIN{
 	default:
@@ -52,16 +54,21 @@ main(int argc, char *argv[])
 
 	fmtinstall('M', digestfmt);
 
+	exitstr[0] = '\0';
 	if(argc == 0)
 		sum(0, nil);
 	else for(i = 0; i < argc; i++){
 		fd = open(argv[i], OREAD);
 		if(fd < 0){
-			fprint(2, "md5sum: can't open %s: %r\n", argv[i]);
+			fprint(2, "%s: can't open %s: %r\n", argv0, argv[i]);
+			rerrstr(exitstr, sizeof(exitstr));
 			continue;
 		}
-		sum(fd, argv[i]);
+		if(sum(fd, argv[i]) < 0){
+			fprint(2, "%s: %r\n", argv0);
+			rerrstr(exitstr, sizeof(exitstr));
+		}
 		close(fd);
 	}
-	exits(nil);
+	exits(exitstr);
 }
