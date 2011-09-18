@@ -5,40 +5,40 @@
 #include "cbtype.h"
 
 void
+usage(void)
+{
+	fprint(2, "usage: cb [-sj] [-l length] [file ...]\n");
+	exits("usage");
+}
+
+void
 main(int argc, char *argv[])
 {
 	Biobuf stdin, stdout;
 
-	while (--argc > 0 && (*++argv)[0] == '-'){
-		switch ((*argv)[1]){
-		case 's':
-			strict = 1;
-			continue;
-		case 'j':
-			join = 1;
-			continue;
-		case 'l':
-			if((*argv)[2] != '\0'){
-				maxleng = atoi( &((*argv)[2]) );
-			}
-			else{
-				maxleng = atoi(*++argv);
-				argc--;
-			}
-			maxtabs = maxleng/TABLENG - 2;
-			maxleng -= (maxleng + 5)/10;
-			continue;
-		default:
-			fprint(2, "cb: illegal option %c\n", *argv[1]);
-			exits("boom");
-		}
-	}
+	ARGBEGIN{
+	case 's':
+		strict = 1;
+		break;
+	case 'j':
+		join = 1;
+		break;
+	case 'l':
+		maxleng = atoi(EARGF(usage()));
+		maxtabs = maxleng/TABLENG - 2;
+		maxleng -= (maxleng + 5)/10;
+		break;
+	default:
+		usage();
+	}ARGEND;
+
 	Binit(&stdout, 1, OWRITE);
 	output = &stdout;
 	if (argc <= 0){
 		Binit(&stdin, 0, OREAD);
 		input = &stdin;
 		work();
+		Bterm(input);
 	} else {
 		while (argc-- > 0){
 			if ((input = Bopen( *argv, OREAD)) == 0){
@@ -46,6 +46,7 @@ main(int argc, char *argv[])
 				exits("boom");
 			}
 			work();
+			Bterm(input);
 			argv++;
 		}
 	}
