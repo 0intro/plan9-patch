@@ -9,6 +9,7 @@ int	cmp(void*, void*);
 Biobuf	bout;
 int	pflag;
 int	aflag;
+int nflag;
 int	rflag;
 
 void
@@ -22,6 +23,8 @@ main(int argc, char *argv[])
 	case 'a':
 		aflag++;
 		break;
+	case 'n':
+		nflag++;
 	case 'p':
 		pflag++;
 		break;
@@ -59,8 +62,8 @@ void
 ps(char *s)
 {
 	ulong utime, stime, rtime, size;
-	int argc, basepri, fd, i, n, pri;
-	char args[256], *argv[16], buf[64], pbuf[8], rbuf[20], rbuf1[20], status[4096];
+	int argc, basepri, fd, i, n, pri, noteid=0;
+	char args[256], *argv[16], buf[64], nbuf[13], pbuf[8], rbuf[20], rbuf1[20], status[4096];
 
 	sprint(buf, "%s/status", s);
 	fd = open(buf, OREAD);
@@ -89,6 +92,23 @@ ps(char *s)
 	stime = strtoul(argv[4], 0, 0)/1000;
 	rtime = strtoul(argv[5], 0, 0)/1000;
 	size  = strtoul(argv[9], 0, 0);
+	if(nflag){
+		sprint(buf, "%s/noteid", s);
+		fd = open(buf, OREAD);
+		if(fd >= 0) {
+			n = read(fd, buf, sizeof buf);
+			close(fd);
+			if(n > 0){
+				noteid = atoi(buf);
+			}
+		}
+		if(fd >= 0 && n > 0)
+			snprint(nbuf, sizeof nbuf, " %7ud", noteid);
+		else
+			snprint(nbuf, sizeof nbuf, " %7s", "?");
+	}else
+		nbuf[0] = 0;
+			
 	if(pflag){
 		basepri = strtoul(argv[10], 0, 0);
 		pri = strtoul(argv[11], 0, 0);
@@ -107,9 +127,10 @@ ps(char *s)
 	}else
 		rbuf1[0] = 0;
 
-	Bprint(&bout, "%-10s %8s%s %4lud:%.2lud %3lud:%.2lud %s %7ludK %-8.8s ",
+	Bprint(&bout, "%-10s %8s%s%s %4lud:%.2lud %3lud:%.2lud %s %7ludK %-8.8s ",
 			argv[1],
 			s,
+			nbuf,
 			rbuf1,
 			utime/60, utime%60,
 			stime/60, stime%60,
