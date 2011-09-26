@@ -1,0 +1,11 @@
+--- sys/src/libventi/send.c	Sun Jun 15 05:00:15 2008
++++ sys/src/libventi/send.c	Sun Jun 15 05:00:14 2008
+@@ -39,7 +39,7 @@
+ 		if(write(z->outfd, ioc.addr, ioc.len) < ioc.len){
+ 			vtlog(VtServerLog, "<font size=-1>%T %s:</font> sending packet %p: %r<br>\n", z->addr, p);
+ 			packetfree(p);
+-			return 0;
++			return -1;
+ 		}
+ 		packetconsume(p, nil, ioc.len);
+ 		tot += ioc.len;

@@ -1,0 +1,11 @@
+--- sys/src/libventi/packet.c	Sun Jun 15 05:00:14 2008
++++ sys/src/libventi/packet.c	Sun Jun 15 05:00:14 2008
+@@ -888,7 +888,7 @@
+ 
+ 	if(n < 0 || n > MaxFragSize) {
+ 		werrstr(EPacketSize);
+-		return 0;
++		return nil;
+ 	}
+ 	if(n <= SmallMemSize) {
+ 		lock(&freelist.lk);
