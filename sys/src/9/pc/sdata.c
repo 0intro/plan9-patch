@@ -285,12 +285,17 @@ typedef struct Ctlr {
 	Drive*	drive[2];
 
 	Prd*	prdt;			/* physical region descriptor table */
+	void	(*irqack)(Ctlr*);
 
 	QLock;				/* current command */
 	Drive*	curdrive;
 	int	command;		/* last command issued (debugging) */
 	Rendez;
 	int	done;
+
+	ulong intnil;
+	ulong intbusy;
+	ulong intok;
 
 	Lock;				/* register access */
 } Ctlr;
@@ -329,6 +334,12 @@ typedef struct Drive {
 	int	status;
 	int	error;
 	int	flags;			/* internal flags */
+
+	ulong intcd;
+	ulong intio;
+	ulong intzero;
+	ulong intother;
+
 } Drive;
 
 enum {					/* internal flags */
@@ -937,8 +948,10 @@ atastat(SDev *sdev, char *p, char *e)
 {
 	Ctlr *ctlr = sdev->ctlr;
 
-	return seprint(p, e, "%s ata port %X ctl %X irq %d\n", 
-		    	       sdev->name, ctlr->cmdport, ctlr->ctlport, ctlr->irq);
+	return seprint(p, e, "%s ata port %X ctl %X irq %d "
+				"busy %lud nildrive %lud ok %lud\n", 
+				sdev->name, ctlr->cmdport, ctlr->ctlport, ctlr->irq,
+				ctlr->intbusy, ctlr->intnil, ctlr->intok);
 }
 
 static SDev*
@@ -1209,10 +1222,12 @@ atapktinterrupt(Drive* drive)
 	cmdport = ctlr->cmdport;
 	switch(inb(cmdport+Ir) & (/*Rel|*/Io|Cd)){
 	case Cd:
+		drive->intcd++;
 		outss(cmdport+Data, drive->pktcmd, drive->pkt/2);
 		break;
 
 	case 0:
+		drive->intzero++;
 		len = (inb(cmdport+Bytehi)<<8)|inb(cmdport+Bytelo);
 		if(drive->data+len > drive->limit){
 			atanop(drive, 0);
@@ -1223,6 +1238,7 @@ atapktinterrupt(Drive* drive)
 		break;
 
 	case Io:
+		drive->intio++;
 		len = (inb(cmdport+Bytehi)<<8)|inb(cmdport+Bytelo);
 		if(drive->data+len > drive->limit){
 			atanop(drive, 0);
@@ -1233,10 +1249,15 @@ atapktinterrupt(Drive* drive)
 		break;
 
 	case Io|Cd:
+		drive->intio++;
+		drive->intcd++;
 		if(drive->pktdma)
 			atadmainterrupt(drive, drive->dlen);
 		else
 			ctlr->done = 1;
+		break;
+	default:
+		drive->intother++;
 		break;
 	}
 }
@@ -1758,6 +1779,16 @@ retry:
 }
 
 static void
+ichirqack(Ctlr *ctlr)
+{
+	int bmiba;
+
+	if(bmiba = ctlr->bmiba)
+		outb(bmiba+Bmisx, inb(bmiba+Bmisx));
+}
+
+
+static void
 atainterrupt(Ureg*, void* arg)
 {
 	Ctlr *ctlr;
@@ -1771,16 +1802,22 @@ atainterrupt(Ureg*, void* arg)
 		iunlock(ctlr);
 		if(DEBUG & DbgBsy)
 			print("IBsy+");
+		ctlr->intbusy++;
 		return;
 	}
 	cmdport = ctlr->cmdport;
 	status = inb(cmdport+Status);
 	if((drive = ctlr->curdrive) == nil){
+		if(ctlr->irqack != nil)
+			ctlr->irqack(ctlr);
 		iunlock(ctlr);
 		if((DEBUG & DbgINL) && ctlr->command != Cedd)
 			print("Inil%2.2uX+", ctlr->command);
+		ctlr->intnil++;
 		return;
 	}
+
+	ctlr->intok++;
 
 	if(status & Err)
 		drive->error = inb(cmdport+Error);
@@ -1837,6 +1874,8 @@ atainterrupt(Ureg*, void* arg)
 		ctlr->done = 1;
 		break;
 	}
+	if(ctlr->irqack != nil)
+		ctlr->irqack(ctlr);
 	iunlock(ctlr);
 
 	if(drive->error){
@@ -1856,9 +1895,11 @@ atapnp(void)
 {
 	Ctlr *ctlr;
 	Pcidev *p;
+	void (*irqack)(Ctlr*);
 	SDev *legacy[2], *sdev, *head, *tail;
 	int channel, ispc87415, maxio, pi, r, span;
 
+	irqack = nil;
 	legacy[0] = legacy[1] = head = tail = nil;
 	if(sdev = ataprobe(0x1F0, 0x3F4, IrqATA0)){
 		head = tail = sdev;
@@ -2048,6 +2089,7 @@ atapnp(void)
 		case (0x2920<<16)|0x8086:	/* 82801(IB)/IR/IH/IO SATA IDE (ICH9) */
 		case (0x3a20<<16)|0x8086:	/* 82801JI (ICH10) */
 		case (0x3a26<<16)|0x8086:	/* 82801JI (ICH10) */
+			irqack = ichirqack;
 			break;
 		}
 
@@ -2080,6 +2122,7 @@ atapnp(void)
 			ctlr->pcidev = p;
 			ctlr->maxio = maxio;
 			ctlr->span = span;
+			ctlr->irqack = irqack;
 			if(!(pi & 0x80))
 				continue;
 			ctlr->bmiba = (p->mem[4].bar & ~0x01) + channel*8;
@@ -2200,6 +2243,8 @@ atarctl(SDunit* unit, char* p, int l)
 		n += snprint(p+n, l-n, " lba48always %s",
 			(drive->flags&Lba48always) ? "on" : "off");
 	n += snprint(p+n, l-n, "\n");
+	n += snprint(p+n, l-n, "interrupts zero %lud io %lud ctrldata %lud other %lud\n",
+			drive->intzero, drive->intio, drive->intcd, drive->intother);
 	if(drive->sectors){
 		n += snprint(p+n, l-n, "geometry %lld %d",
 			drive->sectors, drive->secsize);
