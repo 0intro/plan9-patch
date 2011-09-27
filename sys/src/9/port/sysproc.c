@@ -180,13 +180,16 @@ sysrfork(ulong *arg)
 	if((flag&RFNOTEG) == 0)
 		p->noteid = up->noteid;
 
-	p->fpstate = up->fpstate;
+	p->fpstate = up->fpstate & ~FPillegal;
 	pid = p->pid;
 	memset(p->time, 0, sizeof(p->time));
 	p->time[TReal] = MACHP(0)->ticks;
 
 	kstrdup(&p->text, up->text);
 	kstrdup(&p->user, up->user);
+
+	procfork(p);
+
 	/*
 	 *  since the bss/data segments are now shareable,
 	 *  any mmu info about this process is now stale
