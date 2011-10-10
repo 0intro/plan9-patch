@@ -369,7 +369,10 @@ p9anyattach(Fcall *rx, Fcall *tx)
 		fprint(2, "p9anyattach: afid %d state %d\n", rx->afid, sp->state);
 	if (sp->state == Established && strcmp(rx->uname, sp->uname) == 0
 		&& strcmp(rx->aname, sp->aname) == 0)
+	{
+		rx->uname = sp->t.suid;		/* will be valid until afid is clunked */
 		return nil;
+	}
 	return "authentication failed";
 }
 
