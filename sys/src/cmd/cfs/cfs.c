@@ -647,6 +647,7 @@ void
 rstat(Mfile *mf)
 {
 	Dir d;
+	uchar buf[2048];
 
 	if(statson && ctltest(mf)){
 		genstats();
@@ -659,8 +660,8 @@ rstat(Mfile *mf)
 		d.muid = "none";
 		d.atime = time(nil);
 		d.mtime = d.atime;
-		c.rhdr.nstat = convD2M(&d, c.rhdr.stat,
-			sizeof c.rhdr - (c.rhdr.stat - (uchar*)&c.rhdr));
+		c.rhdr.nstat = convD2M(&d, buf, sizeof(buf));
+		c.rhdr.stat = buf;
 		sendreply(0);
 		return;
 	}
