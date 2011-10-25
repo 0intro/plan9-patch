@@ -35,7 +35,7 @@ enum
 struct AuthRpc
 {
 	int afd;
-	char ibuf[AuthRpcMax];
+	char ibuf[AuthRpcMax+1];
 	char obuf[AuthRpcMax];
 	char *arg;
 	uint narg;
