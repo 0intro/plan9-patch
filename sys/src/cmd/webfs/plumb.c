@@ -1,4 +1,5 @@
 #include <u.h>
+#include <bio.h>
 #include <libc.h>
 #include <auth.h>
 #include <fcall.h>

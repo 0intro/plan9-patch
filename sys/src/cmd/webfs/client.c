@@ -47,8 +47,12 @@ closeclient(Client *c)
 				(*c->url->close)(c);
 			c->bodyopened = 0;
 		}
+		free(c->contentdisposition);
+		c->contentdisposition = nil;
 		free(c->contenttype);
 		c->contenttype = nil;
+		free(c->contentlength);
+		c->contentlength = nil;
 		free(c->postbody);
 		c->postbody = nil;
 		freeurl(c->url);
@@ -56,6 +60,12 @@ closeclient(Client *c)
 		free(c->redirect);
 		c->redirect = nil;
 		free(c->authenticate);
+		free(c->request);
+		c->request = nil;
+		free(c->headers);
+		c->headers = nil;
+		free(c->content);
+		c->content = nil;
 		c->authenticate = nil;
 		c->npostbody = 0;
 		c->havepostbody = 0;
@@ -105,12 +115,13 @@ clientbodyopen(Client *c, Req *r)
 			return;
 		}
 		if (c->authenticate && nauth++ < 1)
-				continue;
+			continue;
 		if(!c->redirect)
 			break;
+		c->url->close(c);
 		next = c->redirect;
 		c->redirect = nil;
-		if(i==c->ctl.redirectlimit){
+		if(i == c->ctl.redirectlimit){
 			werrstr("redirect limit reached");
 			goto Error;
 		}
@@ -239,8 +250,8 @@ struct Ctab {
 Ctab ctltab[] = {
 	"acceptcookies",	Bool,		(void*)offsetof(Ctl, acceptcookies),
 	"sendcookies",		Bool,		(void*)offsetof(Ctl, sendcookies),
-	"redirectlimit",		Int,		(void*)offsetof(Ctl, redirectlimit),
-	"useragent",		String,	(void*)offsetof(Ctl, useragent),
+	"redirectlimit",	Int,		(void*)offsetof(Ctl, redirectlimit),
+	"useragent",		String,		(void*)offsetof(Ctl, useragent),
 };
 
 Ctab globaltab[] = {
@@ -252,8 +263,11 @@ Ctab globaltab[] = {
 };
 
 Ctab clienttab[] = {
-	"baseurl",			XUrl,		(void*)offsetof(Client, baseurl),
-	"url",				XUrl,		(void*)offsetof(Client, url),
+	"baseurl",		XUrl,		(void*)offsetof(Client, baseurl),
+	"url",			XUrl,		(void*)offsetof(Client, url),
+	"request",		String,		(void*)offsetof(Client, request),
+	"content",		String,		(void*)offsetof(Client, content),
+	"headers",		String,		(void*)offsetof(Client, headers),
 };
 
 static Ctab*

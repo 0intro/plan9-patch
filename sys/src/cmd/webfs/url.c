@@ -540,11 +540,14 @@ spliturl(char *url, SplitUrl *su)
 	 * in URIs to _always_ indicate escape sequences.  Something like "%2500"
 	 * will still get by, but that's legitimate, and if it ends up causing
 	 * a NUL then someone is unescaping too many times.
+	 *
+ 	 * Disable this check as BitTorrent URLS can easily contain nulls
+	 *
+	 * if(strstr(url, "%00")){
+	 * 	werrstr("escaped NUL in URI");
+	 * 	return -1;
+	 * }
 	 */
-	if(strstr(url, "%00")){
-		werrstr("escaped NUL in URI");
-		return -1;
-	}
 
 	m[0].sp = m[0].ep = nil;
 	t = &retab[REsplit];

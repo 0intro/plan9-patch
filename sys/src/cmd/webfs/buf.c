@@ -28,6 +28,8 @@ readibuf(Ibuf *b, char *buf, int len)
 			n = len;
 		memmove(buf, b->rp, n);
 		b->rp += n;
+		if(b->wp == b->rp)
+			b->wp = b->rp = b->buf;
 		return n;
 	}
 	return ioreadn(b->io, b->fd, buf, len);
@@ -56,8 +58,10 @@ readline(Ibuf *b, char *buf, int len)
 	len--;
 
 	for(p = buf;;){
+		if(b->wp == b->rp && b->wp != b->buf)
+			b->wp = b->rp = b->buf;
 		if(b->rp >= b->wp){
-			n = ioread(b->io, b->fd, b->wp, sizeof(b->buf)/2);
+			n = ioread(b->io, b->fd, b->wp, &b->buf[sizeof(b->buf)] - b->wp);
 			if(n < 0)
 				return -1;
 			if(n == 0)

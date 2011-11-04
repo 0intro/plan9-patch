@@ -24,6 +24,8 @@ struct HttpState
 	char *netaddr;
 	char *credentials;
 	char autherror[ERRMAX];
+	int ischunked;
+	uvlong length;
 	Ibuf	b;
 };
 
@@ -35,12 +37,37 @@ location(HttpState *hs, char *value)
 }
 
 static void
+transferencoding(HttpState *hs, char *value)
+{
+	if(cistrcmp(value, "chunked") == 0)
+		hs->ischunked = 1;
+}
+
+static void
 contenttype(HttpState *hs, char *value)
 {
 	if(hs->c->contenttype != nil)
 		free(hs->c->contenttype);
 	hs->c->contenttype = estrdup(value);
 }
+
+static void
+contentlength(HttpState *hs, char *value)
+{
+	if(hs->c->contentlength != nil)
+		free(hs->c->contentlength);
+	hs->c->contentlength = estrdup(value);
+	hs->length = strtoull(value, nil, 0);
+}
+
+static void
+contentdisposition(HttpState *hs, char *value)
+{
+	if(hs->c->contentdisposition != nil)
+		free(hs->c->contentdisposition);
+	hs->c->contentdisposition = estrdup(value);
+}
+
 
 static void
 setcookie(HttpState *hs, char *value)
@@ -117,12 +144,17 @@ wwwauthenticate(HttpState *hs, char *line)
 	up = nil;
 	cred[0] = 0;
 	hs->autherror[0] = 0;
-	if(cistrncmp(line, "basic ", 6) != 0){
+	if(cistrncmp(line, "Negotiate ", 9) == 0){
+		fprint(2, "skip %s\n", line);
+		goto error;
+	}
+	if(cistrncmp(line, "Basic ", 6) != 0){
 		werrstr("unknown auth: %s", line);
 		goto error;
 	}
 	line += 6;
 	if(cistrncmp(line, "realm=", 6) != 0){
+		fprint(2, "ERR: missing realm: %s", line);
 		werrstr("missing realm: %s", line);
 		goto error;
 	}
@@ -168,7 +200,11 @@ struct {
 	void (*fn)(HttpState *hs, char *value);
 } hdrtab[] = {
 	{ "location:", location },
+	{ "transfer-encoding:", transferencoding },
 	{ "content-type:", contenttype },
+	{ "content-type:", contenttype },
+	{ "content-length:", contentlength },
+	{ "content-disposition:", contentdisposition },
 	{ "set-cookie:", setcookie },
 	{ "www-authenticate:", wwwauthenticate },
 };
@@ -268,7 +304,7 @@ httpopen(Client *c, Url *url)
 	char *cookies;
 	Ioproc *io;
 	HttpState *hs;
-	char *service;
+	char *request, *content, *service;
 
 	if(httpdebug)
 		fprint(2, "httpopen\n");
@@ -303,11 +339,16 @@ httpopen(Client *c, Url *url)
 		return -1;
 	}
 	hs->fd = fd;
+	request = "GET";
+	if(c->havepostbody)
+		request = "POST";
+	if(c->request)
+		request = c->request;
 	if(httpdebug)
-		fprint(2, "<- %s %s HTTP/1.0\n<- Host: %s\n",
-			c->havepostbody? "POST": "GET", url->http.page_spec, url->host);
-	ioprint(io, fd, "%s %s HTTP/1.0\r\nHost: %s\r\n",
-		c->havepostbody? "POST" : "GET", url->http.page_spec, url->host);
+		fprint(2, "<- %s %s HTTP/1.1\n<- Host: %s\n",
+			request, url->http.page_spec, url->host);
+	ioprint(io, fd, "%s %s HTTP/1.1\r\nHost: %s\r\n",
+		request, url->http.page_spec, url->host);
 	if(httpdebug)
 		fprint(2, "<- User-Agent: %s\n", c->ctl.useragent);
 	if(c->ctl.useragent)
@@ -318,27 +359,40 @@ httpopen(Client *c, Url *url)
 			url->ischeme == UShttps);
 		if(cookies && cookies[0])
 			ioprint(io, fd, "%s", cookies);
-		if(httpdebug)
+		if(cookies && cookies[0] && httpdebug)
 			fprint(2, "<- %s", cookies);
 		free(cookies);
 	}
+	if(c->headers){
+		ioprint(io, fd, "%s\r\n", c->headers);
+		if(httpdebug)
+			fprint(2, "<- %s\n", c->headers);
+	}
 	if(c->havepostbody){
-		ioprint(io, fd, "Content-type: %s\r\n", PostContentType);
+		content = PostContentType;
+		if(c->content)
+			content = c->content;
+		ioprint(io, fd, "Content-type: %s\r\n", content);
 		ioprint(io, fd, "Content-length: %ud\r\n", c->npostbody);
 		if(httpdebug){
-			fprint(2, "<- Content-type: %s\n", PostContentType);
+			fprint(2, "<- Content-type: %s\n", content);
 			fprint(2, "<- Content-length: %ud\n", c->npostbody);
 		}
 	}
 	if(c->authenticate){
 		ioprint(io, fd, "Authorization: %s\r\n", c->authenticate);
 		if(httpdebug)
-			fprint(2, "<- Authorization: %s\n", c->authenticate);
+			fprint(2, "<- Authorization: %s\r\n", c->authenticate);
 	}
 	ioprint(io, fd, "\r\n");
-	if(c->havepostbody)
+	if(httpdebug)
+		fprint(2, "<- \r\n");
+	if(c->havepostbody){
+		if(httpdebug)
+			fprint(2, "<- %.*s", c->npostbody, c->postbody);
 		if(iowrite(io, fd, c->postbody, c->npostbody) != c->npostbody)
 			goto Error;
+	}
 
 	redirect = 0;
 	authenticate = 0;
@@ -359,16 +413,14 @@ httpopen(Client *c, Url *url)
 	case 201:	/* Created */
 	case 202:	/* Accepted */
 	case 204:	/* No Content */
-	case 205: /* Reset Content */
+	case 205:	/* Reset Content */
+	case 207:	/* Multi status (WevDAV) */
+	case 206:	/* Partial Content */
 #ifdef NOT_DEFINED
 		if(ofile == nil && r->start != 0)
 			sysfatal("page changed underfoot");
 #endif
 		break;
-
-	case 206:	/* Partial Content */
-		werrstr("Partial Content (206)");
-		goto Error;
 
 	case 301:	/* Moved Permanently */
 	case 302:	/* Moved Temporarily */
@@ -491,8 +543,7 @@ httpopen(Client *c, Url *url)
 		}
 		c->authenticate = hs->credentials;
 		hs->credentials = nil;
-	}else if(c->authenticate)
-		c->authenticate = 0;
+	}
 	if(redirect){
 		if(!hs->location){
 			werrstr("redirection without Location: header");
@@ -507,10 +558,37 @@ httpopen(Client *c, Url *url)
 int
 httpread(Client *c, Req *r)
 {
+	int n;
+	char buf[16];
 	HttpState *hs;
-	long n;
 
 	hs = c->aux;
+	if(hs->ischunked){
+		if(r->ifcall.offset >= hs->length){
+			
+			if(hs->length != 0){
+				/*
+				 * all chunk size lines, except the first, 
+				 * are preceeded by a blank line. we skip it.
+				 */
+				readline(&hs->b, buf, sizeof(buf));
+			}
+			if(readline(&hs->b, buf, sizeof(buf)) < 1){
+				fprint(2, "missing next chunk length\n");
+				return -1;
+			}
+			hs->length += strtoul(buf, nil, 16);
+		}
+	}
+
+	if(hs->length){
+		if(r->ifcall.offset >= hs->length)
+			return -1;
+		if(r->ifcall.count + r->ifcall.offset > hs->length)
+			r->ifcall.count = hs->length - r->ifcall.offset;
+			
+	}
+
 	n = readibuf(&hs->b, r->ofcall.data, r->ifcall.count);
 	if(n < 0)
 		return -1;

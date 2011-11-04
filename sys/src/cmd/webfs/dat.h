@@ -14,18 +14,24 @@ struct Ibuf
 
 struct Ctl
 {
-	int	acceptcookies;
-	int	sendcookies;
-	int	redirectlimit;
-	char	*useragent;
+	int acceptcookies;
+	int sendcookies;
+	int redirectlimit;
+	
+	char *useragent;
 };
 
 struct Client
 {
-	Url	*url;
-	Url	*baseurl;
+	Url *url;
+	Url *baseurl;
+	char *request;
+	char *content;
+	char *headers;
+	char *contentlength;
+	char *contentdisposition;
 	Ctl ctl;
-	Channel *creq;	/* chan(Req*) */
+	Channel	*creq;	/* chan(Req*) */
 	int num;
 	int plumbed;
 	char *contenttype;
@@ -37,6 +43,7 @@ struct Client
 	int havepostbody;
 	int iobusy;
 	int bodyopened;
+	int chunklen;
 	Ioproc *io;
 	int ref;
 	void *aux;
@@ -88,7 +95,7 @@ struct Url
 
 enum
 {
-	STACK = 32*1024,  /* was 16*1024; there are big arrays on the stack */
+	STACK = 16384,
 };
 
 extern	Client**	client;

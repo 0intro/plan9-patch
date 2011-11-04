@@ -15,9 +15,9 @@ char *service;
 
 Ctl globalctl = 
 {
-	1,	/* accept cookies */
-	1,	/* send cookies */
-	10,	/* redirect limit */
+	1,			/* accept cookies */
+	1,			/* send cookies */
+	10,			/* redirect limit */
 	"webfs/2.0 (plan 9)"	/* user agent */
 };
 

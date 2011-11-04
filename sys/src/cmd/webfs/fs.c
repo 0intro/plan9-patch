@@ -45,6 +45,8 @@ enum
 	Qbody,
 	Qbodyext,
 	Qcontenttype,
+	Qcontentlength,
+	Qcontentdisposition,
 	Qpostbody,
 	Qparsed,
 	Qurl,
@@ -84,23 +86,25 @@ Tab tab[] =
 	"ctl",			0666,			0,
 	"clone",		0666,			0,
 	"cookies",		0666,			0,
-	"XXX",		DMDIR|0555,		0,
+	"XXX",			DMDIR|0555,		0,
 	"ctl",			0666,			0,
-	"body",		0444,			0,
-	"XXX",		0444,			0,
-	"contenttype",	0444,			0,
-	"postbody",	0666,			0,
+	"body",			0444,			0,
+	"XXX",			0444,			0,
+	"contenttype",		0444,			0,
+	"contentlength",	0444,			0,
+	"contentdisposition",	0444,			0,
+	"postbody",		0666,			0,
 	"parsed",		DMDIR|0555,		0,
 	"url",			0444,			offsetof(Url, url),
 	"scheme",		0444,			offsetof(Url, scheme),
-	"schemedata",	0444,			offsetof(Url, schemedata),
-	"user",		0444,			offsetof(Url, user),
+	"schemedata",		0444,			offsetof(Url, schemedata),
+	"user",			0444,			offsetof(Url, user),
 	"passwd",		0444,			offsetof(Url, passwd),
-	"host",		0444,			offsetof(Url, host),
-	"port",		0444,			offsetof(Url, port),
-	"path",		0444,			offsetof(Url, path),
+	"host",			0444,			offsetof(Url, host),
+	"port",			0444,			offsetof(Url, port),
+	"path",			0444,			offsetof(Url, path),
 	"query",		0444,			offsetof(Url, query),
-	"fragment",	0444,			offsetof(Url, fragment),
+	"fragment",		0444,			offsetof(Url, fragment),
 	"ftptype",		0444,			offsetof(Url, ftp.type),
 };
 
@@ -194,15 +198,14 @@ parsedgen(int i, Dir *d, void *aux)
 static void
 fsread(Req *r)
 {
-	char *s;
-	char e[ERRMAX];
+	char *s, e[ERRMAX];
 	Client *c;
 	ulong path;
 
 	path = r->fid->qid.path;
 	switch(TYPE(path)){
 	default:
-		snprint(e, sizeof e, "bug in webfs path=%lux\n", path);
+		snprint(e, sizeof e, "bug in webfs read path=%lux\n", path);
 		respond(r, e);
 		break;
 
@@ -237,6 +240,22 @@ fsread(Req *r)
 		respond(r, nil);
 		break;
 
+	case Qcontentlength:
+		c = client[NUM(path)];
+		if(c->contentlength == nil)
+			r->ofcall.count = 0;
+		else
+			readstr(r, c->contentlength);
+
+		respond(r, nil);
+		break;
+		
+	case Qcontentdisposition:
+		c = client[NUM(path)];
+		if(c->contentdisposition == nil)
+			r->ofcall.count = 0;
+		else
+			readstr(r, c->contentdisposition);
 	case Qpostbody:
 		c = client[NUM(path)];
 		readbuf(r, c->postbody, c->npostbody);
@@ -291,7 +310,7 @@ fswrite(Req *r)
 	path = r->fid->qid.path;
 	switch(TYPE(path)){
 	default:
-		snprint(e, sizeof e, "bug in webfs path=%lux\n", path);
+		snprint(e, sizeof e, "bug in webfs write path=%lux\n", path);
 		respond(r, e);
 		break;
 
@@ -347,6 +366,7 @@ fswrite(Req *r)
 		r->ofcall.count = r->ifcall.count;
 		respond(r, nil);
 		break;
+
 	}
 }
 
@@ -415,8 +435,26 @@ fsopen(Req *r)
 static void
 fsdestroyfid(Fid *fid)
 {
+	Client *c;
+
 	sendp(cclunk, fid);
 	recvp(cclunkwait);
+
+	switch(TYPE(fid->qid.path)){
+	case Qbody:
+	case Qbodyext:
+		c = client[NUM(fid->qid.path)];
+		c->bodyopened = 0;
+		if(c->havepostbody){
+			free(c->postbody);
+			c->npostbody = 0;
+			c->postbody = nil;
+			c->havepostbody = 0;
+		}
+		break;
+	default:
+		break;
+	}
 }
 
 static void
