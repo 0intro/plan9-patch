@@ -112,14 +112,12 @@ static void heapIns(Block*);
 static void cacheCheck(Cache*);
 static void unlinkThread(void *a);
 static void flushThread(void *a);
-static void flushBody(Cache *c);
 static void unlinkBody(Cache *c);
 static int cacheFlushBlock(Cache *c);
 static void cacheSync(void*);
 static BList *blistAlloc(Block*);
 static void blistFree(Cache*, BList*);
 static void doRemoveLink(Cache*, BList*);
-static void doRemoveLinkList(Cache*, BList*);
 
 /*
  * Mapping from local block type to Venti type
