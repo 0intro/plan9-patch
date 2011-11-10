@@ -24,6 +24,7 @@ vgasize=ask
 dmamode=ask
 adisk=/dev/sdD0/cdboot
 cdboot=yes
+installurl=http://204.178.31.32/plan9/download
 # console=0
 # baud=9600
 
