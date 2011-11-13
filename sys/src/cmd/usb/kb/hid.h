@@ -1,6 +1,11 @@
 /*
  * USB keyboard/mouse constants
  */
+
+typedef struct Chain Chain;
+typedef struct HidInterface HidInterface;
+typedef struct HidRepTempl HidRepTempl;
+
 enum {
 
 	Stack = 32 * 1024,
@@ -11,10 +16,11 @@ enum {
 
 	/* Requests */
 	Getproto	= 0x03,
+	Setidle	= 0x0a,
 	Setproto	= 0x0b,
 
 	/* protocols for SET_PROTO request */
-	Bootproto	= 0,
+	Bootproto		= 0,
 	Reportproto	= 1,
 };
 
@@ -22,7 +28,7 @@ enum {
 	/* keyboard modifier bits */
 	Mlctrl		= 0,
 	Mlshift		= 1,
-	Mlalt		= 2,
+	Mlalt			= 2,
 	Mlgui		= 3,
 	Mrctrl		= 4,
 	Mrshift		= 5,
@@ -32,10 +38,10 @@ enum {
 	/* masks for byte[0] */
 	Mctrl		= 1<<Mlctrl | 1<<Mrctrl,
 	Mshift		= 1<<Mlshift | 1<<Mrshift,
-	Malt		= 1<<Mlalt | 1<<Mralt,
+	Malt			= 1<<Mlalt | 1<<Mralt,
 	Mcompose	= 1<<Mlalt,
 	Maltgr		= 1<<Mralt,
-	Mgui		= 1<<Mlgui | 1<<Mrgui,
+	Mgui			= 1<<Mlgui | 1<<Mrgui,
 
 	MaxAcc = 3,			/* max. ptr acceleration */
 	PtrMask= 0xf,			/* 4 buttons: should allow for more. */
@@ -58,3 +64,64 @@ enum {
 };
 
 int kbmain(Dev *d, int argc, char*argv[]);
+
+enum{
+	MaxChLen	= 16,	/* bytes */
+};
+
+struct Chain {
+	int	b;			/* offset start in bits, (first full) */
+	int	e;			/* offset end in bits (first empty) */
+	uchar buf[MaxChLen];
+};
+
+#define MSK(nbits)		((1UL<<(nbits))-1)
+#define IsCut(bbits, ebits)		(((ebits)/8 - (bbits)/8) > 0)
+
+enum {
+	KindPad = 0,
+	KindButtons,
+	KindX,
+	KindY,
+	KindWheel,
+
+	MaxVals	= 8,
+	MaxIfc	= 8,
+};
+
+struct HidInterface {
+	ulong v[MaxVals];	/* one ulong per val should be enough */
+	int kind[MaxVals];
+	int nbits;
+	int count;
+};
+
+struct HidRepTempl{
+	int nifcs;
+	HidInterface ifcs[MaxIfc];
+};
+
+enum {
+	/* report types */
+	HidTypeUsgPg	= 0x05,
+	HidPgButts	= 0x09,
+
+	HidTypeRepSz	= 0x75,
+	HidTypeCnt	= 0x95,
+
+	HidTypeUsg	= 0x09,
+	HidPtr		= 0x01,
+	HidX			= 0x30,
+	HidY			= 0x31,
+	HidWheel		= 0x38,
+
+	HidInput		= 0x81,
+	HidReportId	= 0x85,
+
+	HidEnd		= 0x0c,
+};
+
+int	parsereportdesc(HidRepTempl *temp, uchar *repdesc, int repsz);
+void	dumpreport(HidRepTempl *templ);
+int	parsereport(HidRepTempl *templ, Chain *rep);
+int	hidifcval(HidRepTempl *templ, int kind, int n);
