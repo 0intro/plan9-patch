@@ -39,7 +39,7 @@ Motorola MC68020
 little-endian ARM
 .TP
 .B "6c amd64
-AMD64 and compatibles (e.g., Intel64)
+AMD64 and compatibles (e.g., Intel EM64T)
 .TP
 .B "7c alpha
 Digital Alpha APX
