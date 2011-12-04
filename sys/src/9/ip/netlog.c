@@ -40,9 +40,11 @@ static Netlogflag flags[] =
 	{ "ip",		Logip, },
 	{ "fs",		Logfs, },
 	{ "tcp",	Logtcp, },
+	{ "il",		Logil, },
 	{ "icmp",	Logicmp, },
 	{ "udp",	Logudp, },
 	{ "compress",	Logcompress, },
+	{ "ilmsg",	Logil|Logilmsg, },
 	{ "gre",	Loggre, },
 	{ "tcpwin",	Logtcp|Logtcpwin, },
 	{ "tcprxmt",	Logtcp|Logtcprxmt, },
@@ -202,6 +204,7 @@ netlogctl(Fs *f, char* s, int n)
 		else
 			f->alog->iponlyset = 1;
 		free(cb);
+		poperror();
 		return;
 
 	default:
