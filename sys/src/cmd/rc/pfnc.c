@@ -50,6 +50,7 @@ struct{
 	Xsimple, "Xsimple",
 	Xrdfn, "Xrdfn",
 	Xqdol, "Xqdol",
+	Xsub, "Xsub",
 0};
 
 void
