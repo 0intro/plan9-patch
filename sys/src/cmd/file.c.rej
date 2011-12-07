@@ -1,0 +1,95 @@
+--- sys/src/cmd/file.c	Sat May 20 17:10:04 2006
++++ sys/src/cmd/file.c	Sat May 20 17:35:10 2006
+@@ -625,7 +683,6 @@
+ 	return 0;
+ }
+ 
+-
+ /* from tar.c */
+ enum { NAMSIZ = 100, TBLOCK = 512 };
+ 
+@@ -1224,43 +1284,71 @@
+ }
+ 
+ #define	WHITESPACE(c)		((c) == ' ' || (c) == '\t' || (c) == '\n')
++#define	SPACE(c)			((c) == ' ' || (c) == '\t')
++
++int
++faccess(char *p, int m)
++{
++	char* s;
++	int i, r;
+ 
++	if(access(p, m) == 0)
++		return 0;
++	s = p + strlen(p);
++	for(i = 0; i < 2; i++) {
++		snprint(s, 4, ".%d", i);
++		r = access(p, m);
++		*s = 0;
++		if(r != 0)
++			return -1;
++	}
++	return 0;
++}
++	
+ int
+ isp9font(void)
+ {
+-	uchar *cp, *p;
++	char *p, *cp;
+ 	int i, n;
+-	char pathname[1024];
++	char path[1024 + 1 + 3];
+ 
+-	cp = buf;
++	cp = (char*)buf;
+ 	if (!getfontnum(cp, &cp))	/* height */
+ 		return 0;
+ 	if (!getfontnum(cp, &cp))	/* ascent */
+ 		return 0;
+-	for (i = 0;; i++) {
++	while(WHITESPACE(*cp))
++		cp++;
++	for (i = 0; strchr(cp, '\n'); i++) {
+ 		if (!getfontnum(cp, &cp))	/* min */
+ 			break;
+ 		if (!getfontnum(cp, &cp))	/* max */
+ 			return 0;
+-		while (WHITESPACE(*cp))
++		getfontnum(cp, &cp);	/* offset -- not required */
++		while(SPACE(*cp))
+ 			cp++;
+-		for (p = cp; *cp && !WHITESPACE(*cp); cp++)
+-				;
++		for(p = cp; !WHITESPACE(*cp); cp++)
++			;
+ 			/* construct a path name, if needed */
+ 		n = 0;
+ 		if (*p != '/' && slash) {
+ 			n = slash-fname+1;
+-			if (n < sizeof(pathname))
+-				memcpy(pathname, fname, n);
++			if (n < sizeof path)
++				memcpy(path, fname, n);
+ 			else n = 0;
+ 		}
+-		if (n+cp-p < sizeof(pathname)) {
+-			memcpy(pathname+n, p, cp-p);
++		if (n+cp-p < sizeof path - sizeof ".00") {
++			memcpy(path+n, p, cp-p);
+ 			n += cp-p;
+-			pathname[n] = 0;
+-			if (access(pathname, AEXIST) < 0)
++			path[n] = 0;
++			if(faccess(path, AEXIST) < 0){
++				if(hflag)
++					fprint(2, " %s\n", path);
+ 				return 0;
++			}
+ 		}
++		while(WHITESPACE(*cp))
++			cp++;
+ 	}
+ 	if (i) {
+ 		print(mime ? "text/plain\n" : "font file\n");
