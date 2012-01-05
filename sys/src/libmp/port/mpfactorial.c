@@ -42,8 +42,7 @@ mpfactorial(ulong n)
 				max++;
 				if(max > mmax){
 					mmax++;
-					if(max > nelem(stk))
-						abort();
+					assert(max < nelem(stk));
 					stk[max] = mpnew(Dbits);
 				}
 				stk[max]->top = 1;
