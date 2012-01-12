@@ -101,6 +101,7 @@ walk(char *new, char *old, Dir *pd, void*)
 				return;
 			}
 			od.mtime = d.mtime;
+			od.length = d.length;
 			od.muid = "mark";
 			xlog('c', new, &od);
 			if(!justshow){
