@@ -47,7 +47,7 @@ typedef int (*Resetf)(Ether*);
 Cinfo cinfo[] =
 {
 	/* Asix controllers.
-	 * Only A88178 and A881772 are implemented.
+	 * Only A88178 and A88772 are implemented.
 	 * Others are easy to add by borrowing code
 	 * from other systems.
 	 */
@@ -72,6 +72,7 @@ Cinfo cinfo[] =
 	{0x0b95, 0x772a, A88772},
 	{0x14ea, 0xab11, A88178},
 	{0x0db0, 0xa877, A88772},
+	{0x0b95, 0x7720, A88772},
 	{0, 0, 0},
 };
 
