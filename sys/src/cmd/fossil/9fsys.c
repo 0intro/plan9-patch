@@ -4,8 +4,6 @@
 #include "fns.h"
 #include "9.h"
 
-typedef struct Fsys Fsys;
-
 struct Fsys {
 	VtLock* lock;
 
