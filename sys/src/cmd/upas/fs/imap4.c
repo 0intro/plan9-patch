@@ -3,6 +3,7 @@
 #include <plumb.h>
 #include <libsec.h>
 #include <auth.h>
+#include <fcall.h>	/* for PBIT32 and its cousins */
 #include "dat.h"
 
 #pragma varargck argpos imap4cmd 2
@@ -23,6 +24,7 @@ struct Imap {
 
 	int mustssl;
 	int refreshtime;
+	int cont;
 	int debug;
 
 	ulong tag;
@@ -62,11 +64,13 @@ removecr(char *s)
 static void
 imap4cmd(Imap *imap, char *fmt, ...)
 {
-	char buf[128], *p;
+	char buf[256], *p;
 	va_list va;
 
 	va_start(va, fmt);
-	p = buf+sprint(buf, "9X%lud ", imap->tag);
+	p = buf;
+	if(!imap->cont)
+		p += sprint(buf, "9X%lud ", imap->tag);
 	vseprint(p, buf+sizeof(buf), fmt, va);
 	va_end(va);
 
@@ -168,18 +172,24 @@ imap4resp(Imap *imap)
 		
 		if(imap->debug)
 			fprint(2, "<- %s\n", p);
-		strupr(p);
+		imap->cont = 0;
 
 		switch(p[0]){
+		// command continuation request; indicates our turn to speak.
 		case '+':
 			if(imap->tag == 0)
 				fprint(2, "unexpected: %s\n", p);
-			break;
+			imap->cont = 1;
+			p++;
+			while(*p==' ')
+				p++;
+			return p;
 
 		// ``unsolicited'' information; everything happens here.
 		case '*':
 			if(p[1]!=' ')
 				continue;
+			strupr(p);
 			p += 2;
 			line = p;
 			n = strtol(p, &p, 10);
@@ -318,6 +328,7 @@ imap4resp(Imap *imap)
 			break;
 
 		case '9':		// response to our message
+			strupr(p);
 			op = p;
 			if(p[1]=='X' && strtoul(p+2, &p, 10)==imap->tag){
 				while(*p==' ')
@@ -344,18 +355,13 @@ isokay(char *resp)
 }
 
 //
-// log in to IMAP4 server, select mailbox, no SSL at the moment
+// log in to IMAP4 server
 //
 static char*
 imap4login(Imap *imap)
 {
 	char *s;
 	UserPasswd *up;
-
-	imap->tag = 0;
-	s = imap4resp(imap);
-	if(!isokay(s))
-		return "error in initial IMAP handshake";
 
 	if(imap->user != nil)
 		up = auth_getuserpasswd(auth_getkey, "proto=pass service=imap server=%q user=%q", imap->host, imap->user);
@@ -364,13 +370,116 @@ imap4login(Imap *imap)
 	if(up == nil)
 		return "cannot find IMAP password";
 
-	imap->tag = 1;
 	imap4cmd(imap, "LOGIN %Z %Z", up->user, up->passwd);
 	free(up);
 	if(!isokay(s = imap4resp(imap)))
 		return s;
 
-	imap4cmd(imap, "SELECT %Z", imap->mbox);
+	return nil;
+}
+
+//
+// authenticate to IMAP4 server using NTLM
+//
+// http://davenport.sourceforge.net/ntlm.html#ntlmImapAuthentication
+// http://msdn.microsoft.com/en-us/library/cc236621%28PROT.13%29.aspx
+//
+static char*
+imap4authntlm(Imap *imap)
+{
+	char *s;
+	int n;
+	MSchapreply mcr;
+	char ruser[64], enc[256];
+	uchar buf[128], *p, *ep, *q, *eq, *chal;
+
+	imap4cmd(imap, "AUTHENTICATE NTLM");
+
+	s = imap4resp(imap);
+	if(!imap->cont)
+		return s;
+	
+	// simple NtLmNegotiate blob with NTLM+OEM flags
+	imap4cmd(imap, "TlRMTVNTUAABAAAAAgIAAA==");
+	s = imap4resp(imap);
+	if(!imap->cont)
+		return s;
+
+	n = dec64(buf, sizeof buf, s, strlen(s));
+	if(n < 32 || memcmp(buf, "NTLMSSP", 8) != 0)
+		return "bad NtLmChallenge";
+	chal = buf+24;
+
+	if(auth_respond(chal, 8, ruser, sizeof ruser,
+			&mcr, sizeof mcr, auth_getkey,
+			"proto=mschap role=client service=imap server=%q user?",
+			imap->host) < 0)
+		return "auth_respond failed";
+
+	// prepare NtLmAuthenticate blob
+	//
+#	define PSECB(p, o, n)	\
+				PBIT16((p), (n)); \
+				PBIT16((p)+BIT16SZ, (n)); \
+				PBIT32((p)+2*BIT16SZ, (ulong)(o))
+#	define SECBSZ	(2*BIT16SZ+BIT32SZ)
+
+	memset(buf, sizeof buf, 0);
+	p = buf;
+	ep = p + 8 + 6*SECBSZ + 2*BIT32SZ;
+	q = ep;
+	eq = buf + sizeof buf;
+
+	// magic
+	p = memcpy(p, "NTLMSSP", 8);
+	p += 8;
+
+	// type
+	PBIT32(p, 3);	
+	p += BIT32SZ;
+
+	// LMresp
+	PSECB(p, q-buf, 24);
+	p += SECBSZ;
+	memcpy(q, mcr.LMresp, 24);
+	q += 24;
+
+	// NTresp
+	PSECB(p, q-buf, 24);
+	p += SECBSZ;
+	memcpy(q, mcr.NTresp, 24);
+	q += 24;
+
+	// realm
+	PSECB(p, q-buf, 0);
+	p += SECBSZ;
+
+	// user name
+	n = strlen(ruser);
+	PSECB(p, q-buf, n);
+	p += SECBSZ;
+	memcpy(q, ruser, n);
+	q += n;
+
+	// workstation name
+	PSECB(p, q-buf, 0);
+	p += SECBSZ;
+
+	// session key
+	PSECB(p, q-buf, 0);
+	p += SECBSZ;
+
+	// flags: OEM(0x2)+NTLM(0x200)
+	PBIT32(p, 0x0202);
+	p += BIT32SZ;
+
+	if(p > ep || q > eq)
+		return "error creating NtLmAuthenticate";
+	n = (q-buf);
+
+	enc64(enc, sizeof enc, buf, n);
+
+	imap4cmd(imap, enc);
 	if(!isokay(s = imap4resp(imap)))
 		return s;
 
@@ -471,10 +580,24 @@ imap4dial(Imap *imap)
 	Binit(&imap->bin, imap->fd, OREAD);
 	Binit(&imap->bout, imap->fd, OWRITE);
 
-	if(err = imap4login(imap)) {
-		close(imap->fd);
-		return err;
+	imap->tag = 0;
+	err = imap4resp(imap);
+	if(!isokay(err))
+		return "error in initial IMAP handshake";
+
+	imap->tag = 1;
+	if(err = imap4authntlm(imap)){
+		if(imap->debug)
+			fprint(2, "ntlm: %s\n", err);
+		if(err = imap4login(imap)){
+			close(imap->fd);
+			return err;
+		}
 	}
+
+	imap4cmd(imap, "SELECT %Z", imap->mbox);
+	if(!isokay(err = imap4resp(imap)))
+		return err;
 
 	return nil;
 }
