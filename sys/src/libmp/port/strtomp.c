@@ -144,8 +144,12 @@ from32(char *a, mpint *b)
 	mpbits(b, n*5);
 	p = malloc(n);
 	if(p == nil)
-		return a;
+		return buf;		/* signal no digits converted */
 	m = dec32(p, n, buf, n);
+	if(m == -1){
+		free(p);
+		return buf;
+	}
 	betomp(p, m, b);
 	free(p);
 	return a;
