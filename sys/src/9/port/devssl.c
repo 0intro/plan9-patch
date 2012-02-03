@@ -73,7 +73,7 @@ struct Dstate
 enum
 {
 	Maxdmsg=	1<<16,
-	Maxdstate=	512,	/* max. open ssl conn's; must be a power of 2 */
+	Maxdstate=	256,	/* must be a power of 2 */
 };
 
 static	Lock	dslock;
@@ -759,8 +759,7 @@ sslput(Dstate *s, Block * volatile b)
 	int offset;
 
 	if(waserror()){
-		if(b != nil)
-			freeb(b);
+		freeb(b);
 		nexterror();
 	}
 
@@ -1192,12 +1191,20 @@ sslwrite(Chan *c, void *a, long n, vlong)
 		m = (strlen(p)*3)/2;
 		x = smalloc(m);
 		t = dec64(x, m, p, strlen(p));
+		if(t <= 0){
+			free(x);
+			error(Ebadarg);
+		}
 		setsecret(&s->in, x, t);
 		free(x);
 	} else if(strcmp(buf, "secretout") == 0 && p != 0) {
 		m = (strlen(p)*3)/2 + 1;
 		x = smalloc(m);
 		t = dec64(x, m, p, strlen(p));
+		if(t <= 0){
+			free(x);
+			error(Ebadarg);
+		}
 		setsecret(&s->out, x, t);
 		free(x);
 	} else
