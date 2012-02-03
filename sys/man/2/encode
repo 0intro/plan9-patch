@@ -1,4 +1,7 @@
 .TH ENCODE 2
+.EQ
+delim $$
+.EN
 .SH NAME
 dec64, enc64, dec32, enc32, dec16, enc16, encodefmt \- encoding byte arrays as strings
 .SH SYNOPSIS
@@ -36,7 +39,8 @@ create null terminated strings.  They return the size of the
 encoded string (without the null) or -1 if the encoding fails.
 The encoding fails if
 .IR lim ,
-the length of the output buffer, is too small.
+the length of the output buffer, is too small.  They require
+$2n+1$, $(8n+4)/5+1$ and $(n+2)/3)*4 + 1$ bytes, respectively.
 .PP
 .IR Dec16 ,
 .I dec32
@@ -80,6 +84,8 @@ For example, to display a 15 byte array as hex:
 
 .EE
 .SH SOURCE
+.B /sys/src/libc/port/u16.c
+.br
 .B /sys/src/libc/port/u32.c
 .br
 .B /sys/src/libc/port/u64.c
