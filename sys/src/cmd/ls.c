@@ -147,7 +147,7 @@ output(void)
 		if(!pflag && (s = dirbuf[i].prefix)) {
 			if(strcmp(s, "/") ==0)	/* / is a special case */
 				s = "";
-			sprint(buf, "%s/%s", s, dirbuf[i].d->name);
+			snprint(buf, sizeof buf, "%s/%s", s, dirbuf[i].d->name);
 			format(dirbuf[i].d, buf);
 		} else
 			format(dirbuf[i].d, dirbuf[i].d->name);
@@ -163,12 +163,12 @@ dowidths(Dir *db)
 	int n;
 
 	if(sflag) {
-		n = sprint(buf, "%llud", (db->length+1023)/1024);
+		n = snprint(buf, sizeof buf, "%llud", (db->length+1023)/1024);
 		if(n > swidth)
 			swidth = n;
 	}
 	if(qflag) {
-		n = sprint(buf, "%lud", db->qid.vers);
+		n = snprint(buf, sizeof buf, "%lud", db->qid.vers);
 		if(n > qwidth)
 			qwidth = n;
 	}
@@ -178,16 +178,16 @@ dowidths(Dir *db)
 			mwidth = n;
 	}
 	if(lflag) {
-		n = sprint(buf, "%ud", db->dev);
+		n = snprint(buf, sizeof buf, "%ud", db->dev);
 		if(n > vwidth)
 			vwidth = n;
-		n = sprint(buf, "%q", db->uid);
+		n = snprint(buf, sizeof buf, "%q", db->uid);
 		if(n > uwidth)
 			uwidth = n;
-		n = sprint(buf, "%q", db->gid);
+		n = snprint(buf, sizeof buf, "%q", db->gid);
 		if(n > gwidth)
 			gwidth = n;
-		n = sprint(buf, "%llud", db->length);
+		n = snprint(buf, sizeof buf, "%llud", db->length);
 		if(n > lwidth)
 			lwidth = n;
 	}
