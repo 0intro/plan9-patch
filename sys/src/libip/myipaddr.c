@@ -20,12 +20,11 @@ static uchar loopbackmask[IPaddrlen] = {
 int
 myipaddr(uchar *ip, char *net)
 {
-	Ipifc *nifc;
+	Ipifc *nifc, *ifc;
 	Iplifc *lifc;
-	static Ipifc *ifc;
 	uchar mynet[IPaddrlen];
 
-	ifc = readipifc(net, ifc, -1);
+	ifc = readipifc(net, nil, -1);
 	for(nifc = ifc; nifc; nifc = nifc->next)
 		for(lifc = nifc->lifc; lifc; lifc = lifc->next){
 			maskip(lifc->ip, loopbackmask, mynet);
@@ -34,9 +33,11 @@ myipaddr(uchar *ip, char *net)
 			}
 			if(ipcmp(lifc->ip, IPnoaddr) != 0){
 				ipmove(ip, lifc->ip);
+				freeipifc(ifc);
 				return 0;
 			}
 		}
 	ipmove(ip, IPnoaddr);
+	freeipifc(ifc);
 	return -1;
 }

@@ -60,10 +60,10 @@ struct Ipifc
 	uchar	sendra6;		/* on == send router adv */
 	uchar	recvra6;		/* on == rcv router adv */
 	int	mtu;
-	ulong	pktin;
-	ulong	pktout;
-	ulong	errin;
-	ulong	errout;
+	uvlong	pktin;
+	uvlong	pktout;
+	uvlong	errin;
+	uvlong	errout;
 	Ipv6rp	rp;
 };
 
@@ -170,6 +170,7 @@ int	myetheraddr(uchar*, char*);
 int	equivip4(uchar*, uchar*);
 int	equivip6(uchar*, uchar*);
 
+void	freeipifc(Ipifc*);
 Ipifc*	readipifc(char*, Ipifc*, int);
 
 void	hnputv(void*, uvlong);
@@ -199,4 +200,5 @@ extern uchar IPallbits[IPaddrlen];
 #pragma	varargck	type	"I"	uchar*
 #pragma	varargck	type	"V"	uchar*
 #pragma	varargck	type	"E"	uchar*
+#pragma	varargck	type	"L"	uchar*
 #pragma	varargck	type	"M"	uchar*

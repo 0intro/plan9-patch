@@ -1,98 +1,75 @@
 .TH IP 2
 .SH NAME
-eipfmt, parseip, parseipmask, v4parseip, v4parsecidr, parseether, myipaddr, myetheraddr, maskip, equivip4, equivip6, defmask, isv4, v4tov6, v6tov4, nhgetv, nhgetl, nhgets, hnputv, hnputl, hnputs, ptclbsum, readipifc \- Internet Protocol addressing
+eipfmt, parseip, parseipmask, v4parseip, v4parsecidr, parseether, myipaddr, myetheraddr, maskip, equivip4, equivip6, defmask, isv4, v4tov6, v6tov4, nhgetv, nhgetl, nhgets, hnputv, hnputl, hnputs, ptclbsum, freeipifc, readipifc \- Internet Protocol addressing
 .SH SYNOPSIS
-.B #include <u.h>
-.br
-.B #include <libc.h>
-.br
-.B #include <ip.h>
+.de PB
 .PP
-.B
-int	eipfmt(Fmt*)
-.PP
-.B
+.ft L
+.nf
+..
+.PB
+#include <u.h>
+#include <libc.h>
+#include <ip.h>
+.PB
+int		eipfmt(Fmt*)
+.PB
 vlong	parseip(uchar *ipaddr, char *str)
-.PP
-.B
+.PB
 vlong	parseipmask(uchar *ipaddr, char *str)
-.PP
-.B
+.PB
 char*	v4parseip(uchar *ipaddr, char *str)
-.PP
-.B
+.PB
 ulong	v4parsecidr(uchar *addr, uchar *mask, char *str)
-.PP
-.B
-int	parseether(uchar *eaddr, char *str)
-.PP
-.B
-int	myetheraddr(uchar *eaddr, char *dev)
-.PP
-.B
-int	myipaddr(uchar *ipaddr, char *net)
-.PP
-.B
-void	maskip(uchar *from, uchar *mask, uchar *to)
-.PP
-.B
-int	equivip4(uchar *ipaddr1, uchar *ipaddr2)
-.PP
-.B
-int	equivip6(uchar *ipaddr1, uchar *ipaddr2)
-.PP
-.B
+.PB
+int		parseether(uchar *eaddr, char *str)
+.PB
+int		myetheraddr(uchar *eaddr, char *dev)
+.PB
+int		myipaddr(uchar *ipaddr, char *net)
+.PB
+void		maskip(uchar *from, uchar *mask, uchar *to)
+.PB
+int		equivip4(uchar *ipaddr1, uchar *ipaddr2)
+.PB
+int		equivip6(uchar *ipaddr1, uchar *ipaddr2)
+.PB
 uchar*	defmask(uchar *ipaddr)
-.PP
-.B
-int	isv4(uchar *ipaddr)
-.PP
-.B
-void	v4tov6(uchar *ipv6, uchar *ipv4)
-.PP
-.B
-void	v6tov4(uchar *ipv4, uchar *ipv6)
-.PP
-.B
+.PB
+int		isv4(uchar *ipaddr)
+.PB
+void		v4tov6(uchar *ipv6, uchar *ipv4)
+.PB
+void		v6tov4(uchar *ipv4, uchar *ipv6)
+.PB
 ushort	nhgets(void *p)
-.PP
-.B
-uint	nhgetl(void *p)
-.PP
-.B
+.PB
+uint		nhgetl(void *p)
+.PB
 uvlong	nhgetv(void *p)
-.PP
-.B
-void	hnputs(void *p, ushort v)
-.PP
-.B
-void	hnputl(void *p, uint v)
-.PP
-.B
-void	hnputv(void *p, uvlong v)
-.PP
-.B
+.PB
+void		hnputs(void *p, ushort v)
+.PB
+void		hnputl(void *p, uint v)
+.PB
+void		hnputv(void *p, uvlong v)
+.PB
 ushort	ptclbsum(uchar *a, int n)
-.PP
-.B
+.PB
+Ipifc*	freeipifc(Ipifc *ifc)
+.PB
 Ipifc*	readipifc(char *net, Ipifc *ifc, int index)
-.PP
-.B
+.PB
 uchar	IPv4bcast[IPaddrlen];
-.PP
-.B
+.PB
 uchar	IPv4allsys[IPaddrlen];
-.PP
-.B
+.PB
 uchar	IPv4allrouter[IPaddrlen];
-.PP
-.B
+.PB
 uchar	IPallbits[IPaddrlen];
-.PP
-.B
+.PB
 uchar	IPnoaddr[IPaddrlen];
-.PP
-.B
+.PB
 uchar	v4prefix[IPaddrlen];
 .SH DESCRIPTION
 These routines are used by Internet Protocol (IP) programs to
@@ -299,18 +276,18 @@ typedef struct Ipifc
 	Iplifc	*lifc;		/* local addressses */
 
 	/* per ip interface */
-	int	index;		/* number of interface in ipifc dir */
-	char	dev[64];	/* associated physical device */
- 	int	mtu;		/* max transfer unit */
+	int	index;			/* number of interface in ipifc dir */
+	char	dev[64];			/* associated physical device */
+ 	int	mtu;				/* max transfer unit */
 
-	uchar	sendra6;	/* on == send router adv */
-	uchar	recvra6;	/* on == rcv router adv */
+	uchar	sendra6;		/* on == send router adv */
+	uchar	recvra6;		/* on == rcv router adv */
 
-	ulong	pktin;		/* packets read */
-	ulong	pktout;		/* packets written */
-	ulong	errin;		/* read errors */
-	ulong	errout;		/* write errors */
-	Ipv6rp	rp;		/* route advertisement params */
+	uvlong	pktin;		/* packets read */
+	uvlong	pktout;		/* packets written */
+	uvlong	errin;		/* read errors */
+	uvlong	errout;		/* write errors */
+	Ipv6rp	rp;			/* route advertisement params */
 } Ipifc;
 .EE
 .PP
@@ -324,8 +301,8 @@ struct Iplifc
 
 	uchar	ip[IPaddrlen];
 	uchar	mask[IPaddrlen];
-	uchar	net[IPaddrlen];		/* ip & mask */
-	ulong	preflt;			/* preferred lifetime */
+	uchar	net[IPaddrlen];	/* ip & mask */
+	ulong	preflt;		/* preferred lifetime */
 	ulong	validlt;		/* valid lifetime */
 };
 .EE
@@ -338,8 +315,8 @@ struct Ipv6rp
 {
 	int	mflag;
 	int	oflag;
-	int 	maxraint;	/* max route adv interval */
-	int	minraint;	/* min route adv interval */
+	int 	maxraint;			/* max route adv interval */
+	int	minraint;			/* min route adv interval */
 	int	linkmtu;
 	int	reachtime;
 	int	rxmitra;
@@ -357,6 +334,10 @@ is
 if the network is multipoint or
 the remote address if the network is
 point to point.
+.PP
+.I Freeifc
+frees memory allocated by
+.IR readipifc .
 .SH SOURCE
 .B /sys/src/libip
 .SH SEE ALSO
