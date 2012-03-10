@@ -228,8 +228,11 @@ reset(Hci *hp)
 	static Lock resetlck;
 
 	s = getconf("*maxehci");
-	if (s != nil && s[0] >= '0' && s[0] <= '9')
-		maxehci = atoi(s);
+	if(s != nil){
+		i = strtoul(s, &s, 0);
+		if(*s == 0)
+			maxehci = i;
+	}
 	if(maxehci == 0 || getconf("*nousbehci"))
 		return -1;
 
@@ -262,7 +265,7 @@ reset(Hci *hp)
 	capio = ctlr->capio;
 	hp->nports = capio->parms & Cnports;
 
-	ddprint("echi: %s, ncc %lud npcc %lud\n",
+	ddprint("echi: %s, ncc %ud npcc %ud\n",
 		capio->parms & 0x10000 ? "leds" : "no leds",
 		(capio->parms >> 12) & 0xf, (capio->parms >> 8) & 0xf);
 	ddprint("ehci: routing %s, %sport power ctl, %d ports\n",

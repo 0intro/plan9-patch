@@ -126,10 +126,10 @@ enum
  */
 struct Ecapio
 {
-	ulong	cap;		/* 00 controller capability register */
-	ulong	parms;		/* 04 structural parameters register */
-	ulong	capparms;	/* 08 capability parameters */
-	ulong	portroute;	/* 0c not on the CS5536 */
+	u32int	cap;		/* 00 controller capability register */
+	u32int	parms;		/* 04 structural parameters register */
+	u32int	capparms;	/* 08 capability parameters */
+	u32int	portroute;	/* 0c not on the CS5536 */
 };
 
 /*
@@ -137,8 +137,8 @@ struct Ecapio
  */
 struct Edbgio
 {
-	ulong	csw;		/* control and status */
-	ulong	pid;		/* USB pid */
+	u32int	csw;		/* control and status */
+	u32int	pid;		/* USB pid */
 	uchar	data[8];	/* data buffer */
-	ulong	addr;		/* device and endpoint addresses */
+	u32int	addr;		/* device and endpoint addresses */
 };
