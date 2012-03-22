@@ -25,7 +25,6 @@ enum {
 struct Cache
 {
 	VtLock	*lk;
-	VtLock	*dirtylk;
 	int 	ref;
 	int	mode;
 
@@ -163,7 +162,6 @@ cacheAlloc(Disk *disk, VtSession *z, ulong nblocks, int mode)
 	nbl = nblocks * 4;
 
 	c->lk = vtLockAlloc();
-	c->dirtylk = vtLockAlloc();	/* allowed to dirty blocks */
 	c->ref = 1;
 	c->disk = disk;
 	c->z = z;
@@ -1100,14 +1098,12 @@ blockDirty(Block *b)
 		return 1;
 	assert(b->iostate == BioClean);
 
-	vtLock(c->dirtylk);
 	vtLock(c->lk);
 	b->iostate = BioDirty;
 	c->ndirty++;
 	if(c->ndirty > (c->maxdirty>>1))
 		vtWakeup(c->flush);
 	vtUnlock(c->lk);
-	vtUnlock(c->dirtylk);
 
 	return 1;
 }
@@ -2088,12 +2084,6 @@ flushThread(void *a)
 void
 cacheFlush(Cache *c, int wait)
 {
-	/*
-	 * Lock c->dirtylk so that more blocks aren't being dirtied
-	 * while we try to write out what's already here.
-	 * Otherwise we might not ever finish!
-	 */
-	vtLock(c->dirtylk);
 	vtLock(c->lk);
 	if(wait){
 		while(c->ndirty){
@@ -2106,7 +2096,6 @@ cacheFlush(Cache *c, int wait)
 	}else if(c->ndirty)
 		vtWakeup(c->flush);
 	vtUnlock(c->lk);
-	vtUnlock(c->dirtylk);
 }
 
 /*
