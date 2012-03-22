@@ -561,12 +561,13 @@ fprint(2, "%s: _cacheLocal want epoch %ud got %ud\n", argv0, epoch, b->l.epoch);
 		switch(b->iostate){
 		default:
 			abort();
-		case BioEmpty:
 		case BioLabel:
 			if(mode == OOverWrite){
-				blockSetIOState(b, BioClean);
+				/* leave iostate as BioLabel because data hasn't been read */
 				return b;
 			}
+			/* fall through */
+		case BioEmpty:
 			diskRead(c->disk, b);
 			vtSleep(b->ioready);
 			break;
@@ -1098,7 +1099,7 @@ blockDirty(Block *b)
 
 	if(b->iostate == BioDirty)
 		return 1;
-	assert(b->iostate == BioClean);
+	assert(b->iostate == BioClean || b->iostate == BioLabel);
 
 	vtLock(c->dirtylk);
 	vtLock(c->lk);
