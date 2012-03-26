@@ -662,7 +662,7 @@ fsysLabel(Fsys* fsys, int argc, char* argv[])
 			goto Out1;
 		n = 0;
 		for(;;){
-			if(blockWrite(bb)){
+			if(blockWrite(bb, Waitlock)){
 				while(bb->iostate != BioClean){
 					assert(bb->iostate == BioWriting);
 					vtSleep(bb->ioready);

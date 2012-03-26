@@ -9,9 +9,6 @@ typedef struct FreeList FreeList;
 typedef struct BAddr BAddr;
 
 enum {
-	Nowaitlock,
-	Waitlock,
-
 	BadHeap = ~0,
 };
 
@@ -1171,7 +1168,7 @@ blockRollback(Block *b, uchar *buf)
  *	Otherwise, bail.
  */
 int
-blockWrite(Block *b)
+blockWrite(Block *b, int waitlock)
 {
 	uchar *dmap;
 	Cache *c;
@@ -1195,7 +1192,7 @@ blockWrite(Block *b)
 		}
 
 		lockfail = 0;
-		bb = _cacheLocalLookup(c, p->part, p->addr, p->vers, Nowaitlock,
+		bb = _cacheLocalLookup(c, p->part, p->addr, p->vers, waitlock,
 			&lockfail);
 		if(bb == nil){
 			if(lockfail)
@@ -1476,10 +1473,13 @@ blockRemoveLink(Block *b, u32int addr, int type, u32int tag, int recurse)
 	bl.next = nil;
 	bl.recurse = recurse;
 
-	p = blistAlloc(b);
+	if(b->part == PartSuper && b->iostate == BioClean)
+		p = nil;
+	else
+		p = blistAlloc(b);
 	if(p == nil){
 		/*
-		 * We were out of blists so blistAlloc wrote b to disk.
+		 * b has already been written to disk.
 		 */
 		doRemoveLink(b->c, &bl);
 		return;
@@ -2008,7 +2008,7 @@ cacheFlushBlock(Cache *c)
 		b = _cacheLocalLookup(c, p->part, p->addr, p->vers, Nowaitlock,
 			&lockfail);
 
-		if(b && blockWrite(b)){
+		if(b && blockWrite(b, Nowaitlock)){
 			c->nflush++;
 			blockPut(b);
 			return 1;
