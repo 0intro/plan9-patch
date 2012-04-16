@@ -79,7 +79,7 @@ static void
 usage(void)
 {
 	fprint(2, "Usage: %s [-cd] [-m maxto] dialstring|netdir\n", progname);
-	exits("usage");
+	threadexitsall("usage");
 }
 
 static int
