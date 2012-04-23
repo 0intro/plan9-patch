@@ -646,7 +646,7 @@ freeanswers(DNSmsg *mp)
 	mp->qdcount = mp->ancount = mp->nscount = mp->arcount = 0;
 }
 
-/* timed read of reply.  sets srcip.  ibuf must be 64K to handle tcp answers. */
+/* timed read of reply.  sets srcip */
 static int
 readnet(Query *qp, int medium, uchar *ibuf, uvlong endms, uchar **replyp,
 	uchar *srcip)
@@ -666,7 +666,7 @@ readnet(Query *qp, int medium, uchar *ibuf, uvlong endms, uchar **replyp,
 	memset(srcip, 0, IPaddrlen);
 	alarm(ms);
 	if (medium == Udp)
-		if (qp->udpfd <= 0)
+		if (qp->udpfd < 0)
 			dnslog("readnet: qp->udpfd closed");
 		else {
 			len = read(qp->udpfd, ibuf, Udphdrsize+Maxudpin);
@@ -683,7 +683,7 @@ readnet(Query *qp, int medium, uchar *ibuf, uvlong endms, uchar **replyp,
 		if (!qp->tcpset)
 			dnslog("readnet: tcp params not set");
 		fd = qp->tcpfd;
-		if (fd <= 0)
+		if (fd < 0)
 			dnslog("readnet: %s: tcp fd unset for dest %I",
 				qp->dp->name, qp->tcpip);
 		else if (readn(fd, lenbuf, 2) != 2) {
@@ -1003,7 +1003,7 @@ mydnsquery(Query *qp, int medium, uchar *udppkt, int len)
 		}
 		close(nfd);
 
-		if (qp->udpfd <= 0)
+		if (qp->udpfd < 0)
 			dnslog("mydnsquery: qp->udpfd %d closed", qp->udpfd);
 		else {
 			if (write(qp->udpfd, udppkt, len+Udphdrsize) !=
@@ -1527,6 +1527,7 @@ udpquery(Query *qp, char *mntpt, int depth, int patient, int inns)
 	static ulong lastmount;
 
 	/* use alloced buffers rather than ones from the stack */
+	// ibuf = emalloc(Maxudpin+Udphdrsize);
 	ibuf = emalloc(64*1024);		/* max. tcp reply size */
 	obuf = emalloc(Maxudp+Udphdrsize);
 
