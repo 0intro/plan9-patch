@@ -81,8 +81,6 @@ struct Ctl
 
 extern Ctl *firstctl, **ctll;
 
-extern Conf conf;
-
 extern int	noconfig;
 extern int	ipv6auto;
 extern int	debug;
