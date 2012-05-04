@@ -482,17 +482,3 @@ to
 .L "buffer too short"
 if the buffer provided isn't long enough for the
 returned value.
-.SH BUGS
-.IR Ndbgetval ,
-.IR csgetval ,
-and
-.I ndblookval
-are deprecated versions of
-.IR ndbgetvalue ,
-.IR csgetvalue ,
-and
-.IR ndblookvalue .
-They expect a fixed 64 byte long result
-buffer and existed when the values of a
-.I Ndbtuple
-structure were fixed length.
