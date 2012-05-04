@@ -81,7 +81,8 @@ mkptrname(char *ip, char *rip, int rlen)
 	char *p, *np;
 	int len;
 
-	if(strstr(ip, "in-addr.arpa") || strstr(ip, "IN-ADDR.ARPA")){
+	if(strstr(ip, "in-addr.arpa") || strstr(ip, "IN-ADDR.ARPA")
+	|| strstr(ip, "ip6.arpa") || strstr(ip, "IP6.ARPA")){
 		nstrcpy(rip, ip, rlen);
 		return;
 	}
