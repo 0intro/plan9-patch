@@ -278,7 +278,7 @@ Known
 .IR keyword s
 and the meanings of their values follow.
 See RFC 2461 §6.2.1 for more detail.
-Flags are true iff non-zero.
+Flags are true if non-zero.
 .RS
 .TF "\fLreachtime\fR"
 .TP
