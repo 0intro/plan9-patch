@@ -1823,8 +1823,7 @@ iaahcimode(Pcidev *p)
 {
 	dprint("iaahcimode: %ux %ux %ux\n", pcicfgr8(p, 0x91), pcicfgr8(p, 92),
 		pcicfgr8(p, 93));
-	pcicfgw16(p, 0x92, pcicfgr32(p, 0x92) | 0xf);	/* ports 0-3 */
-//	pcicfgw8(p, 0x93, pcicfgr32(p, 9x93) | 3);	/* ports 4-5 */
+	pcicfgw16(p, 0x92, pcicfgr16(p, 0x92) | 0xf);	/* ports 0-5 */
 	return 0;
 }
 
