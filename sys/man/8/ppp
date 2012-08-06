@@ -4,7 +4,7 @@ ppp, pppoe, pptp, pptpd \- point-to-point protocol
 .SH SYNOPSIS
 .B ip/ppp
 [
-.B -CPScdfu
+.B -CPSacdfu
 ] [
 .B -b
 .I baud
@@ -113,6 +113,9 @@ in a communications stream.  However, the normal mode is to
 specify a communications device, usually a serial line with a modem.
 .PP
 PPP supports the following options:
+.TP
+.B a
+as server, don't request authentication from the client
 .TP
 .B b
 set the baud rate on the communications device
