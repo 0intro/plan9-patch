@@ -12,12 +12,13 @@ void
 settime(int islocal, int afd, char *rp)
 {
 	int n, f;
-	int timeset;
+	static int timeset;
 	Dir dir[2];
 	char timebuf[64];
 
+	if(timeset)
+		return;
 	print("time...");
-	timeset = 0;
 	if(islocal){
 		/*
 		 *  set the time from the real time clock
