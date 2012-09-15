@@ -142,6 +142,7 @@ machinit(void)
 
 	active.machs = 1;
 	active.exiting = 0;
+	active.panicking = 0;
 
 	putmsr(getmsr() | MSR_ME);
 

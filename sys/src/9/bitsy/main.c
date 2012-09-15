@@ -56,7 +56,7 @@ main(void)
 void
 reboot(void*, void*, ulong)
 {
-	exit(0);
+	exit();
 }
 
 
@@ -64,11 +64,10 @@ reboot(void*, void*, ulong)
  *  exit kernel either on a panic or user request
  */
 void
-exit(int ispanic)
+exit(void)
 {
 	void (*f)(void);
 
-	USED(ispanic);
 	delay(1000);
 
 	iprint("it's a wonderful day to die\n");

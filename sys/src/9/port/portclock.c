@@ -156,8 +156,10 @@ hzclock(Ureg *ur)
 
 	if(active.exiting) {
 		print("someone's exiting\n");
-		exit(0);
+		exit();
 	}
+	if(active.panicking)
+		for(;;);
 
 	checkalarms();
 

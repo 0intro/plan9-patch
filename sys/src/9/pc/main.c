@@ -144,6 +144,7 @@ mach0init(void)
 
 	active.machs = 1;
 	active.exiting = 0;
+	active.panicking = 0;
 }
 
 void
@@ -712,22 +713,18 @@ procsave(Proc *p)
 }
 
 static void
-shutdown(int ispanic)
+shutdown(void)
 {
 	int ms, once;
 
 	lock(&active);
-	if(ispanic)
-		active.ispanic = ispanic;
-	else if(m->machno == 0 && (active.machs & (1<<m->machno)) == 0)
-		active.ispanic = 0;
 	once = active.machs & (1<<m->machno);
 	/*
-	 * setting exiting will make hzclock() on each processor call exit(0),
-	 * which calls shutdown(0) and arch->reset(), which on mp systems is
+	 * setting exiting will make hzclock() on each processor call exit(),
+	 * which calls shutdown() and arch->reset(), which on mp systems is
 	 * mpshutdown, which idles non-bootstrap cpus and returns on bootstrap
 	 * processors (to permit a reboot).  clearing our bit in machs avoids
-	 * calling exit(0) from hzclock() on this processor.
+	 * calling exit() from hzclock() on this processor.
 	 */
 	active.machs &= ~(1<<m->machno);
 	active.exiting = 1;
@@ -736,15 +733,7 @@ shutdown(int ispanic)
 	if(once)
 		iprint("cpu%d: exiting\n", m->machno);
 
-	/* wait for any other processors to shutdown */
-	spllo();
-	for(ms = 5*1000; ms > 0; ms -= TK2MS(2)){
-		delay(TK2MS(2));
-		if(active.machs == 0 && consactive() == 0)
-			break;
-	}
-
-	if(active.ispanic){
+	if(active.panicking){
 		if(!cpuserver)
 			for(;;)
 				halt();
@@ -752,8 +741,16 @@ shutdown(int ispanic)
 			delay(5*60*1000);
 		else
 			delay(10000);
-	}else
+	}else{
+		/* wait for any other processors to shutdown */
+		spllo();
+		for(ms = 5*1000; ms > 0; ms -= TK2MS(2)){
+			delay(TK2MS(2));
+			if(active.machs == 0 && consactive() == 0)
+				break;
+		}
 		delay(1000);
+	}
 }
 
 void
@@ -784,7 +781,7 @@ reboot(void *entry, void *code, ulong size)
 		lock(&active);
 		active.rebooting = 1;
 		unlock(&active);
-		shutdown(0);
+		shutdown();
 		if(arch->resetothers)
 			arch->resetothers();
 		delay(20);
@@ -830,9 +827,9 @@ reboot(void *entry, void *code, ulong size)
 
 
 void
-exit(int ispanic)
+exit(void)
 {
-	shutdown(ispanic);
+	shutdown();
 	arch->reset();
 }
 

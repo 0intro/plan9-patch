@@ -195,7 +195,7 @@ struct
 	Lock;
 	int	machs;			/* bitmap of active CPUs */
 	int	exiting;		/* shutdown */
-	int	ispanic;		/* shutdown in response to a panic */
+	int	panicking;		/* panic */
 }active;
 
 enum {

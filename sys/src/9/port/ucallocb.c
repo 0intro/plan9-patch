@@ -84,7 +84,7 @@ uciallocb(int size)
 		if((m1++%10000)==0){
 			if(mp++ > 1000){
 				active.exiting = 1;
-				exit(0);
+				exit();
 			}
 			iprint("uciallocb: limited %lud/%lud\n",
 				ucialloc.bytes, conf.ialloc);
@@ -96,7 +96,7 @@ uciallocb(int size)
 		if(0 && (m2++%10000)==0){
 			if(mp++ > 1000){
 				active.exiting = 1;
-				exit(0);
+				exit();
 			}
 			iprint("uciallocb: no memory %lud/%lud\n",
 				ucialloc.bytes, conf.ialloc);

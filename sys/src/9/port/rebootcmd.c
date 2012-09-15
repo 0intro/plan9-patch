@@ -59,7 +59,7 @@ rebootcmd(int argc, char *argv[])
 	uchar *p;
 
 	if(argc == 0)
-		exit(0);
+		exit();
 
 	c = namec(argv[0], Aopen, OEXEC, 0);
 	if(waserror()){

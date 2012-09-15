@@ -469,7 +469,7 @@ kbdputsc(int c, int external)
 	if(!(c & (Spec|KF))){
 		if(kbscan->ctl)
 			if(kbscan->alt && c == Del)
-				exit(0);
+				exit();
 		if(!kbscan->collecting){
 			kbdputc(kbdq, c);
 			return;

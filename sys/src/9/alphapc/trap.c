@@ -388,7 +388,7 @@ fataltrap(Ureg *ur, char *reason)
 	dumpstack();
 	if(m->machno == 0)
 		spllo();
-	exit(1);
+	exit();
 }
 
 void
@@ -411,7 +411,7 @@ kernfault(Ureg *ur, int code)
 	l.sp = ur->sp;
 	l.pc = ur->pc;
 	dumpstack();
-	exit(1);
+	exit();
 }
 
 void

@@ -279,7 +279,7 @@ struct
 	Lock;
 	int	machs;			/* bitmap of active CPUs */
 	int	exiting;		/* shutdown */
-	int	ispanic;		/* shutdown in response to a panic */
+	int	panicking;		/* panic */
 	int	thunderbirdsarego;	/* lets the added processors continue to schedinit */
 	int	rebooting;		/* just idle cpus > 0 */
 }active;

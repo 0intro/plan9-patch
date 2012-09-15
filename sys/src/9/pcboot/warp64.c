@@ -49,7 +49,7 @@ warp64(uvlong entry)
 	if(!havelongmode()) {
 		print("can't run 64-bit kernel on 32-bit cpu\n");
 		delay(5000);
-		exit(0);
+		exit();
 	}
 	if(v_flag)
 		print("mkmultiboot\n");

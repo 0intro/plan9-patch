@@ -322,7 +322,7 @@ i8042intr(Ureg*, void*)
 	if(!(c & (Spec|KF))){
 		if(ctl){
 			if(alt && c == Del)
-				exit(0);
+				exit();
 			c &= 0x1f;
 		}
 		if(!collecting){

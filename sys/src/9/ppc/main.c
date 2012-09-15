@@ -243,15 +243,11 @@ userinit(void)
 }
 
 void
-exit(int ispanic)
+exit(void)
 {
 	int ms, once;
 
 	lock(&active);
-	if(ispanic)
-		active.ispanic = ispanic;
-	else if(m->machno == 0 && (active.machs & (1<<m->machno)) == 0)
-		active.ispanic = 0;
 	once = active.machs & (1<<m->machno);
 	active.machs &= ~(1<<m->machno);
 	active.exiting = 1;
@@ -259,22 +255,21 @@ exit(int ispanic)
 
 	if(once)
 		print("cpu%d: exiting\n", m->machno);
-	spllo();
-	for(ms = 5*1000; ms > 0; ms -= TK2MS(2)){
-		delay(TK2MS(2));
-		if(active.machs == 0 && consactive() == 0)
-			break;
-	}
 
-	if(active.ispanic && m->machno == 0){
+	if(active.panicking){
 		if(cpuserver)
 			delay(10000);
 		else if(conf.monitor)
 			for(;;);
-	}
-	else
+	}else{
+		spllo();
+		for(ms = 5*1000; ms > 0; ms -= TK2MS(2)){
+			delay(TK2MS(2));
+			if(active.machs == 0 && consactive() == 0)
+				break;
+		}
 		delay(1000);
-
+	}
 }
 
 /*

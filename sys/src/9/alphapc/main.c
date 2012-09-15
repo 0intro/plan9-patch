@@ -156,8 +156,9 @@ machinit(void)
 	memset(m, 0, sizeof(Mach));
 	m->machno = n;
 
-	active.exiting = 0;
 	active.machs = 1;
+	active.exiting = 0;
+	active.panicking = 0;
 
 	cpu = (Hwcpu*) ((ulong)hwrpb + hwrpb->cpuoff + n*hwrpb->cpulen);
 	cpu->state &= ~Cpubootinprog;
@@ -306,15 +307,11 @@ setupboot(int halt)
 
 /* from ../pc */
 static void
-shutdown(int ispanic)
+shutdown(void)
 {
 	int ms, once;
 
 	lock(&active);
-	if(ispanic)
-		active.ispanic = ispanic;
-	else if(m->machno == 0 && (active.machs & (1<<m->machno)) == 0)
-		active.ispanic = 0;
 	once = active.machs & (1<<m->machno);
 	active.machs &= ~(1<<m->machno);
 	active.exiting = 1;
@@ -322,21 +319,22 @@ shutdown(int ispanic)
 
 	if(once)
 		print("cpu%d: exiting\n", m->machno);
-	spllo();
-	for(ms = 5*1000; ms > 0; ms -= TK2MS(2)){
-		delay(TK2MS(2));
-		if(active.machs == 0 && consactive() == 0)
-			break;
-	}
 
-	if(active.ispanic && m->machno == 0) {
+	if(active.panicking){
 		if(cpuserver)
 			delay(10000);
 		else
 			for (;;)
 				continue;
-	} else
+	}else{
+		spllo();
+		for(ms = 5*1000; ms > 0; ms -= TK2MS(2)){
+			delay(TK2MS(2));
+			if(active.machs == 0 && consactive() == 0)
+				break;
+		}
 		delay(1000);
+	}
 }
 
 /* from ../pc: */
@@ -344,7 +342,7 @@ void
 reboot(void *entry, void *code, ulong size)
 {
 	// writeconf();		// pass kernel environment to next kernel
-	shutdown(0);
+	shutdown();
 
 	/*
 	 * should be the only processor running now
@@ -387,11 +385,11 @@ reboot(void *entry, void *code, ulong size)
 }
 #endif
 	setupboot(0);		// reboot, don't halt
-	exit(0);
+	exit();
 }
 
 void
-exit(int ispanic)
+exit(void)
 {
 	canlock(&active);
 	active.machs &= ~(1<<m->machno);
@@ -406,10 +404,8 @@ exit(int ispanic)
 
 	splhi();
 	delay(1000);	/* give serial fifo time to finish flushing */
-	if (getconf("*debug") != nil) {
-		USED(ispanic);
+	if (getconf("*debug") != nil)
 		delay(60*1000);		/* give us time to read the screen */
-	}
 	if(arch->coredetach)
 		arch->coredetach();
 	setupboot(1);			// set up to halt
@@ -418,7 +414,7 @@ exit(int ispanic)
 
 	// on PC is just:
 	//if (0) {
-	//	shutdown(ispanic);
+	//	shutdown();
 	//	arch->reset();
 	//}
 }

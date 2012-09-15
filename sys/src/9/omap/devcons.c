@@ -17,8 +17,6 @@ Queue*	kprintoq;		/* console output, for /dev/kprint */
 ulong	kprintinuse;		/* test and set whether /dev/kprint is open */
 int	iprintscreenputs = 1;
 
-int	panicking;
-
 static struct
 {
 	QLock;
@@ -281,18 +279,18 @@ iprint(char *fmt, ...)
 void
 panic(char *fmt, ...)
 {
-	int n, s;
+	int n;
 	va_list arg;
 	char buf[PRINTSIZE];
 
 	kprintoq = nil;	/* don't try to write to /dev/kprint */
 
-	if(panicking)
+	splhi();
+	if(active.panicking)
 		for(;;);
-	panicking = 1;
+	active.panicking = 1;
 
 	delay(20);
-	s = splhi();
 	strcpy(buf, "panic: ");
 	va_start(arg, fmt);
 	n = vseprint(buf+strlen(buf), buf+sizeof(buf), fmt, arg) - buf;
@@ -300,13 +298,12 @@ panic(char *fmt, ...)
 	iprint("%s\n", buf);
 	if(consdebug)
 		(*consdebug)();
-	splx(s);
 	prflush();
 	buf[n] = '\n';
 //	putstrn(buf, n+1);
 //	dumpstack();
 
-	exit(1);
+	exit();
 }
 
 /* libmp at least contains a few calls to sysfatal; simulate with panic */
@@ -472,7 +469,7 @@ echo(char *buf, int n)
 		case 'D':
 			if(consdebug == nil)
 				consdebug = rdb;
-			consdebug();
+			panic("consdebug");
 			return;
 		case 'p':
 			x = spllo();
@@ -486,7 +483,7 @@ echo(char *buf, int n)
 			killbig("^t ^t k");
 			return;
 		case 'r':
-			exit(0);
+			exit();
 			return;
 		}
 	}
@@ -668,6 +665,10 @@ readstr(ulong off, char *buf, ulong n, char *str)
 static void
 consinit(void)
 {
+	char *s;
+
+	if((s = getconf("consdebug")) != nil && strcmp(s, "0") != 0)
+		consdebug = rdb;
 	todinit();
 	randominit();
 	/*

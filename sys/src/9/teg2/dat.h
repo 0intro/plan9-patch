@@ -249,7 +249,7 @@ struct
 	int	wfi;			/* bitmap of CPUs in WFI state */
 	int	stopped;		/* bitmap of CPUs stopped */
 	int	exiting;		/* shutdown */
-	int	ispanic;		/* shutdown in response to a panic */
+	int	panicking;		/* panic */
 	int	thunderbirdsarego;	/* lets the added processors continue to schedinit */
 }active;
 
