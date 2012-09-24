@@ -5,6 +5,7 @@
 #include <u.h>
 #include <libc.h>
 #include <auth.h>
+#include <draw.h>
 #include "ssh2.h"
 
 int doauth(int, char *);
@@ -14,17 +15,18 @@ char *user, *remote;
 char *netdir = "/net";
 int debug = 0;
 
+static int cooked = 0;
 static int stripcr = 0;
 static int mflag = 0;
 static int iflag = -1;
 static int nopw = 0, nopka = 0;
 static int chpid;
-static int reqfd, dfd1, cfd1, dfd2, cfd2, consfd, kconsfd, cctlfd, notefd, keyfd;
+static int reqfd, dfd1, cfd1, dfd2, cfd2, consfd, kconsfd, cctlfd, kbdpid, netpid, keyfd;
 
 void
 usage(void)
 {
-	fprint(2, "usage: %s [-dkKmr] [-l user] [-n dir] [-z attr=val] addr "
+	fprint(2, "usage: %s [-dkKmrC] [-l user] [-n dir] [-s subsystem] [-z attr=val] addr "
 		"[cmd [args]]\n", argv0);
 	exits("usage");
 }
@@ -50,9 +52,6 @@ shutdown(void)
 	close(dfd1);
 	close(cfd2);
 	close(cfd1);
-
-	fprint(notefd, "kill");
-	close(notefd);
 }
 
 static void
@@ -70,6 +69,8 @@ handler(void *, char *s)
 
 	if (strstr(s, "alarm") != nil)
 		return 0;
+	if (strstr(s, "interrupt") != nil)
+		return 1;
 	if (chpid) {
 		nf = esmprint("/proc/%d/note", chpid);
 		fd = open(nf, OWRITE);
@@ -199,6 +200,15 @@ starttunnel(void)
 	free(keys);
 }
 
+static int
+wasintr(void)
+{
+	char err[64];
+
+	rerrstr(err, sizeof err);
+	return strstr(err, "interrupt") != 0;
+}
+
 int
 cmdmode(void)
 {
@@ -225,12 +235,24 @@ reprompt:
 			break;
 		case 'q':
 			return 1;
+		case 'C':
+			cooked = 1 - cooked;
+			if(cooked){
+				fprint(cctlfd, "rawoff");
+				fprint(2, " cooked\n");
+			}
+			else{
+				fprint(cctlfd, "rawon");
+				fprint(2, " raw\n");
+			}
+			return 0;
 		case 'c':
 			return 0;
 		case 'r':
 			stripcr = !stripcr;
 			return 0;
 		case 'h':
+			print("C - toggle cooked (local echo) mode\n");
 			print("c - continue\n");
 			print("h - help\n");
 			print("q - quit\n");
@@ -342,16 +364,16 @@ keyproc(char *buf, int size)
 static void
 bidircopy(char *buf, int size)
 {
-	int i, n, lstart;
-	char *path, *p, *q;
-
-	rfork(RFNOTEG);
-	path = esmprint("/proc/%d/notepg", getpid());
-	notefd = open(path, OWRITE);
+	int i, n, lstart, eofs;
+	char *p, *q;
 
 	switch (rfork(RFPROC|RFMEM|RFNOWAIT)) {
 	case 0:
-		while ((n = read(dfd2, buf, size - 1)) > 0) {
+		netpid = getpid();
+		for(;;){
+			n = read(dfd2, buf, size - 1);
+			if(n <= 0)
+				break;
 			if (!stripcr)
 				p = buf + n;
 			else
@@ -367,10 +389,30 @@ bidircopy(char *buf, int size)
 		 *
 		 * fprint(2, "%s: Connection closed by server\n", argv0);
 		 */
+		postnote(PNPROC, kbdpid, "kill");
 		break;
+
 	default:
+		eofs = 0;
 		lstart = 1;
-		while ((n = read(0, buf, size - 1)) > 0) {
+		kbdpid = getpid();
+		for(;;){
+			n = read(0, buf, size - 1);
+			if(cooked && n < 0 && wasintr()){
+				buf[0] = 0x7f;
+				n = 1;
+			}
+			if(cooked && n == 0){
+				if(eofs++ > 32)
+					break;
+				buf[0] = 0x04;
+				n = 1;
+			}
+			else
+				eofs = 0;
+			if(n < 0)
+				break;
+
 			if (!mflag && lstart && buf[0] == 0x1c)
 				if (cmdmode())
 					break;
@@ -385,6 +427,7 @@ bidircopy(char *buf, int size)
 		 *
 		 * fprint(2, "%s: EOF on client side\n", argv0);
 		 */
+		postnote(PNPROC, netpid, "kill");
 		break;
 	case -1:
 		fprint(2, "%s: fork error: %r\n", argv0);
@@ -441,21 +484,94 @@ chanconnect(int conn, char *buf, int size)
 	return atoi(buf);
 }
 
-static void
-remotecmd(int argc, char *argv[], int conn, int chan, char *buf, int size)
+static Point
+fontsize(void)
 {
-	int i;
-	char *path, *q, *ep;
+	Font *f;
+	Point sz;
+	char *fontname;
+
+	if((fontname = getenv("font")) == nil)
+		return Pt(8, 12);
+
+	if((f = openfont(nil, fontname)) == nil){
+		fprint(2, "%s: %s cannot open - %r\n", argv0, fontname);
+		free(fontname);
+		return Pt(8, 12);
+	}
+	sz = stringsize(f, "0");
+	freefont(f);
+	free(fontname);
+	return sz;
+}
+
+static int
+getgeom(int *cols, int *lines, int *width, int *height)
+{
+	int fd, n;
+	Point sz;
+	char *a[6], buf[64];
+
+	if((fd = open("/dev/wctl", OREAD)) < 0)
+		return -1;
+
+	/* wait for event, but don't care what it says */
+	if((n = read(fd, buf, sizeof buf)) < 0){
+		fprint(2, "%s: /dev/wctl read failed - %r\n", argv0);
+		close(fd);
+		return -1;
+	}
+
+	buf[n-1] = 0;
+	if((n = tokenize(buf, a, nelem(a))) < 4){
+		fprint(2, "%s: /dev/wctl too few tokens (%d<4)\n", argv0, n);
+		close(2);
+		return -1;
+	}
+	close(fd);
+
+	sz = fontsize();
+
+	/* This code lifted from mc.c, and is correct for rio(1) windows.
+	 * 4 pixels left edge
+	 * 1 pixels gap
+	 * 12 pixels scrollbar
+	 * 4 pixels gap
+	 * text
+	 * 4 pixels right edge
+	 *
+	 * 4 pixels top and bottom edges
+	 */
+	*width = atoi(a[2]) - atoi(a[0]) - (4+1+12+4+4);
+	*height = atoi(a[3]) - atoi(a[1]) - (4+4);
+	*lines = *height / sz.y;
+	*cols = *width / sz.x;
+
+	return 0;
+}
+
+static void
+remotecmd(int argc, char *argv[], int conn, int chan, char *subsystem, char *buf, int size)
+{
+	int i, cols, lines, width, height;
+	char *path, *q, *ep, term[32];
+
+	strcpy(term, "dumb");
+	cols = lines = width = height = 0;
 
 	path = esmprint("%s/ssh/%d/%d/request", netdir, conn, chan);
 	reqfd = open(path, OWRITE);
 	if (reqfd < 0)
 		bail("can't open request chan");
-	if (argc == 0)
-		if (readfile("/env/TERM", buf, size) < 0)
-			fprint(reqfd, "shell");
-		else
-			fprint(reqfd, "shell %s", buf);
+
+	if(subsystem)
+		fprint(reqfd, "subsystem %s", subsystem);
+	if (argc == 0){
+		readfile("/env/TERM", term, sizeof term);
+		getgeom(&cols, &lines, &width, &height);
+		fprint(reqfd, "shell %q %d %d %d %d %d",
+			term, cols, lines, width, height, cooked);
+	}
 	else {
 		assert(size >= Bigbufsz);
 		ep = buf + Bigbufsz;
@@ -474,21 +590,23 @@ remotecmd(int argc, char *argv[], int conn, int chan, char *buf, int size)
 void
 main(int argc, char *argv[])
 {
-	char *whichkey;
+	char *whichkey, *subsystem;
 	int conn, chan, n;
 	char buf[Copybufsz];
 
 	quotefmtinstall();
 	reqfd = dfd1 = cfd1 = dfd2 = cfd2 = consfd = kconsfd = cctlfd =
-		notefd = keyfd = -1;
-	whichkey = nil;
+		netpid = kbdpid = keyfd = -1;
+	whichkey = subsystem = nil;
 	ARGBEGIN {
 	case 'A':			/* auth protos */
 	case 'c':			/* ciphers */
 		fprint(2, "%s: sorry, -%c is not supported\n", argv0, ARGC());
 		break;
+	case 'C':
+		cooked = 1;
+		break;
 	case 'a':			/* compat? */
-	case 'C':			/* cooked mode */
 	case 'f':			/* agent forwarding */
 	case 'p':			/* force pty */
 	case 'P':			/* force no pty */
@@ -524,6 +642,9 @@ main(int argc, char *argv[])
 		break;
 	case 'r':
 		stripcr = 1;
+		break;
+	case 's':		/* Used by sftpfs */
+		subsystem = EARGF(usage());
 		break;
 	case 'z':
 		whichkey = EARGF(usage());
@@ -566,8 +687,10 @@ main(int argc, char *argv[])
 	/* connect a channel of conn and learn channel number */
 	chan = chanconnect(conn, buf, sizeof buf);
 
+	if(cooked)
+		fprint(cctlfd, "rawoff");
 	/* open request channel, request shell or command execution */
-	remotecmd(argc, argv, conn, chan, buf, sizeof buf);
+	remotecmd(argc, argv, conn, chan, subsystem, buf, sizeof buf);
 
 	bidircopy(buf, sizeof buf);
 }

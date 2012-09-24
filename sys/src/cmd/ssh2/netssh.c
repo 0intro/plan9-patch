@@ -47,6 +47,16 @@ Kex *kexes[] = {
 
 PKA *pkas[3];
 
+static uchar stty_cooked[] = {
+	0x01,0,0,0,0x7f,	/* interrupt = DEL */
+	0x02,0,0,0,0x11,	/* quit = ^Q */
+	0x03,0,0,0,0x08,	/* backspace = ^H */
+	0x04,0,0,0,0x15,	/* line kill = ^U */
+	0x05,0,0,0,0x04,	/* EOF = ^D */
+	0x35,0,0,0,0,		/* echo */
+	0x48,0,0,0,0,		/* opost */
+	0 };			/* end of list */
+
 char *macnames[] = {
 	"hmac-sha1",
 };
@@ -1268,7 +1278,7 @@ writereqremproc(void *a)
 	Packet *p;
 	Conn *c;
 	SSHChan *ch;
-	char *cmd, *q, *buf, *toks[4];
+	char *cmd, *q, *buf, *toks[16];
 	int n, ntok, lev, xconn;
 	uvlong qidpath;
 
@@ -1326,15 +1336,28 @@ writereqremproc(void *a)
 		add_uint32(p, ch->otherid);
 		add_string(p, "pty-req");
 		add_byte(p, 0);
-		if (ntok == 1)
-			add_string(p, "dumb");
-		else
+		if (ntok > 1)
 			add_string(p, toks[1]);
-		add_uint32(p, 0);
-		add_uint32(p, 0);
-		add_uint32(p, 0);
-		add_uint32(p, 0);
-		add_string(p, "");
+		else
+			add_string(p, "dumb");
+		if(ntok == 7){
+			add_uint32(p, atoi(toks[2]));	/* collums */
+			add_uint32(p, atoi(toks[3]));	/* rows */
+			add_uint32(p, atoi(toks[4]));	/* width */
+			add_uint32(p, atoi(toks[5]));	/* height */
+			if(atoi(toks[6]))		/* is cooked */
+				add_block(p, stty_cooked, sizeof(stty_cooked));
+			else
+				add_string(p, "");
+		}
+		else{
+			add_uint32(p, 0);
+			add_uint32(p, 0);
+			add_uint32(p, 0);
+			add_uint32(p, 0);
+			add_string(p, "");
+		}
+
 		n = finish_packet(p);
 		iowrite(c->dio, c->datafd, p->nlength, n);
 		init_packet(p);
@@ -1356,6 +1379,21 @@ writereqremproc(void *a)
 		q = seprint(cmd, cmd+Bigbufsz, "%s", toks[1]);
 		for (n = 2; n < ntok; ++n) {
 			q = seprint(q, cmd+Bigbufsz, " %q", toks[n]);
+			if (q == nil)
+				break;
+		}
+		add_string(p, cmd);
+		free(cmd);
+	} else if (strcmp(toks[0], "subsystem") == 0) {
+		ch->state = Established;
+		add_byte(p, SSH_MSG_CHANNEL_REQUEST);
+		add_uint32(p, ch->otherid);
+		add_string(p, "subsystem");
+		add_byte(p, 0);				/* no reply */
+		cmd = malloc(1024);
+		q = seprint(cmd, cmd+1024, "%s", toks[1]);
+		for (n = 2; n < ntok; ++n) {
+			q = seprint(q, cmd+1024, " %s", toks[n]);
 			if (q == nil)
 				break;
 		}
