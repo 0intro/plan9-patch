@@ -124,6 +124,7 @@ enum
 	Xfpregs,
 	Xkregs,
 	Xmem,
+	Xnote,
 	Xproc,
 	Xregs,
 	Xtext,
@@ -223,9 +224,11 @@ eiaread(void*)
 					goto Break2;
 				}else{
 					DBG(2, "unknown message\n");
+					break;
 				}
 			}
 		}
+		respond(r, "timed out");
 	Break2:;
 	}
 }
@@ -300,7 +303,7 @@ fsread(Req *r)
 		respond(r, nil);
 		break;
 	case Xstatus:
-		n = sprint(buf, "%-28s%-28s%-28s", "remote", "system", "New");
+		n = sprint(buf, "%-28s%-28s%-28s", "remote", getuser(), "Broken");
 		for(i = 0; i < 9; i++)
 			n += sprint(buf+n, "%-12d", 0);
 		readstr(r, buf);
@@ -318,11 +321,11 @@ fswrite(Req *r)
 
 	switch((uintptr)r->fid->file->aux) {
 	case Xctl:
+	case Xnote:
 		if(strncmp(r->ifcall.data, "kill", 4) == 0 ||
 		   strncmp(r->ifcall.data, "exit", 4) == 0) {
 			respond(r, nil);
-			postnote(PNGROUP, getpid(), "umount");
-			exits(nil);
+			threadexitsall(nil);
 		}else if(strncmp(r->ifcall.data, "refresh", 7) == 0){
 			flushcache();
 			respond(r, nil);
@@ -361,6 +364,7 @@ struct {
 	"fpregs",	Xfpregs,	0666,
 	"kregs",	Xkregs,		0666,
 	"mem",		Xmem,		0666,
+	"note",		Xnote,		0222,
 	"proc",		Xproc,		0444,
 	"regs",		Xregs,		0666,
 	"text",		Xtext,		0444,
