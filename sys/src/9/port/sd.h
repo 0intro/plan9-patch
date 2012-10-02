@@ -134,8 +134,10 @@ enum {
 	SDnpart		= 16,
 };
 
+#ifndef sdmalloc
 #define sdmalloc(n)	malloc(n)
 #define sdfree(p)	free(p)
+#endif
 
 /* devsd.c */
 extern void sdadddevs(SDev*);
