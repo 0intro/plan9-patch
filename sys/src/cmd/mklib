@@ -16,6 +16,9 @@ $LIB:	$LIBOBJ
 %.$O:	%.c
 	$CC $CFLAGS $stem.c
 
+%.$O:	%.C
+	c++/$CC $CFLAGS $stem.C
+
 %.$O:	%.s
 	$AS $AFLAGS $stem.s
 
@@ -40,7 +43,7 @@ nuke:V:
 	rm -f $LIB
 
 clean:V:
-	rm -f *.[$OS] y.tab.? y.output y.error
+	rm -f *.[$OS] y.tab.? y.output y.error $CLEANFILES
 
 update:V:
 	update $UPDATEFLAGS $UPDATE
