@@ -7,6 +7,7 @@ typedef struct SDpart SDpart;
 typedef struct SDperm SDperm;
 typedef struct SDreq SDreq;
 typedef struct SDunit SDunit;
+typedef struct SDio SDio;
 
 struct SDperm {
 	char*	name;
@@ -144,6 +145,22 @@ enum {
 #define sdmalloc(n)	malloc(n)
 #define sdfree(p)	free(p)
 #endif
+
+/*
+ * mmc/sd/sdio host controller interface
+ */
+
+struct SDio {
+	char	*name;
+	int	(*init)(void);
+	void	(*enable)(void);
+	int	(*inquiry)(char*, int);
+	int	(*cmd)(u32int, u32int, u32int*);
+	void	(*iosetup)(int, void*, int, int);
+	void	(*io)(int, uchar*, int);
+};
+
+extern SDio sdio;
 
 /* devsd.c */
 extern void sdadddevs(SDev*);
