@@ -54,23 +54,23 @@ main(int argc, char *argv[])
 
 	ARGBEGIN{
 	case 'b':
-		newbufsize = atol(ARGF());
+		newbufsize = atol(EARGF(usage()));
 		break;
 	case 'c':
 		nocheck = 1;
 		break;
 	case 'f':
-		wrenfile = ARGF();
+		wrenfile = EARGF(usage());
 		break;
 	case 'm':
-		nwren = atol(ARGF());
+		nwren = atol(EARGF(usage()));
 		break;
 	case 'n':
-		strncpy(buf, ARGF(), NAMELEN-1);
+		strncpy(buf, EARGF(usage()), NAMELEN-1);
 		buf[NAMELEN-1] = '\0';
 		break;
 	case 'p':
-		cmdmode = atol(ARGF());
+		cmdmode = atol(EARGF(usage()));
 		break;
 	case 'r':
 		ream = 1;
@@ -83,7 +83,7 @@ main(int argc, char *argv[])
 			open("#c/cons", OWRITE);
 		break;
 	case 'B':
-		conf.niobuf = strtoul(ARGF(), 0, 0);
+		conf.niobuf = strtoul(EARGF(usage()), 0, 0);
 		break;
 	case 'C':
 		chat = 1;
@@ -317,9 +317,9 @@ netserve(char *netaddr)
 	char adir[2*NAMELEN], ldir[2*NAMELEN];
 	Chan *netchan;
 
-	if(access("/net/tcp/clone", 0) < 0)
+	if(access("/net/il/clone", 0) < 0)
 		bind("#I", "/net", MAFTER);
-	if(access("/net.alt/tcp/clone", 0) < 0)
+	if(access("/net.alt/il/clone", 0) < 0)
 		bind("#I1", "/net.alt", MAFTER);
 
 	afd = announce(netaddr, adir);
@@ -553,6 +553,6 @@ iobufinit(void)
 void
 usage(void)
 {
-	fprint(2, "usage: kfs [-cCr] [-b bufsize] [-s infd outfd] [-f fsfile]\n");
+	fprint(2, "usage: kfs [-cCrs] [-b blocksize] [-f fsfile] [-n name] [-p perm] [-B nbuf]\n");
 	exits(0);
 }

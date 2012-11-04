@@ -4,7 +4,7 @@ kfs \- disk file system
 .SH SYNOPSIS
 .B disk/kfs
 [
-.B -rc
+.B -cCrs
 ] [
 .B -b
 .I n
@@ -17,8 +17,6 @@ kfs \- disk file system
 ] [
 .B -p
 .I perm
-] [
-.B -s
 ] [
 .B -B
 .I nbuf
@@ -64,6 +62,8 @@ must be a multiple of 512.
 .TP
 .B c
 Do not check the file system.
+.B C
+Chatty 9p.
 .TP
 .BI "f " file
 Use
