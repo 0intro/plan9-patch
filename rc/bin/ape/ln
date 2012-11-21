@@ -16,9 +16,9 @@ while(! ~ $#* 0 && ~ $1 -*){
 }
 
 
-if(~ $force n && test -e $2 && ! test -d $2){
+if(~ $force n && /$cputype/bin/test -e $2 && ! test -d $2){
 	echo ln: $2 destination exists >[2=1]
 	exit 'usage'
 }
 
-exec cp -gux $1 $2
+exec /$cputype/bin/cp -gux $1 $2
