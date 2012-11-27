@@ -1,6 +1,6 @@
 .TH FOPEN 2
 .SH NAME
-fopen, freopen, fdopen, fileno, fclose, sopenr, sopenw, sclose, fflush, setvbuf, setbuf, fgetpos, ftell, fsetpos, fseek, rewind, feof, ferror, clearerr \- standard buffered input/output package
+fopen, freopen, fdopen, fileno, fclose, sopenr, sopenw, sclose, fflush, setvbuf, setbuf, fgetpos, ftell, ftello, fsetpos, fseek, rewind, feof, ferror, clearerr \- standard buffered input/output package
 .SH SYNOPSIS
 .B #include <u.h>
 .br
@@ -47,10 +47,16 @@ int	fgetpos(FILE *f, long *pos)
 long	ftell(FILE *f)
 .PP
 .B
+vlong	ftello(FILE *f)
+.PP
+.B
 int	fsetpos(FILE *f, long *pos)
 .PP
 .B
 int	fseek(FILE *f, long offset, int whence)
+.PP
+.B
+int	fseeko(FILE *f, vlong offset, int whence)
 .PP
 .B
 void	rewind(FILE *f)
