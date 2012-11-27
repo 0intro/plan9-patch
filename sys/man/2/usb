@@ -12,10 +12,7 @@ opendev,
 opendevdata,
 openep,
 startdevs,
-unstall,
-class,
-subclass,
-proto,
+unstall
 CSP \- USB device driver library
 .SH SYNOPSIS
 .EX
