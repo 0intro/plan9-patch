@@ -1,10 +1,15 @@
 .TH DRAW 2
 .SH NAME
-Image, draw, gendraw, drawreplxy, drawrepl,
-replclipr, line, poly, fillpoly, bezier, bezspline, fillbezier, fillbezspline, ellipse,
-fillellipse, arc, fillarc, icossin, icossin2, border, string, stringn,
-runestring, runestringn, stringbg, stringnbg, runestringbg,
-runestringnbg, _string, ARROW, drawsetdebug \- graphics functions
+Image, draw, drawop, gendraw, gendrawop, drawreplxy, drawrepl, replclipr,
+line, lineop, poly, polyop, fillpoly, fillpolyop, bezier, bezierop,
+bezspline, bezsplineop, bezsplinepts, fillbezier, fillbezierop,
+fillbezspline, fillbezsplineop, ellipse, ellipseop, fillellipse,
+fillellipseop, arc, arcop, fillarc, fillarcop, icossin, icossin2,
+border, string, stringop, stringn, stringnop, runestring,
+runestringop, runestringn, runestringnop, stringbg, stringbgop,
+stringnbg, stringnbgop, runestringbg, runestringbgop,
+runestringnbg, runestringnbgop, _string, ARROW,
+mousescrollsize, drawsetdebug \- graphics functions
 .de PB
 .PP
 .ft L
@@ -205,6 +210,10 @@ Point	runestringnbgop(Image *dst, Point p, Image *src, Point sp,
 Point	_string(Image *dst, Point p, Image *src,
 		Point sp, Font *f, char *s, Rune *r, int len,
 		Rectangle clipr, Image *bg, Point bgp, Drawop op)
+.PB
+int	mousescrollsize(int maxlines)
+.PB
+int	newwindow(char *wname)
 .PB
 void	drawsetdebug(int on)
 .PD
@@ -794,6 +803,19 @@ The
 .I clipr
 argument allows further management of clipping when drawing the string;
 it is intersected with the usual clipping rectangles to further limit the extent of the text.
+.TP
+.BI mousescrollsize( maxlines )
+Determine the number of lines to scroll.  The default is 1.
+The environment variable
+.B mousescrollsize
+may either be set to an integer number of lines to scroll,
+or a floating point percentage of
+.BR maxlines ,
+indicated with a
+.LR % .
+.TP
+.BI newwindow( wname )
+Connect to a new window if possible.
 .TP
 .BI drawsetdebug( on )
 Turns on or off debugging output (usually
