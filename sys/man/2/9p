@@ -1,6 +1,10 @@
 .TH 9P 2
 .SH NAME
 Srv,
+auth9p,
+authdestroy,
+authread,
+authwrite,
 dirread9p,
 emalloc9p,
 erealloc9p,
@@ -14,7 +18,8 @@ respond,
 responderror,
 threadlistensrv,
 threadpostmountsrv,
-srv \- 9P file service
+srv,
+walkandclone \- 9P file service
 .SH SYNOPSIS
 .ft L
 .nf
