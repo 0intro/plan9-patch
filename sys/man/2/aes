@@ -1,6 +1,6 @@
 .TH AES 2
 .SH NAME
-setupAESstate, aesCBCencrypt, aesCBCdecrypt, aesCTRencrypt, aesCTRdecrypt, setupAESXCBCstate, aesXCBCmac - advanced encryption standard (rijndael)
+aes_encrypt, aes_decrypt, setupAESstate, aesCBCencrypt, aesCBCdecrypt, aesCTRencrypt, aesCTRdecrypt, setupAESXCBCstate, aesXCBCmac - advanced encryption standard (rijndael)
 .SH SYNOPSIS
 .B #include <u.h>
 .br
