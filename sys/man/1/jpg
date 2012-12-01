@@ -98,6 +98,11 @@ jpg, gif, png, ppm, bmp, v210, yuv, ico, togif, toppm, topng, toico \- view and 
 [
 .I file ...
 ]
+.PP
+.B tga
+[
+.I file
+]
 .SH DESCRIPTION
 These programs read, display, and write image files in public formats.
 .IR Jpg ,
@@ -106,6 +111,7 @@ These programs read, display, and write image files in public formats.
 .IR ppm ,
 .IR bmp ,
 .IR v210 ,
+.IR tga ,
 and
 .IR yuv
 read files in the corresponding formats and, by default, display
