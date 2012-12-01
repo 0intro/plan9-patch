@@ -1,0 +1,36 @@
+--- sys/src/cmd/5l/asm.c	Fri Jul  5 06:52:02 2013
++++ sys/src/cmd/5l/asm.c	Fri Jul  5 07:30:32 2013
+@@ -257,6 +296,33 @@
+ 	case 7:	/* elf */
+ 		debug['S'] = 1;			/* symbol table */
+ 		elf32(ARM, ELFDATA2LSB, 0, nil);
++		break;
++	case 8:	/* u-boot image */
++		t = rnd(textsize, INITRND)+datsize;
++		lput(0x27051956);		/* image magic */
++		lput(0);			/* header checksum */
++		lput(time(nil));		/* timestamp */
++		lput(t);			/* data size */
++		lput(INITTEXT);			/* load address */
++		lput(entryvalue());		/* entry point */
++		lput(0);			/* data checksum */
++		cput(23);			/* os = Plan 9 */
++		cput(2);			/* arch = ARM */
++		cput(2);			/* type = OS Kernel Image */
++		cput(0);			/* compression = none */
++		strnput(outfile, 32);		/* image name */
++		cflush();
++
++		/* calculate data checksum */
++		OFFSET = 24;
++		seek(cout, OFFSET, 0);
++		lput(crc32(outfile, t, HEADR));
++		cflush();
++
++		/* calculate header checksum */
++		OFFSET = 4;
++		seek(cout, OFFSET, 0);
++		lput(crc32(outfile, HEADR, 0));
+ 		break;
+ 	}
+ 	cflush();

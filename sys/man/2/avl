@@ -1,6 +1,6 @@
 .TH AVL 2
 .SH NAME
-mkavltree, insertavl, lookupavl, deleteavl, avlwalk, avlnext, avlprev, endwalk - AVL tree routines
+mkavltree, insertavl, lookupavl, searchavl, deleteavl, avlwalk, avlnext, avlprev, endwalk - AVL tree routines
 .SH SYNOPSIS
 .\" .ta 0.75i 1.5i 2.25i 3i 3.75i 4.5i
 .ta 0.7i +0.7i +0.7i +0.7i +0.7i +0.7i +0.7i
