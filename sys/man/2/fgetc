@@ -114,7 +114,7 @@ writes character
 .B unsigned
 .BR char )
 to output stream
-.IR f
+.I f
 at the position indicated by the position indicator for the stream
 and advances the indicator appropriately.
 If the file cannot support positioning requests, or if the stream was

@@ -68,7 +68,7 @@ returns a quoted copy of
 while
 .I unquotestrdup
 returns a copy of
-.IR s
+.I s
 with the quotes evaluated.
 The
 .I rune
@@ -85,7 +85,7 @@ has the following properties:
 .TP
 1.
 If the original string
-.IR s
+.I s
 is empty, the returned string is
 .BR '' .
 .TP

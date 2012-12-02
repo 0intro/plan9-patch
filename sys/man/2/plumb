@@ -216,7 +216,7 @@ appends the
 .I new
 .B Plumbattr
 (which may be a list) to the attribute list
-.IR a
+.I a
 and returns the new list.
 .I Plumbattr
 searches the list
