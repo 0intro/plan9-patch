@@ -59,7 +59,7 @@ protocol.
 .I Vtrpc
 executes a single Venti RPC transaction, sending the request 
 packet
-.IR p
+.I p
 and then waiting for and returning the response packet.
 .I Vtrpc
 will set the tag in the packet.

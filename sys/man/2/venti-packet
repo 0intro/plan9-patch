@@ -122,7 +122,7 @@ returns the number of data bytes allocated to
 .IR p .
 This may be larger than the number of bytes stored
 in
-.IR p
+.I p
 because fragments may not be filled completely.
 .PP
 .I Packetcmp

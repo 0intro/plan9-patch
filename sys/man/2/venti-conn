@@ -102,7 +102,7 @@ writes a packet
 on the connection
 .IR z .
 The packet
-.IR p
+.I p
 should be a formatted Venti message as might
 be returned by
 .IR vtfcallpack ;

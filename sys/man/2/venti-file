@@ -135,7 +135,7 @@ The
 and
 .BR VtORDWR
 modes can only be used if
-.IR f
+.I f
 is open with mode
 .BR VtORDWR .
 .PP
