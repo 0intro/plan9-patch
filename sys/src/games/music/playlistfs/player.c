@@ -27,7 +27,7 @@ Channel	*playc, *pacc;
 char *playprog[] = {
 [Pac] = "/bin/games/pac4dec",
 [Mp3] = "/bin/games/mp3dec",
-[Pcm] = "/bin/cp",
+[Pcm] = "/bin/cat",
 [Ogg] = "/bin/games/vorbisdec",
 };
 
@@ -402,6 +402,7 @@ void
 playinit(void)
 {
 	int i;
+	Pmsg pmsg;
 
 	full = chancreate(sizeof(Pacbuf*), 1);
 	empty = chancreate(sizeof(Pacbuf*), NPacbuf);
@@ -412,7 +413,7 @@ playinit(void)
 	for(i = 0; i < NSparebuf; i++)
 		sendp(spare, malloc(sizeof(Pacbuf)));
 
-	playc = chancreate(sizeof(Pmsg), 1);
+	playc = chancreate(sizeof(pmsg.m), 1);
 	procrfork(pacproc, nil, 32*1024, RFFDG);
 	procrfork(pcmproc, nil, 32*1024, RFFDG);
 }

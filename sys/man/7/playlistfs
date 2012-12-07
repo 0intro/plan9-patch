@@ -131,7 +131,7 @@ player:
 /bin/games/pac4dec
 .TP
 \&.pcm
-/bin/cp
+/bin/cat
 .TP
 \&.ogg
 /bin/games/vorbisdec
