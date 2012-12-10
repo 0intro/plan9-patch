@@ -63,7 +63,7 @@ int	dohttp(URL*, URL*,  Range*, Out*, long);
 int	crackurl(URL*, char*);
 Range*	crackrange(char*);
 int	getheader(int, char*, int);
-int	httpheaders(int, int, URL*, Range*);
+int	httpheaders(int, int, URL*, URL*, Range*);
 int	httprcode(int);
 int	cistrncmp(char*, char*, int);
 int	cistrcmp(char*, char*);
@@ -322,7 +322,7 @@ int
 dohttp(URL *u, URL *px, Range *r, Out *out, long mtime)
 {
 	int fd, cfd;
-	int redirect, auth, loop;
+	int redirect, auth, pxauth, loop;
 	int n, rv, code;
 	long tot, vtime;
 	Tm *tm;
@@ -348,9 +348,41 @@ dohttp(URL *u, URL *px, Range *r, Out *out, long mtime)
 		if(fd < 0)
 			return Error;
 
+		initibuf();
 		if(u->method == Https){
 			int tfd;
 			TLSconn conn;
+
+			if(px->host != nil){
+				pxauth = 0;
+				dfprint(fd,	"CONNECT %s:%s HTTP/1.0\r\n"
+						"User-agent: Plan9/hget\r\n",
+						u->host, u->port);
+				if(px->cred)
+					dfprint(fd, "Proxy-Authorization: Basic %s\r\n", px->cred);
+				dfprint(fd, "\r\n");
+				code = httprcode(fd);
+				switch(code){
+				case 200:
+					break;
+				case 407:
+					if(px->cred)
+						sysfatal("Proxy authentication failed");
+					pxauth = 1;
+					break;
+				default:
+					fprint(2, "proxy CONNECT response code %d\n", code);
+					close(fd);
+					return Error;
+				}
+				httpheaders(fd, -1, u, px, r);
+				if(pxauth){
+					if(!px->cred)
+						sysfatal("Proxy authentication required");
+					close(fd);
+					continue;
+				}
+			}
 
 			memset(&conn, 0, sizeof conn);
 			tfd = tlsClient(fd, &conn);
@@ -393,6 +425,8 @@ dohttp(URL *u, URL *px, Range *r, Out *out, long mtime)
 		}
 		if(u->cred)
 			dfprint(fd, "Authorization: Basic %s\r\n", u->cred);
+		if(px->cred)
+			dfprint(fd, "Proxy-Authorization: Basic %s\r\n", px->cred);
 		if(u->rhead)
 			dfprint(fd, "%s\r\n", u->rhead);
 		if(r->start != 0){
@@ -407,7 +441,8 @@ dohttp(URL *u, URL *px, Range *r, Out *out, long mtime)
 			}
 		}
 		if((cfd = open("/mnt/webcookies/http", ORDWR)) >= 0){
-			if(fprint(cfd, "http://%s%s", u->host, u->page) > 0){
+			if(fprint(cfd, "%s://%s%s",
+				method[u->method].name, u->host, u->page) > 0){
 				while((n = read(cfd, buf, sizeof buf)) > 0){
 					if(debug)
 						write(2, buf, n);
@@ -423,9 +458,9 @@ dohttp(URL *u, URL *px, Range *r, Out *out, long mtime)
 		if(u->postbody)
 			dfprint(fd,	"%s", u->postbody);
 
+		pxauth = 0;
 		auth = 0;
 		redirect = 0;
-		initibuf();
 		code = httprcode(fd);
 		switch(code){
 		case Error:	/* connection timed out */
@@ -463,7 +498,7 @@ dohttp(URL *u, URL *px, Range *r, Out *out, long mtime)
 			sysfatal("Bad Request");
 
 		case 401:	/* Unauthorized */
-			if (auth)
+			if(u->cred)
 				sysfatal("Authentication failed");
 			auth = 1;
 			break;
@@ -478,7 +513,10 @@ dohttp(URL *u, URL *px, Range *r, Out *out, long mtime)
 			sysfatal("Not found on server");
 
 		case 407:	/* Proxy Authentication */
-			sysfatal("Proxy authentication required");
+			if(px->cred)
+				sysfatal("Proxy authentication failed");
+			pxauth = 1;
+			break;
 
 		case 500:	/* Internal server error */
 			sysfatal("Server choked");
@@ -501,14 +539,14 @@ dohttp(URL *u, URL *px, Range *r, Out *out, long mtime)
 			u->redirect = nil;
 		}
 
-		rv = httpheaders(fd, cfd, u, r);
+		rv = httpheaders(fd, cfd, u, px, r);
 		close(cfd);
 		if(rv != 0){
 			close(fd);
 			return rv;
 		}
 
-		if(!redirect && !auth)
+		if(!redirect && !auth && !pxauth)
 			break;
 
 		if (redirect){
@@ -580,17 +618,18 @@ httprcode(int fd)
 }
 
 /* read in and crack the http headers, update u and r */
-void	hhetag(char*, URL*, Range*);
-void	hhmtime(char*, URL*, Range*);
-void	hhclen(char*, URL*, Range*);
-void	hhcrange(char*, URL*, Range*);
-void	hhuri(char*, URL*, Range*);
-void	hhlocation(char*, URL*, Range*);
-void	hhauth(char*, URL*, Range*);
+void	hhetag(char*, URL*, URL*, Range*);
+void	hhmtime(char*, URL*, URL*, Range*);
+void	hhclen(char*, URL*, URL*, Range*);
+void	hhcrange(char*, URL*, URL*, Range*);
+void	hhuri(char*, URL*, URL*, Range*);
+void	hhlocation(char*, URL*, URL*, Range*);
+void	hhauth(char*, URL*, URL*, Range*);
+void	hhpxauth(char*, URL*, URL*, Range*);
 
 struct {
 	char *name;
-	void (*f)(char*, URL*, Range*);
+	void (*f)(char*, URL*, URL*, Range*);
 } headers[] = {
 	{ "etag:", hhetag },
 	{ "last-modified:", hhmtime },
@@ -599,9 +638,10 @@ struct {
 	{ "uri:", hhuri },
 	{ "location:", hhlocation },
 	{ "WWW-Authenticate:", hhauth },
+	{ "Proxy-Authenticate:", hhpxauth },
 };
 int
-httpheaders(int fd, int cfd, URL *u, Range *r)
+httpheaders(int fd, int cfd, URL *u, URL *px, Range *r)
 {
 	char buf[2048];
 	char *p;
@@ -621,7 +661,7 @@ httpheaders(int fd, int cfd, URL *u, Range *r)
 				while(*p == ' ' || *p == '\t')
 					p++;
 
-				(*headers[i].f)(p, u, r);
+				(*headers[i].f)(p, u, px, r);
 				break;
 			}
 		}
@@ -671,7 +711,7 @@ getheader(int fd, char *buf, int n)
 }
 
 void
-hhetag(char *p, URL *u, Range*)
+hhetag(char *p, URL *u, URL *, Range*)
 {
 	if(u->etag != nil){
 		if(strcmp(u->etag, p) != 0)
@@ -683,7 +723,7 @@ hhetag(char *p, URL *u, Range*)
 char*	monthchars = "janfebmaraprmayjunjulaugsepoctnovdec";
 
 void
-hhmtime(char *p, URL *u, Range*)
+hhmtime(char *p, URL *u, URL *, Range*)
 {
 	char *month, *day, *yr, *hms;
 	char *fields[6];
@@ -750,13 +790,13 @@ hhmtime(char *p, URL *u, Range*)
 }
 
 void
-hhclen(char *p, URL*, Range *r)
+hhclen(char *p, URL*, URL *, Range *r)
 {
 	r->end = atoi(p);
 }
 
 void
-hhcrange(char *p, URL*, Range *r)
+hhcrange(char *p, URL*, URL *, Range *r)
 {
 	char *x;
 	vlong l;
@@ -775,7 +815,7 @@ hhcrange(char *p, URL*, Range *r)
 }
 
 void
-hhuri(char *p, URL *u, Range*)
+hhuri(char *p, URL *u, URL *, Range*)
 {
 	if(*p != '<')
 		return;
@@ -786,13 +826,13 @@ hhuri(char *p, URL *u, Range*)
 }
 
 void
-hhlocation(char *p, URL *u, Range*)
+hhlocation(char *p, URL *u, URL *, Range*)
 {
 	u->redirect = strdup(p);
 }
 
 void
-hhauth(char *p, URL *u, Range*)
+hhauth(char *p, URL *u, URL *, Range*)
 {
 	char *f[4];
 	UserPasswd *up;
@@ -814,6 +854,32 @@ hhauth(char *p, URL *u, Range*)
   		free(s);
 
 	assert(u->cred = strdup(cred));
+}
+
+void
+hhpxauth(char *p, URL *, URL *px, Range*)
+{
+	char *f[4];
+	UserPasswd *up;
+	char *s, cred[64];
+
+	// proxy may offer several auth protocols with 'basic' being offered later
+	if (cistrncmp(p, "basic ", 6) != 0)
+		return;
+
+	if (gettokens(p, f, nelem(f), "\"") < 2)
+		sysfatal("garbled proxy auth data");
+
+	if ((up = auth_getuserpasswd(auth_getkey, "proto=pass service=http server=%q realm=%q",
+	    	px->host, f[1])) == nil)
+			sysfatal("cannot authenticate to proxy");
+
+	s = smprint("%s:%s", up->user, up->passwd);
+	if(enc64(cred, sizeof(cred), (uchar *)s, strlen(s)) == -1)
+		sysfatal("enc64");
+  		free(s);
+
+	assert(px->cred = strdup(cred));
 }
 
 enum
