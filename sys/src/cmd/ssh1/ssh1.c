@@ -563,7 +563,8 @@ fromstdin(Conn *c)
 		sendwritemsg(c, buf, n);
 	}
 	sendwritemsg(c, "", 0);
-	atexitdont(atexitkiller);
+	if(n >= 0)
+		atexitdont(atexitkiller);
 	exits(nil);
 }
 
