@@ -1,0 +1,94 @@
+.TH SFTPFS 4
+.SH NAME
+sftpfs \- SSH File Transfer Protocol (SFTP) file system
+.SH SYNOPSIS
+.B sftpfs
+[
+.B -12oDU
+] [
+.B -m
+.I mountpoint
+] [
+.B -p
+.I serverpath
+] [
+.B -s
+.I service
+]
+[
+.B -u
+.I passwd
+.I group
+]
+.RI [ user\fB@ ] host
+.SH DESCRIPTION
+.I Sftpfs
+connects to the SFTP subsystem of the SSH server at
+.IR host ,
+at port 22, and presents at
+.I mountpoint
+(default
+.BI /n/ host \fR)
+the root file tree of
+.IR host .
+.LP
+If the
+.B -s
+option is given, the file system is posted as
+.BI /srv/ service \fR.
+It will try to login as
+.IR user ,
+if given.  Otherwise, login is attempted using the user name from
+.BR /dev/user .
+Authentication is entirely the reponsibility of the SSH client.
+.LP
+The
+.B -1 -2 -o
+flags control whether the Bell Lab's ssh client,
+Coraid's ssh client, or the OpenSSH client respectively are
+used for the session.
+.I Serverpath
+(default
+.BR /usr/lib/sftp-server )
+specifies the path of the SFTP server used in SSH1.  A path without
+slash character is looked up in the executable search path.  Some
+common places for SFTP server to live are:
+.LP
+.RS
+.EX
+/usr/lib/sftp-server
+/usr/libexec/openssh/sftp-server
+/usr/lib/misc/sftp-server
+/usr/libexec/sftp-server
+/usr/lib/ssh/sftp-server
+.EE
+.RE
+.LP
+.I Passwd
+and
+.I group
+specifies path to the Unix password and group files, to be used for
+UID/GID to name translation.  The paths are interpreted after the file
+system is mounted, so paths starting with
+.I mountpoint
+are acceptable. The
+.B -U
+option uses
+.IB mountpoint /etc/passwd
+and
+.IB mountpoint /etc/group
+as the Unix password and group file. It overrides the
+.B -u
+flag.
+.LP
+The
+.B -D
+flag causes a transcript of the 9P conversation to be written to
+standard error.
+.SH SOURCE
+.B /sys/src/cmd/sftpfs
+.SH "SEE ALSO"
+.IR ssh (1),
+.IR ssh2 (1),
+.IR srvssh (4),
+.IR openssh (1)
