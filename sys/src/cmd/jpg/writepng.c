@@ -79,7 +79,7 @@ zread(void *va, void *buf, int n)
 	pixwid = z->pixwid;
 	b = buf;
 	e = b+n;
-	while(b+pixwid <= e){
+	while(b+pixwid < e){
 		if(z->y >= z->dy)
 			break;
 		if(z->x == 0)
