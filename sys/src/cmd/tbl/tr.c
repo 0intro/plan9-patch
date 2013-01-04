@@ -20,7 +20,7 @@ char	*nregs[] = {
 char	*
 reg(int col, int place)
 {
-	if (sizeof(nregs) < 2 * 3 * qcol)
+	if(qcol*place+col >= nelem(nregs)-1)
 		error("Too many columns for registers");
 	return (nregs[qcol*place+col]);
 }
