@@ -38,6 +38,7 @@ runefmtstrinit(Fmt *f)
 	f->start = malloc(sizeof(Rune)*n);
 	if(f->start == nil)
 		return -1;
+	setmalloctag(f->start, getcallerpc(&f));
 	f->to = f->start;
 	f->stop = (Rune*)f->start + n - 1;
 	f->flush = runeFmtStrFlush;

@@ -38,6 +38,7 @@ fmtstrinit(Fmt *f)
 	f->start = malloc(n);
 	if(f->start == nil)
 		return -1;
+	setmalloctag(f->start, getcallerpc(&f));
 	f->to = f->start;
 	f->stop = (char*)f->start + n - 1;
 	f->flush = fmtStrFlush;
@@ -57,6 +58,7 @@ vsmprint(char *fmt, va_list args)
 
 	if(fmtstrinit(&f) < 0)
 		return nil;
+	setmalloctag(f.start, getcallerpc(&fmt));
 	f.args = args;
 	n = dofmt(&f, fmt);
 	if(f.start == nil)
