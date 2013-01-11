@@ -137,6 +137,9 @@ Enable vararg type checking as described in
 This is of limited use without the appropriate 
 .B #pragma 
 definitions.
+.TP
+.B -f
+(ARM only) Generate VFP hardware floating point instructions.
 .PP
 The APE environment contains all of the include
 files and library routines specified in the ANSI C standard

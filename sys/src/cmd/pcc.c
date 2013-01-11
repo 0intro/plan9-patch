@@ -111,6 +111,10 @@ main(int argc, char *argv[])
 		case 'p':
 			append(&ldargs, "-p");
 			break;
+		case 'f':
+			if(strcmp(ot->ld, "5l") == 0)
+				append(&ldargs, "-f");
+			break;
 		case 'a':
 			/* hacky look inside ARGBEGIN insides, to see if we have -aa */
 			if(*_args == 'a') {
