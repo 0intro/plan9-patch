@@ -1,0 +1,11 @@
+--- sys/src/cmd/rio/wind.c	Wed Nov 28 00:48:15 2007
++++ sys/src/cmd/rio/wind.c	Wed Nov 28 00:48:15 2007
+@@ -710,7 +710,7 @@
+ {
+ 	wsetcols(w);
+ 	if(!w->mouseopen)
+-		_frredraw(w, w->Frame.r.min, w->cols[TEXT], nil);
++		frredraw(w);
+ 	if(w == input){
+ 		wborder(w, Selborder);
+ 		wsetcursor(w, 0);
