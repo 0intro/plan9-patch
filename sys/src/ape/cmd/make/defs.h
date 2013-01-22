@@ -27,9 +27,9 @@ typedef char flag;	/* represent a few bit flag */
 #define NLEFTS	512
 #define NCHARS	500
 #define NINTS	250
-#define INMAX	20000
-#define OUTMAX	20000
-#define QBUFMAX	20000
+#define INMAX	40000
+#define OUTMAX	40000
+#define QBUFMAX	40000
 #define MAXDIR	10
 #define MAXPROC	100
 #define MAXINCLUDE	17
@@ -196,7 +196,7 @@ extern char	*copys(char *);
 extern char	*concat(char *, char *, char *);
 extern int	suffix(char *, char *, char *);
 extern int	*ckalloc(int);
-extern char	*subst(char *, char *);
+extern char	*subst(char *, char *, char *);
 extern void	setvar(char *, char *, int);
 extern void	set3var(char *, char *);
 extern int	eqsign(char *);
