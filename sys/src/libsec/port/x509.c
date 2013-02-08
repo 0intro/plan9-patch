@@ -1581,6 +1581,8 @@ enum {
 	ALG_md4WithRSAEncryption,
 	ALG_md5WithRSAEncryption,
 	ALG_sha1WithRSAEncryption,
+	ALG_sha256WithRSAEncryption,
+	ALG_shaWithRSASignatureOiw,
 	ALG_sha1WithRSAEncryptionOiw,
 	ALG_md5,
 	NUMALGS
@@ -1594,6 +1596,8 @@ static Ints7 oid_md2WithRSAEncryption = {7, 1, 2, 840, 113549, 1, 1, 2 };
 static Ints7 oid_md4WithRSAEncryption = {7, 1, 2, 840, 113549, 1, 1, 3 };
 static Ints7 oid_md5WithRSAEncryption = {7, 1, 2, 840, 113549, 1, 1, 4 };
 static Ints7 oid_sha1WithRSAEncryption ={7, 1, 2, 840, 113549, 1, 1, 5 };
+static Ints7 oid_sha256WithRSAEncryption ={7, 1, 2, 840, 113549, 1, 1, 11 };
+static Ints7 oid_shaWithRSASignatureOiw ={6, 1, 3, 14, 3, 2, 15 };
 static Ints7 oid_sha1WithRSAEncryptionOiw ={6, 1, 3, 14, 3, 2, 29 };
 static Ints7 oid_md5 ={6, 1, 2, 840, 113549, 2, 5, 0 };
 static Ints *alg_oid_tab[NUMALGS+1] = {
@@ -1602,11 +1606,13 @@ static Ints *alg_oid_tab[NUMALGS+1] = {
 	(Ints*)&oid_md4WithRSAEncryption,
 	(Ints*)&oid_md5WithRSAEncryption,
 	(Ints*)&oid_sha1WithRSAEncryption,
+	(Ints*)&oid_sha256WithRSAEncryption,
+	(Ints*)&oid_shaWithRSASignatureOiw,
 	(Ints*)&oid_sha1WithRSAEncryptionOiw,
 	(Ints*)&oid_md5,
 	nil
 };
-static DigestFun digestalg[NUMALGS+1] = { md5, md5, md5, md5, sha1, sha1, md5, nil };
+static DigestFun digestalg[NUMALGS+1] = { md5, md5, md5, md5, sha1, sha2_256, sha1, sha1, md5, nil };
 
 static void
 freecert(CertX509* c)
