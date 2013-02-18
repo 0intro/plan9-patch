@@ -1,0 +1,61 @@
+--- sys/src/libndb/dnsquery.c	Tue May 29 21:10:30 2012
++++ sys/src/libndb/dnsquery.c	Tue May 29 21:10:28 2012
+@@ -78,40 +79,26 @@
+ static void
+ mkptrname(char *ip, char *rip, int rlen)
+ {
+-	char buf[128];
+-	char *p, *np;
+-	int len;
+-
+-	if(cistrstr(ip, "in-addr.arpa") || cistrstr(ip, "ip6.arpa")){
+-		nstrcpy(rip, ip, rlen);
+-		return;
+-	}
+-
+-	nstrcpy(buf, ip, sizeof buf);
+-	for(p = buf; *p; p++)
+-		;
+-	*p = '.';
+-	np = rip;
+-	len = 0;
+-	while(p >= buf){
+-		len++;
+-		p--;
+-		if(*p == '.'){
+-			memmove(np, p+1, len);
+-			np += len;
+-			len = 0;
++	uchar a[IPaddrlen];
++	char *p, *e;
++	int i;
++
++	if(strstr(ip, "in-addr.arpa") || strstr(ip, "IN-ADDR.ARPA")
++	|| strstr(ip, "ip6.arpa") || strstr(ip, "IP6.ARPA")
++	|| parseip(a, ip) == -1)
++		snprint(rip, rlen, "%s", ip);
++	else if(isv4(a))
++		snprint(rip, rlen, "%ud.%ud.%ud.%ud.in-addr.arpa",
++			a[15], a[14], a[13], a[12]);
++	else{
++		p = rip;
++		e = rip + rlen;
++		for(i = 15; i >= 0; i--){
++			p = seprint(p, e, "%ux.", a[i]&0xf);
++			p = seprint(p, e, "%ux.", a[i]>>4);
+ 		}
++		seprint(p, e, "ip6.arpa");
+ 	}
+-	memmove(np, p+1, len);
+-	np += len;
+-	strcpy(np, "in-addr.arpa");
+-}
+-
+-static void
+-nstrcpy(char *to, char *from, int len)
+-{
+-	strncpy(to, from, len);
+-	to[len-1] = 0;
+ }
+ 
+ static Ndbtuple*
