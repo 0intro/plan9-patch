@@ -68,6 +68,19 @@ is a directory.
 Skip the authentication protocol.
 This is useful for connecting to foreign systems like Inferno.
 .TP
+.B -z
+Bypass the initial protocol request for which remote tree to serve. The
+.I file
+parameter must still be provided but is not sent to the server. This is necessary when the remote 
+.IR exportfs (4) 
+is running with the 
+.B -r 
+or 
+.B -S 
+options which pre-select a file tree to serve. The exception is if both sides are operating in the
+.B -B
+backwards mode.
+.TP
 .B -B
 Run in ``backwards'' mode, described below.
 .TP
@@ -134,6 +147,32 @@ and optionally runs
 .I cmd
 .IR args .
 .SH EXAMPLES
+Connect to the cpu server
+.B kremvax
+and allow local access to its
+.IR proc (3)
+directory:
+.IP
+.EX
+import kremvax /proc /n/kremproc
+.EE
+.PP
+Assume a user on
+.B kremvax
+wishes to provide an authenticated export of their 
+.IR upas (4) 
+mailbox for access from another machine. That user issues this command on kremvax:
+.IP
+.EX
+aux/listen1 tcp!*!8888 /bin/exportfs -a -S /srv/upasfs.$user
+.EE
+.PP
+Then, to connect to the mailbox from a remote machine:
+.IP
+.EX
+import -c -z tcp!kremvax!8888 mail /mail/fs
+.EE
+.PP
 Assume a machine
 .B kremvax
 that has IP interfaces for the company intranet and the global

@@ -25,6 +25,7 @@ AuthInfo 	*ai;
 int		debug;
 int		doauth = 1;
 int		timedout;
+int		skiptree;
 
 int	connect(char*, char*, int);
 int	passive(void);
@@ -33,6 +34,7 @@ void	catcher(void*, char*);
 void	sysfatal(char*, ...);
 void	usage(void);
 int	filter(int, char *, char *);
+
 
 static void	mksecret(char *, uchar *);
 
@@ -144,6 +146,9 @@ main(int argc, char **argv)
 		break;
 	case 'B':
 		backwards = 1;
+		break;
+	case 'z':
+		skiptree = 1;
 		break;
 	default:
 		usage();
@@ -312,20 +317,22 @@ connect(char *system, char *tree, int oldserver)
 			sysfatal("%r: %s", system);
 	}
 
-	procsetname("writing tree name %s", tree);
-	n = write(fd, tree, strlen(tree));
-	if(n < 0)
-		sysfatal("can't write tree: %r");
-
-	strcpy(buf, "can't read tree");
-
-	procsetname("awaiting OK for %s", tree);
-	n = read(fd, buf, sizeof buf - 1);
-	if(n!=2 || buf[0]!='O' || buf[1]!='K'){
-		if (timedout)
-			sysfatal("timed out connecting to %s", na);
-		buf[sizeof buf - 1] = '\0';
-		sysfatal("bad remote tree: %s", buf);
+	if(!skiptree){
+		procsetname("writing tree name %s", tree);
+		n = write(fd, tree, strlen(tree));
+		if(n < 0)
+			sysfatal("can't write tree: %r");
+	
+		strcpy(buf, "can't read tree");
+	
+		procsetname("awaiting OK for %s", tree);
+		n = read(fd, buf, sizeof buf - 1);
+		if(n!=2 || buf[0]!='O' || buf[1]!='K'){
+			if (timedout)
+				sysfatal("timed out connecting to %s", na);
+			buf[sizeof buf - 1] = '\0';
+			sysfatal("bad remote tree: %s", buf);
+		}
 	}
 
 	if(oldserver)
@@ -363,7 +370,7 @@ void
 usage(void)
 {
 	fprint(2, "usage: import [-abcC] [-A] [-E clear|ssl|tls] "
-"[-e 'crypt auth'|clear] [-k keypattern] [-p] host remotefs [mountpoint]\n");
+"[-e 'crypt auth'|clear] [-k keypattern] [-p] [-z] host remotefs [mountpoint]\n");
 	exits("usage");
 }
 

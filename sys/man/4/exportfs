@@ -83,7 +83,7 @@ or
 The remote system should run
 .B import
 .B -B
-to handle the call.
+to handle the call. Referred to as ``backwards'' mode.
 See
 .IR import (4)
 for an example.
@@ -139,6 +139,13 @@ Make the served name space read only.
 .B -r \fIroot
 Bypass the initial protocol, serving the name space rooted at
 .IR root .
+This option requires the use of of the 
+.B -z 
+flag to 
+.IR import (4)
+to instruct it to bypass this part of the protocol also, unless the connection is made in 
+.B -B 
+backwards mode.
 .TP
 .B -S \fIservice
 bypass the initial protocol, serving the result of mounting
@@ -150,6 +157,13 @@ to correctly handle servers in which each mount
 corresponds to a different client
 .IR e.g. , (
 .IR rio (4)).
+This also requires that 
+.IR import (4)
+clients use the 
+.B -z 
+flag to bypass tree negotiation if 
+.B -B
+mode is not in use.
 .TP
 .B -s
 equivalent to
