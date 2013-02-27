@@ -413,7 +413,7 @@ main(int argc, char **argv)
 			if(donothing)
 				break;
 			if(rd.mode&DMDIR){
-				fd = create(local, OREAD, DMDIR);
+				fd = create(local, OREAD, DMDIR|0700);
 				if(fd < 0 && isdir(local))
 					fd = open(local, OREAD);
 				if(fd  < 0){
