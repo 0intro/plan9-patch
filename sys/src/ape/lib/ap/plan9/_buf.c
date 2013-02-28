@@ -292,12 +292,6 @@ select(int nfds, fd_set *rfds, fd_set *wfds, fd_set *efds, struct timeval *timeo
 				if(_startbuf(i) != 0) {
 					return -1;
 				}
-			b = f->buf;
-			if(rfds && FD_ISSET(i,rfds) && b->eof && b->n == 0)
-			if(efds == 0 || !FD_ISSET(i,efds)) {
-				errno = EBADF;		/* how X tells a client is gone */
-				return -1;
-			}
 		}
 
 	/* check wfds;  for now, we'll say they are all ready */
