@@ -22,11 +22,12 @@ ARISING OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF
 THIS SOFTWARE.
 ****************************************************************/
 
-char	*version = "version 19990602";
+char	*version = "version 20070501";
 
 #define DEBUG
 #include <stdio.h>
 #include <ctype.h>
+#include <locale.h>
 #include <stdlib.h>
 #include <string.h>
 #include <signal.h>
@@ -44,7 +45,9 @@ extern	int errorflag;	/* non-zero if any syntax errors; set by yyerror */
 int	compile_time = 2;	/* for error printing: */
 				/* 2 = cmdline, 1 = compile, 0 = running */
 
-char	*pfile[20];	/* program filenames from -f's */
+#define	MAX_PFILE	20	/* max number of -f's */
+
+char	*pfile[MAX_PFILE];	/* program filenames from -f's */
 int	npfile = 0;	/* number of filenames */
 int	curpfile = 0;	/* current filename */
 
@@ -52,19 +55,27 @@ int	safe	= 0;	/* 1 => "safe" mode */
 
 int main(int argc, char *argv[])
 {
-	char *fs = NULL, *marg;
-	int temp;
+	const char *fs = NULL;
 
+	setlocale(LC_CTYPE, "");
+	setlocale(LC_NUMERIC, "C"); /* for parsing cmdline & prog */
 	cmdname = argv[0];
 	if (argc == 1) {
-		fprintf(stderr, "Usage: %s [-F fieldsep] [-mf n] [-mr n] [-v var=value] [-f programfile | 'program'] [file ...]\n", cmdname);
+		fprintf(stderr, 
+		  "usage: %s [-F fs] [-v var=value] [-f progfile | 'prog'] [file ...]\n", 
+		  cmdname);
 		exit(1);
 	}
 	signal(SIGFPE, fpecatch);
 	yyin = NULL;
 	symtab = makesymtab(NSYMTAB);
 	while (argc > 1 && argv[1][0] == '-' && argv[1][1] != '\0') {
-		if (strcmp(argv[1], "--") == 0) {	/* explicit end of args */
+		if (strcmp(argv[1],"-version") == 0 || strcmp(argv[1],"--version") == 0) {
+			printf("awk %s\n", version);
+			exit(0);
+			break;
+		}
+		if (strncmp(argv[1], "--", 2) == 0) {	/* explicit end of args */
 			argc--;
 			argv++;
 			break;
@@ -79,6 +90,8 @@ int main(int argc, char *argv[])
 			argv++;
 			if (argc <= 1)
 				FATAL("no program filename");
+			if (npfile >= MAX_PFILE - 1)
+				FATAL("too many -f options"); 
 			pfile[npfile++] = argv[1];
 			break;
 		case 'F':	/* set field separator */
@@ -100,21 +113,6 @@ int main(int argc, char *argv[])
 		case 'v':	/* -v a=1 to be done NOW.  one -v for each */
 			if (argv[1][2] == '\0' && --argc > 1 && isclvar((++argv)[1]))
 				setclvar(argv[1]);
-			break;
-		case 'm':	/* more memory: -mr=record, -mf=fields */
-				/* no longer needed */
-			marg = argv[1];
-			if (argv[1][3])
-				temp = atoi(&argv[1][3]);
-			else {
-				argv++; argc--;
-				temp = atoi(&argv[1][0]);
-			}
-			switch (marg[2]) {
-			case 'r':	recsize = temp; break;
-			case 'f':	nfields = temp; break;
-			default: FATAL("unknown option %s\n", marg);
-			}
 			break;
 		case 'd':
 			dbg = atoi(&argv[1][2]);
@@ -154,6 +152,7 @@ int main(int argc, char *argv[])
 	if (!safe)
 		envinit(environ);
 	yyparse();
+	setlocale(LC_NUMERIC, ""); /* back to whatever it is locally */
 	if (fs)
 		*FS = qstring(fs, '\0');
 	   dprintf( ("errorflag=%d\n", errorflag) );

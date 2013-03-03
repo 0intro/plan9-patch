@@ -57,12 +57,11 @@ static Cell dollar1 = { OCELL, CFLD, NULL, "", 0.0, FLD|STR|DONTFREE };
 
 void recinit(unsigned int n)
 {
-	record = (char *) malloc(n);
-	fields = (char *) malloc(n);
-	fldtab = (Cell **) malloc((nfields+1) * sizeof(Cell *));
-	if (record == NULL || fields == NULL || fldtab == NULL)
+	if ( (record = (char *) malloc(n)) == NULL
+	  || (fields = (char *) malloc(n+1)) == NULL
+	  || (fldtab = (Cell **) malloc((nfields+1) * sizeof(Cell *))) == NULL
+	  || (fldtab[0] = (Cell *) malloc(sizeof(Cell))) == NULL )
 		FATAL("out of space for $0 and fields");
-	fldtab[0] = (Cell *) malloc(sizeof (Cell));
 	*fldtab[0] = dollar0;
 	fldtab[0]->sval = record;
 	fldtab[0]->nval = tostring("0");
@@ -100,12 +99,14 @@ void initgetrec(void)
 	infile = stdin;		/* no filenames, so use stdin */
 }
 
+static int firsttime = 1;
+
 int getrec(char **pbuf, int *pbufsize, int isrecord)	/* get next input record */
 {			/* note: cares whether buf == record */
 	int c;
-	static int firsttime = 1;
 	char *buf = *pbuf;
-	int bufsize = *pbufsize;
+	uschar saveb0;
+	int bufsize = *pbufsize, savebufsize = bufsize;
 
 	if (firsttime) {
 		firsttime = 0;
@@ -117,6 +118,7 @@ int getrec(char **pbuf, int *pbufsize, int isrecord)	/* get next input record */
 		donefld = 0;
 		donerec = 1;
 	}
+	saveb0 = buf[0];
 	buf[0] = 0;
 	while (argno < *ARGC || infile == stdin) {
 		   dprintf( ("argno=%d, file=|%s|\n", argno, file) );
@@ -163,14 +165,15 @@ int getrec(char **pbuf, int *pbufsize, int isrecord)	/* get next input record */
 		infile = NULL;
 		argno++;
 	}
+	buf[0] = saveb0;
 	*pbuf = buf;
-	*pbufsize = bufsize;
+	*pbufsize = savebufsize;
 	return 0;	/* true end of file */
 }
 
 void nextfile(void)
 {
-	if (infile != stdin)
+	if (infile != NULL && infile != stdin)
 		fclose(infile);
 	infile = NULL;
 	argno++;
@@ -307,6 +310,13 @@ void fldbld(void)	/* create fields from current record */
 		}
 		*fr = 0;
 	} else if (*r != 0) {	/* if 0, it's a null field */
+		/* subtlecase : if length(FS) == 1 && length(RS > 0)
+		 * \n is NOT a field separator (cf awk book 61,84).
+		 * this variable is tested in the inner while loop.
+		 */
+		int rtest = '\n';  /* normal case */
+		if (strlen(*RS) > 0)
+			rtest = '\0';
 		for (;;) {
 			i++;
 			if (i > nfields)
@@ -315,7 +325,7 @@ void fldbld(void)	/* create fields from current record */
 				xfree(fldtab[i]->sval);
 			fldtab[i]->sval = fr;
 			fldtab[i]->tval = FLD | STR | DONTFREE;
-			while (*r != sep && *r != '\n' && *r != '\0')	/* \n is always a separator */
+			while (*r != sep && *r != rtest && *r != '\0')	/* \n is always a separator */
 				*fr++ = *r++;
 			*fr++ = 0;
 			if (*r++ == 0)
@@ -370,7 +380,7 @@ void newfld(int n)	/* add field n after end of existing lastfld */
 Cell *fieldadr(int n)	/* get nth field */
 {
 	if (n < 0)
-		FATAL("trying to access field %d", n);
+		FATAL("trying to access out of range field %d", n);
 	if (n > nfields)	/* fields after NF are empty */
 		growfldtab(n);	/* but does not increase NF */
 	return(fldtab[n]);
@@ -379,17 +389,22 @@ Cell *fieldadr(int n)	/* get nth field */
 void growfldtab(int n)	/* make new fields up to at least $n */
 {
 	int nf = 2 * nfields;
+	size_t s;
 
 	if (n > nf)
 		nf = n;
-	fldtab = (Cell **) realloc(fldtab, (nf+1) * (sizeof (struct Cell *)));
+	s = (nf+1) * (sizeof (struct Cell *));  /* freebsd: how much do we need? */
+	if (s / sizeof(struct Cell *) - 1 == nf) /* didn't overflow */
+		fldtab = (Cell **) realloc(fldtab, s);
+	else					/* overflow sizeof int */
+		xfree(fldtab);	/* make it null */
 	if (fldtab == NULL)
 		FATAL("out of space creating %d fields", nf);
 	makefields(nfields+1, nf);
 	nfields = nf;
 }
 
-int refldbld(char *rec, char *fs)	/* build fields from reg expr in FS */
+int refldbld(const char *rec, const char *fs)	/* build fields from reg expr in FS */
 {
 	/* this relies on having fields[] the same length as $0 */
 	/* the fields are all stored in this one array with \0's */
@@ -471,12 +486,12 @@ void recbld(void)	/* create $0 from $1..$NF if necessary */
 
 int	errorflag	= 0;
 
-void yyerror(char *s)
+void yyerror(const char *s)
 {
-	SYNTAX(s);
+	SYNTAX("%s", s);
 }
 
-void SYNTAX(char *fmt, ...)
+void SYNTAX(const char *fmt, ...)
 {
 	extern char *cmdname, *curfname;
 	static int been_here = 0;
@@ -532,7 +547,7 @@ void bcheck2(int n, int c1, int c2)
 		fprintf(stderr, "\t%d extra %c's\n", -n, c2);
 }
 
-void FATAL(char *fmt, ...)
+void FATAL(const char *fmt, ...)
 {
 	extern char *cmdname;
 	va_list varg;
@@ -548,7 +563,7 @@ void FATAL(char *fmt, ...)
 	exit(2);
 }
 
-void WARNING(char *fmt, ...)
+void WARNING(const char *fmt, ...)
 {
 	extern char *cmdname;
 	va_list varg;
@@ -587,6 +602,8 @@ void error()
 			fprintf(stderr, " source file %s", cursource());
 	}else if(line >= 0)
 		fprintf(stderr, " source line %d", line);
+	else
+		fprintf(stderr, " unknown location");
 	fprintf(stderr, "\n");
 	eprint();
 }
@@ -639,7 +656,7 @@ void bclass(int c)
 	}
 }
 
-double errcheck(double x, char *s)
+double errcheck(double x, const char *s)
 {
 
 	if (errno == EDOM) {
@@ -654,22 +671,48 @@ double errcheck(double x, char *s)
 	return x;
 }
 
-int isclvar(char *s)	/* is s of form var=something ? */
+int isclvar(const char *s)	/* is s of form var=something ? */
 {
-	char *os = s;
+	const char *os = s;
 
-	if (!isalpha(*s) && *s != '_')
+	if (!isalpha((uschar) *s) && *s != '_')
 		return 0;
 	for ( ; *s; s++)
-		if (!(isalnum(*s) || *s == '_'))
+		if (!(isalnum((uschar) *s) || *s == '_'))
 			break;
 	return *s == '=' && s > os && *(s+1) != '=';
 }
 
 /* strtod is supposed to be a proper test of what's a valid number */
+/* appears to be broken in gcc on linux: thinks 0x123 is a valid FP number */
+/* wrong: violates 4.10.1.4 of ansi C standard */
+
+static char ntab[128] = {
+['\n']	1,
+['\v']	1,
+[' ']	1,
+['\t']	1,
+['0']	1,
+['1']	1,
+['2']	1,
+['3']	1,
+['4']	1,
+['5']	1,
+['6']	1,
+['7']	1,
+['8']	1,
+['9']	1,
+['-']	1,
+['+']	1,
+['.']	1,
+['n']	1,		/* nans */
+['N']	1,
+['i']	1,		/* infs */
+['I']	1,
+};
 
 #include <math.h>
-int is_number(char *s)
+int is_number(const char *s)
 {
 	double r;
 	char *ep;
@@ -678,26 +721,8 @@ int is_number(char *s)
 	 * fast could-it-be-a-number check before calling strtod,
 	 * which takes a surprisingly long time to reject non-numbers.
 	 */
-	switch (*s) {
-	case '0': case '1': case '2': case '3': case '4':
-	case '5': case '6': case '7': case '8': case '9':
-	case '\t':
-	case '\n':
-	case '\v':
-	case '\f':
-	case '\r':
-	case ' ':
-	case '-':
-	case '+':
-	case '.':
-	case 'n':		/* nans */
-	case 'N':
-	case 'i':		/* infs */
-	case 'I':
-		break;
-	default:
+	if(*s >= 0x80 || ntab[*s] == 0)
 		return 0;	/* can't be a number */
-	}
 
 	errno = 0;
 	r = strtod(s, &ep);

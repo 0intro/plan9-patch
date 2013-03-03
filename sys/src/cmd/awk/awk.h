@@ -10,8 +10,10 @@ typedef double	Awkfloat;
 
 typedef	unsigned char uschar;
 
-#define	xfree(a)	{ if ((a) != NULL) { free((char *) a); a = NULL; } }
+#define	xfree(a)	{ if ((a) != NULL) { free((void *) (a)); (a) = NULL; } }
 
+#define	NN(p)	((p) ? (p) : "(null)")	/* guaranteed non-null for dprintf 
+*/
 #define	DEBUG
 #ifdef	DEBUG
 			/* uses have to be doubly parenthesized */
@@ -19,8 +21,6 @@ typedef	unsigned char uschar;
 #else
 #	define	dprintf(x)
 #endif
-
-extern	char	errbuf[];
 
 extern int	compile_time;	/* 1 if compiling, 0 if running */
 extern int	safe;		/* 0 => unsafe, 1 => safe */
@@ -107,6 +107,7 @@ extern Cell	*rlengthloc;	/* RLENGTH */
 #define	FTOLOWER 13
 #define	FFLUSH	14
 #define	FUTF	15
+#define FSTRTONUM 16
 
 /* Node:  parse tree is made of nodes, with Cell's at bottom */
 
@@ -166,8 +167,7 @@ extern	int	pairstack[], paircnt;
 #define isexit(n)	((n)->csub == JEXIT)
 #define	isbreak(n)	((n)->csub == JBREAK)
 #define	iscont(n)	((n)->csub == JCONT)
-#define	isnext(n)	((n)->csub == JNEXT)
-#define	isnextfile(n)	((n)->csub == JNEXTFILE)
+#define	isnext(n)	((n)->csub == JNEXT || (n)->csub == JNEXTFILE)
 #define	isret(n)	((n)->csub == JRET)
 #define isrec(n)	((n)->tval & REC)
 #define isfld(n)	((n)->tval & FLD)
