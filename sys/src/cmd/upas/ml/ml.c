@@ -73,6 +73,11 @@ main(int argc, char **argv)
 		sysfatal("message must contain From: or Sender:");
 	if(strcmp(listname, s_to_c(from)) == 0)
 		sysfatal("can't remail messages from myself");
+
+	/* don't add the sender to the recipient list, or we get dup mails
+	 * and/or sender might think "already on the list" when not.
+	 */
+	if(0)
 	addaddr(s_to_c(from));
 
 	/* start the mailer up and return a pipe to it */
