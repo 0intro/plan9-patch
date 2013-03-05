@@ -20,6 +20,7 @@ enum {
 	Timer = 0,					// Alt channels.
 	Unsent = 1,
 	Maxto = 24 * 3600,			// A full day to reconnect.
+	Hdrsz = 12,
 };
 
 typedef struct Endpoints Endpoints;
@@ -31,12 +32,12 @@ struct Endpoints {
 };
 
 typedef struct {
-	ulong		nb;		// Number of data bytes in this message
-	ulong		msg;		// Message number
-	ulong		acked;	// Number of messages acked
+	u32int		nb;		// Number of data bytes in this message
+	u32int		msg;		// Message number
+	u32int		acked;	// Number of messages acked
 } Hdr;
 
-typedef struct t_Buf {
+typedef struct {
 	Hdr			hdr;
 	uchar		buf[Bufsize];
 } Buf;
@@ -74,6 +75,8 @@ static void		dmessage(int, char *, ...);
 static void		timerproc(void *);
 static Endpoints *getendpoints(char *);
 static void		freeendpoints(Endpoints *);
+static void		packhdr(Hdr *, uchar *);
+static void		unpackhdr(Hdr *, uchar *);
 
 static void
 usage(void)
@@ -100,6 +103,7 @@ threadmain(int argc, char **argv)
 	Buf *b;
 	Channel *timer;
 	vlong synctime;
+	uchar buf[Hdrsz];
 
 	progname = argv[0];
 	ARGBEGIN {
@@ -195,7 +199,8 @@ threadmain(int argc, char **argv)
 			hdr.acked = inmsg;
 			hdr.msg = -1;
 
-			if (writen(netfd, (uchar *)&hdr, sizeof(Hdr)) < 0) {
+			packhdr(&hdr, buf);
+			if (writen(netfd, buf, sizeof(buf)) < 0) {
 				dmessage(2, "main; writen failed; %r\n");
 				failed = 1;
 				continue;
@@ -213,7 +218,8 @@ threadmain(int argc, char **argv)
 
 			b->hdr.acked = inmsg;
 
-			if (writen(netfd, (uchar *)&b->hdr, sizeof(Hdr)) < 0) {
+			packhdr(&b->hdr, buf);
+			if (writen(netfd, buf, sizeof(buf)) < 0) {
 				dmessage(2, "main; writen failed; %r\n");
 				failed = 1;
 			}
@@ -264,6 +270,7 @@ fromnet(void*)
 {
 	static int lastacked;
 	Buf *b;
+	uchar buf[Hdrsz];
 
 	b = (Buf *)malloc(sizeof(Buf));
 	assert(b);
@@ -278,7 +285,7 @@ fromnet(void*)
 		}
 
 		// Read the header.
-		if ((len = readn(netfd, &b->hdr, sizeof(Hdr))) <= 0) {
+		if ((len = readn(netfd, buf, sizeof(buf))) <= 0) {
 			if (len < 0)
 				dmessage(1, "fromnet; (hdr) network failure; %r\n");
 			else
@@ -287,6 +294,7 @@ fromnet(void*)
 			netfd = -1;
 			continue;
 		}
+		unpackhdr(&b->hdr, buf);
 		dmessage(2, "fromnet: Got message, size %d, nb %d, msg %d\n", len,
 				b->hdr.nb, b->hdr.msg);
 
@@ -389,6 +397,7 @@ synchronize(void)
 {
 	Channel *tmp;
 	Buf *b;
+	uchar buf[Hdrsz];
 
 	// Ignore network errors here.  If we fail during 
 	// synchronization, the next alarm will pick up 
@@ -396,7 +405,9 @@ synchronize(void)
 
 	tmp = chancreate(sizeof(Buf *), Nbuf);
 	while ((b = nbrecvp(unacked)) != nil) {
-		writen(netfd, (uchar *)b, sizeof(Hdr) + b->hdr.nb);
+		packhdr(&b->hdr, buf);
+		writen(netfd, buf, sizeof(buf));
+		writen(netfd, b->buf, b->hdr.nb);
 		sendp(tmp, b);
 	}
 	chanfree(unacked);
@@ -518,3 +529,33 @@ freeendpoints(Endpoints *ep)
 	free(ep);
 }
 
+#define	U32GET(p)	((u32int)((p)[0]|((p)[1]<<8)|((p)[2]<<16)|((p)[3]<<24)))
+#define	U32PUT(p,v)	(p)[0]=(v)&0xFF;(p)[1]=((v)>>8)&0xFF;(p)[2]=((v)>>16)&0xFF;(p)[3]=((v)>>24)&0xFF
+
+void
+packhdr(Hdr *hdr, uchar *buf)
+{
+	uchar *p;
+
+	p = buf;
+
+	U32PUT(p, hdr->nb);
+	p += 4;
+	U32PUT(p, hdr->msg);
+	p += 4;
+	U32PUT(p, hdr->acked);
+}
+
+void
+unpackhdr(Hdr *hdr, uchar *buf)
+{
+	uchar *p;
+
+	p = buf;
+
+	hdr->nb = U32GET(p);
+	p += 4;
+	hdr->msg = U32GET(p);
+	p += 4;
+	hdr->acked = U32GET(p);
+}
