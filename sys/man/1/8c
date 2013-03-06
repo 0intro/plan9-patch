@@ -109,6 +109,12 @@ and append
 .B -w
 Print warning messages about unused variables, etc.
 .TP
+.B -W
+Similar to 
+.BR -w ,
+but makes warnings into errors,
+so that large builds that should be warning-free will stop in their tracks.
+.TP
 .B -B
 Accept functions without a new-style
 ANSI C function prototype.
