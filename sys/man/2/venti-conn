@@ -85,8 +85,13 @@ for reading and writing.
 dials the given network address
 (see
 .IR dial (2))
-and returns a corresponding connection.
-It returns nil if the connection cannot be established.
+and returns a corresponding connection. If
+.I addr
+is nil, the environment variable
+.I venti
+will be used if set; if not, the address
+.IB tcp ! $venti ! venti
+will be used. It returns nil if the connection cannot be established.
 .PP
 .I Vtversion
 exchanges version information with the remote side
@@ -102,7 +107,7 @@ writes a packet
 on the connection
 .IR z .
 The packet
-.IR p
+.I p
 should be a formatted Venti message as might
 be returned by
 .IR vtfcallpack ;
