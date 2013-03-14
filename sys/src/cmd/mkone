@@ -26,6 +26,7 @@ lex.yy.c:	$LFILES
 install:V:	$BIN/$TARG
 
 $BIN/$TARG:	$O.out
+	test -d $BIN || mkdir -p $BIN
 	cp $prereq $BIN/$TARG
 
 installall:V:

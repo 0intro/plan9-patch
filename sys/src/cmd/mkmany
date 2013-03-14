@@ -28,6 +28,7 @@ lex.yy.c:	$LFILES
 %.install:V:	$BIN/%
 
 $BIN/%:	$O.%
+	test -d $BIN || mkdir -p $BIN
 	cp $O.$stem $BIN/$stem
 
 %.installall:V:
