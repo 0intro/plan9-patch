@@ -19,7 +19,7 @@
 
 #define YYDEBUG	0
 #define Stop	nn(ZN,'@',ZN,ZN)
-#define PART0	"place initialized var decl of "
+#define PART0	"place initialized declaration of "
 #define PART1	"place initialized chan decl of "
 #define PART2	" at start of proctype "
 
@@ -30,10 +30,11 @@ extern	Lextok *for_body(Lextok *, int);
 extern	void for_setup(Lextok *, Lextok *, Lextok *);
 extern	Lextok *for_index(Lextok *, Lextok *);
 extern	Lextok *sel_index(Lextok *, Lextok *, Lextok *);
+extern  void    keep_track_off(Lextok *);
 extern  int	u_sync, u_async, dumptab, scope_level;
-extern	int	initialization_ok, split_decl;
-extern	short	has_sorted, has_random, has_enabled, has_pcvalue, has_np;
-extern	short	has_code, has_state, has_io;
+extern	int	initialization_ok;
+extern	short	has_sorted, has_random, has_enabled, has_pcvalue, has_np, has_priority;
+extern	short	has_code, has_state, has_ltl, has_io;
 extern	void	count_runs(Lextok *);
 extern	void	no_internals(Lextok *);
 extern	void	any_runs(Lextok *);
@@ -54,11 +55,11 @@ static	int	Embedded = 0, inEventMap = 0, has_ini = 0;
 
 %}
 
-%token	ASSERT PRINT PRINTM
+%token	ASSERT PRINT PRINTM PREPROC
 %token	C_CODE C_DECL C_EXPR C_STATE C_TRACK
-%token	RUN LEN ENABLED EVAL PC_VAL
-%token	TYPEDEF MTYPE INLINE LABEL OF
-%token	GOTO BREAK ELSE SEMI
+%token	RUN LEN ENABLED SET_P GET_P EVAL PC_VAL
+%token	TYPEDEF MTYPE INLINE RETURN LABEL OF
+%token	GOTO BREAK ELSE SEMI ARROW
 %token	IF FI DO OD FOR SELECT IN SEP DOTDOT
 %token	ATOMIC NON_ATOMIC D_STEP UNLESS
 %token  TIMEOUT NONPROGRESS
@@ -156,7 +157,7 @@ proctype: PROCTYPE	{ $$ = nn(ZN,CONST,ZN,ZN); $$->val = 0; }
 
 inst	: /* empty */	{ $$ = ZN; }
 	| ACTIVE	{ $$ = nn(ZN,CONST,ZN,ZN); $$->val = 1; }
-	| ACTIVE '[' CONST ']' {
+	| ACTIVE '[' const_expr ']' {
 			  $$ = nn(ZN,CONST,ZN,ZN); $$->val = $3->val;
 			  if ($3->val > 255)
 				non_fatal("max nr of processes is 255\n", "");
@@ -185,9 +186,9 @@ init	: INIT		{ context = $1->sym; }
         		}
 	;
 
-ltl	: LTL optname2		{ ltl_mode = 1; ltl_name = $2->sym->name; }
-	  ltl_body		{ if ($4) ltl_list($2->sym->name, $4->sym->name);
-			  ltl_mode = 0;
+ltl	: LTL optname2	{ ltl_mode = 1; ltl_name = $2->sym->name; }
+	  ltl_body	{ if ($4) ltl_list($2->sym->name, $4->sym->name);
+			  ltl_mode = 0; has_ltl = 1;
 			}
 	;
 
@@ -390,31 +391,42 @@ var_list: ivar           	{ $$ = nn($1, TYPE, ZN, ZN); }
 ivar    : vardcl           	{ $$ = $1;
 				  $1->sym->ini = nn(ZN,CONST,ZN,ZN);
 				  $1->sym->ini->val = 0;
+				  if (!initialization_ok)
+				  {	Lextok *zx, *xz;
+					zx = nn(ZN, NAME, ZN, ZN);
+					zx->sym = $1->sym;
+					xz = nn(zx, ASGN, zx, $1->sym->ini);
+					keep_track_off(xz);
+					/* make sure zx doesnt turn out to be a STRUCT later */
+					add_seq(xz);
+				  }
 				}
 	| vardcl ASGN expr   	{ $$ = $1;
 				  $1->sym->ini = $3;
-				  trackvar($1,$3);
 				  if ($3->ntyp == CONST
 				  || ($3->ntyp == NAME && $3->sym->context))
 				  {	has_ini = 2; /* local init */
 				  } else
 				  {	has_ini = 1; /* possibly global */
 				  }
-				  if (!initialization_ok && split_decl)
-				  {	nochan_manip($1, $3, 0);
-				  	no_internals($1);
-					non_fatal(PART0 "'%s'" PART2, $1->sym->name);
+				  trackvar($1, $3);
+				  nochan_manip($1, $3, 0);
+				  no_internals($1);
+				  if (!initialization_ok)
+				  {	Lextok *zx = nn(ZN, NAME, ZN, ZN);
+					zx->sym = $1->sym;
+					add_seq(nn(zx, ASGN, zx, $3));
 				  }
 				}
 	| vardcl ASGN ch_init	{ $1->sym->ini = $3;
 				  $$ = $1; has_ini = 1;
-				  if (!initialization_ok && split_decl)
+				  if (!initialization_ok)
 				  {	non_fatal(PART1 "'%s'" PART2, $1->sym->name);
 				  }
 				}
 	;
 
-ch_init : '[' CONST ']' OF
+ch_init : '[' const_expr ']' OF
 	  '{' typ_list '}'	{ if ($2->val)
 					u_async++;
 				  else
@@ -436,7 +448,7 @@ vardcl  : NAME  		{ $1->sym->nel = 1; $$ = $1; }
 				  }
 				  $1->sym->nel = 1; $$ = $1;
 				}
-	| NAME '[' CONST ']'	{ $1->sym->nel = $3->val; $1->sym->isarray = 1; $$ = $1; }
+	| NAME '[' const_expr ']'	{ $1->sym->nel = $3->val; $1->sym->isarray = 1; $$ = $1; }
 	;
 
 varref	: cmpnd			{ $$ = mk_explicit($1, Expand_Ok, NAME); }
@@ -475,13 +487,15 @@ sfld	: /* empty */		{ $$ = ZN; }
 
 stmnt	: Special		{ $$ = $1; initialization_ok = 0; }
 	| Stmnt			{ $$ = $1; initialization_ok = 0;
-				  if (inEventMap)
-				   non_fatal("not an event", (char *)0);
+				  if (inEventMap) non_fatal("not an event", (char *)0);
 				}
 	;
 
-for_pre : FOR '('				{ in_for = 1; }
-	  varref			{ $$ = $4; }
+for_pre : FOR '('		{ in_for = 1; }
+	  varref		{ trapwonly($4 /*, "for" */);
+				  pushbreak(); /* moved up */
+				  $$ = $4;
+				}
 	;
 
 for_post: '{' sequence OS '}' ;
@@ -500,13 +514,14 @@ Special : varref RCV		{ Expand_Ok++; }
 	| for_pre ':' expr DOTDOT expr ')'	{
 				  for_setup($1, $3, $5); in_for = 0;
 				}
-	  for_post			{ $$ = for_body($1, 1);
+	  for_post		{ $$ = for_body($1, 1);
 				}
 	| for_pre IN varref ')'	{ $$ = for_index($1, $3); in_for = 0;
 				}
-	  for_post			{ $$ = for_body($5, 1);
+	  for_post		{ $$ = for_body($5, 1);
 				}
 	| SELECT '(' varref ':' expr DOTDOT expr ')' {
+				  trapwonly($3 /*, "select" */);
 				  $$ = sel_index($3, $5, $7);
 				}
 	| IF options FI 	{ $$ = nn($1, IF, ZN, ZN);
@@ -537,6 +552,16 @@ Special : varref RCV		{ Expand_Ok++; }
 				  }
 				  $1->sym->type = LABEL;
 				}
+	| NAME ':'		{ $$ = nn($1, ':',ZN,ZN);
+				  if ($1->sym->type != 0
+				  &&  $1->sym->type != LABEL) {
+				  	non_fatal("bad label-name %s",
+					$1->sym->name);
+				  }
+				  $$->lft = nn(ZN, 'c', nn(ZN,CONST,ZN,ZN), ZN);
+				  $$->lft->lft->val = 1; /* skip */
+				  $1->sym->type = LABEL;
+				}
 	;
 
 Stmnt	: varref ASGN full_expr	{ $$ = nn($1, ASGN, $1, $3);
@@ -560,6 +585,7 @@ Stmnt	: varref ASGN full_expr	{ $$ = nn($1, ASGN, $1, $3);
 				  if ($1->sym->type == CHAN)
 				   fatal("arithmetic on chan id's", (char *)0);
 				}
+	| SET_P '(' two_args ')'	{ $$ = nn(ZN, SET_P, $3, ZN); has_priority++; }
 	| PRINT	'(' STRING	{ realread = 0; }
 	  prargs ')'		{ $$ = nn($3, PRINT, $5, ZN); realread = 1; }
 	| PRINTM '(' varref ')'	{ $$ = nn(ZN, PRINTM, $3, ZN); }
@@ -612,8 +638,19 @@ Stmnt	: varref ASGN full_expr	{ $$ = nn($1, ASGN, $1, $3);
         			  $$->sl = seqlist(close_seq(5), 0);
         			}
 	| INAME			{ IArgs++; }
-	  '(' args ')'		{ pickup_inline($1->sym, $4); IArgs--; }
+	  '(' args ')'		{ initialization_ok = 0;
+				  pickup_inline($1->sym, $4, ZN);
+				  IArgs--;
+				}
 	  Stmnt			{ $$ = $7; }
+
+	| varref ASGN INAME	{ IArgs++; }
+	  '(' args ')'		{ initialization_ok = 0;
+				  pickup_inline($3->sym, $6, $1);
+				  IArgs--;
+				}
+	  Stmnt			{ $$ = $9; }
+	| RETURN full_expr	{ $$ = return_statement($2); }	
 	;
 
 options : option		{ $$->sl = seqlist($1->sq, 0); }
@@ -629,12 +666,26 @@ OS	: /* empty */
 	| SEMI			{ /* redundant semi at end of sequence */ }
 	;
 
-MS	: SEMI			{ /* at least one semi-colon */ }
-	| MS SEMI		{ /* but more are okay too   */ }
+semi	: SEMI
+	| ARROW
+	;
+
+MS	: semi			{ /* at least one semi-colon */ }
+	| MS semi		{ /* but more are okay too   */ }
 	;
 
 aname	: NAME			{ $$ = $1; }
 	| PNAME			{ $$ = $1; }
+	;
+
+const_expr:	CONST			{ $$ = $1; }
+	| '-' const_expr %prec UMIN	{ $$ = $2; $$->val = -($2->val); }
+	| '(' const_expr ')'		{ $$ = $2; }
+	| const_expr '+' const_expr	{ $$ = $1; $$->val = $1->val + $3->val; }
+	| const_expr '-' const_expr	{ $$ = $1; $$->val = $1->val - $3->val; }
+	| const_expr '*' const_expr	{ $$ = $1; $$->val = $1->val * $3->val; }
+	| const_expr '/' const_expr	{ $$ = $1; $$->val = $1->val / $3->val; }
+	| const_expr '%' const_expr	{ $$ = $1; $$->val = $1->val % $3->val; }
 	;
 
 expr    : '(' expr ')'		{ $$ = $2; }
@@ -660,7 +711,7 @@ expr    : '(' expr ')'		{ $$ = $2; }
 	| '-' expr %prec UMIN	{ $$ = nn(ZN, UMIN, $2, ZN); }
 	| SND expr %prec NEG	{ $$ = nn(ZN, '!', $2, ZN); }
 
-	| '(' expr SEMI expr ':' expr ')' {
+	| '(' expr ARROW expr ':' expr ')' {
 				  $$ = nn(ZN,  OR, $4, $6);
 				  $$ = nn(ZN, '?', $2, $$);
 				}
@@ -673,13 +724,12 @@ expr    : '(' expr ')'		{ $$ = $2; }
 	  '(' args ')'
 	  Opt_priority		{ Expand_Ok--;
 				  $$ = nn($2, RUN, $5, ZN);
-				  $$->val = ($7) ? $7->val : 1;
+				  $$->val = ($7) ? $7->val : 0;
 				  trackchanuse($5, $2, 'A'); trackrun($$);
 				}
 	| LEN '(' varref ')'	{ $$ = nn($3, LEN, $3, ZN); }
-	| ENABLED '(' expr ')'	{ $$ = nn(ZN, ENABLED, $3, ZN);
-				  has_enabled++;
-				}
+	| ENABLED '(' expr ')'	{ $$ = nn(ZN, ENABLED, $3, ZN); has_enabled++; }
+	| GET_P '(' expr ')'	{ $$ = nn(ZN, GET_P, $3, ZN); has_priority++; }
 	| varref RCV		{ Expand_Ok++; }
 	  '[' rargs ']'		{ Expand_Ok--; has_io++;
 				  $$ = nn($1, 'R', $1, $5);
@@ -712,7 +762,7 @@ expr    : '(' expr ')'		{ $$ = $2; }
 	;
 
 Opt_priority:	/* none */	{ $$ = ZN; }
-	| PRIORITY CONST	{ $$ = $2; }
+	| PRIORITY CONST	{ $$ = $2; has_priority++; }
 	;
 
 full_expr:	expr		{ $$ = $1; }
@@ -778,6 +828,9 @@ basetype: TYPE			{ $$->sym = ZS;
 
 typ_list: basetype		{ $$ = nn($1, $1->val, ZN, ZN); }
 	| basetype ',' typ_list	{ $$ = nn($1, $1->val, ZN, $3); }
+	;
+
+two_args:	expr ',' expr	{ $$ = nn(ZN, ',', $1, $3); }
 	;
 
 args    : /* empty */		{ $$ = ZN; }
@@ -926,6 +979,7 @@ ltl_to_string(Lextok *n)
 	memset(formula, 0, sizeof(formula));
 	retval = fgets(formula, sizeof(formula), tf);
 	fclose(tf);
+
 	(void) unlink(TMP_FILE);
 
 	if (!retval)

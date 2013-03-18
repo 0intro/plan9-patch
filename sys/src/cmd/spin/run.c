@@ -18,13 +18,15 @@ extern Symbol	*Fname;
 extern Element	*LastStep;
 extern int	Rvous, lineno, Tval, interactive, MadeChoice;
 extern int	TstOnly, verbose, s_trail, xspin, jumpsteps, depth;
-extern int	analyze, nproc, nstop, no_print, like_java;
+extern int	analyze, nproc, nstop, no_print, like_java, old_priority_rules;
 
 static long	Seed = 1;
 static int	E_Check = 0, Escape_Check = 0;
 
 static int	eval_sync(Element *);
 static int	pc_enabled(Lextok *n);
+static int	get_priority(Lextok *n);
+static void	set_priority(Lextok *n, Lextok *m);
 extern void	sr_buf(int, int);
 
 void
@@ -281,10 +283,13 @@ eval_sub(Element *e)
 			}
 		
 			switch (e->n->ntyp) {
+			case ASGN:
+				if (check_track(e->n) == STRUCT) { break; }
+				/* else fall thru */
 			case TIMEOUT: case RUN:
 			case PRINT: case PRINTM:
 			case C_CODE: case C_EXPR:
-			case ASGN: case ASSERT:
+			case ASSERT:
 			case 's': case 'r': case 'c':
 				/* toplevel statements only */
 				LastStep = e;
@@ -398,6 +403,10 @@ eval(Lextok *now)
 	case  NEMPTY: return (qlen(now)>0);
 	case ENABLED: if (s_trail) return 1;
 		      return pc_enabled(now->lft);
+
+	case GET_P: return get_priority(now->lft);
+	case SET_P: set_priority(now->lft->lft, now->lft->rgt); return 1;
+
 	case    EVAL: return eval(now->lft);
 	case  PC_VAL: return pc_value(now->lft);
 	case NONPROGRESS: return nonprogress();
@@ -411,7 +420,9 @@ eval(Lextok *now)
 	case   'c': return eval(now->lft);	/* condition    */
 	case PRINT: return TstOnly?1:interprint(stdout, now);
 	case PRINTM: return TstOnly?1:printm(stdout, now);
-	case  ASGN: return assign(now);
+	case  ASGN:
+		if (check_track(now) == STRUCT) { return 1; }
+		return assign(now);
 
 	case C_CODE: if (!analyze)
 		     {	printf("%s:\t", now->sym->name);
@@ -542,6 +553,7 @@ Enabled1(Lextok *n)
 		verbose = v;
 		return i;
 
+	case SET_P:
 	case C_CODE: case C_EXPR:
 	case PRINT: case PRINTM:
 	case   ASGN: case ASSERT:
@@ -582,6 +594,7 @@ Enabled0(Element *e)
 	case '@':
 		return X->pid == (nproc-nstop-1);
 	case '.':
+	case SET_P:
 		return 1;
 	case GOTO:
 		if (Rvous) return 0;
@@ -624,10 +637,76 @@ pc_enabled(Lextok *n)
 	for (Y = run; Y; Y = Y->nxt)
 		if (--i == pid)
 		{	oX = X; X = Y;
-			result = Enabled0(Y->pc);
+			result = Enabled0(X->pc);
 			X = oX;
 			break;
 		}
 	return result;
 }
 
+int
+pc_highest(Lextok *n)
+{	int i = nproc - nstop;
+	int pid = eval(n);
+	int target = 0, result = 1;
+	RunList *Y, *oX;
+
+	if (X->prov && !eval(X->prov)) return 0; /* can't be highest unless fully enabled */
+
+	for (Y = run; Y; Y = Y->nxt)
+	{	if (--i == pid)
+		{	target = Y->priority;
+			break;
+	}	}
+if (0) printf("highest for pid %d @ priority = %d\n", pid, target);
+
+	oX = X;
+	i = nproc - nstop;
+	for (Y = run; Y; Y = Y->nxt)
+	{	i--;
+if (0) printf("	pid %d @ priority %d\t", Y->pid, Y->priority);
+		if (Y->priority > target)
+		{	X = Y;
+if (0) printf("enabled: %s\n", Enabled0(X->pc)?"yes":"nope");
+if (0) printf("provided: %s\n", eval(X->prov)?"yes":"nope");
+			if (Enabled0(X->pc) && (!X->prov || eval(X->prov)))
+			{	result = 0;
+				break;
+		}	}
+else
+if (0) printf("\n");
+	}
+	X = oX;
+
+	return result;
+}
+
+int
+get_priority(Lextok *n)
+{	int i = nproc - nstop;
+	int pid = eval(n);
+	RunList *Y;
+
+	if (old_priority_rules)
+	{	return 1;
+	}
+
+	for (Y = run; Y; Y = Y->nxt)
+	{	if (--i == pid)
+		{	return Y->priority;
+	}	}
+	return 0;
+}
+
+void
+set_priority(Lextok *n, Lextok *p)
+{	int i = nproc - nstop;
+	int pid = eval(n);
+	RunList *Y;
+
+	if (!old_priority_rules)
+	for (Y = run; Y; Y = Y->nxt)
+	{	if (--i == pid)
+		{	Y->priority = eval(p);
+	}	}
+}

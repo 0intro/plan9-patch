@@ -83,15 +83,19 @@ is_predicate(int z)
 			}
 			peek_buf[j] = '\0';
 			if (strcmp(peek_buf, "always") == 0
+			||  strcmp(peek_buf, "equivalent") == 0
 			||  strcmp(peek_buf, "eventually") == 0
 			||  strcmp(peek_buf, "until") == 0
 			||  strcmp(peek_buf, "next") == 0)
 			{	return 0;
 			}
 		} else
-		{	char c_nxt = tl_peek(i);
-			if (((c == 'U' || c == 'V' || c == 'X') && !isalnum_(c_prev) && !isalnum_(c_nxt))
+		{	int c_nxt = tl_peek(i);
+			if (((c == 'U' || c == 'V' || c == 'X')
+			&& !isalnum_(c_prev) && !isalnum_(c_nxt))
 			||  (c == '<' && c_nxt == '>')
+			||  (c == '<' && c_nxt == '-')
+			||  (c == '-' && c_nxt == '>')
 			||  (c == '[' && c_nxt == ']'))
 			{	return 0;
 		}	}
@@ -146,6 +150,9 @@ tl_lex(void)
 	{	if (is_predicate(c))
 		{	read_upto_closing(c);
 			tl_yylval = tl_nn(PREDICATE,ZN,ZN);
+			if (!tl_yylval)
+			{	fatal("unexpected error 4", (char *) 0);
+			}
 			tl_yylval->sym = tl_lookup(yytext);
 			return PREDICATE;
 	}	}
@@ -179,6 +186,9 @@ tl_lex(void)
 		{	Token(NOT);
 		}
 		tl_yylval = tl_nn(PREDICATE,ZN,ZN);
+		if (!tl_yylval)
+		{	fatal("unexpected error 5", (char *) 0);
+		}
 		tl_yylval->sym = tl_lookup(yytext);
 		return PREDICATE;
 	}

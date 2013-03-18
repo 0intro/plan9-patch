@@ -143,6 +143,9 @@ addcan(int tok, Node *n)
 	}
 
 	s = DoDump(N);
+	if (!s)
+	{	fatal("unexpected error 6", (char *) 0);
+	}
 	if (can->ntyp != tok)	/* only one element in list so far */
 	{	ptr = &can;
 		goto insert;

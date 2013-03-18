@@ -553,10 +553,22 @@ rev_trans(Transition *t) /* print transitions  in reverse order... */
 	rev_trans(t->nxt);
 
 	if (t->redundant && !tl_verbose) return;
-	fprintf(tl_out, "\t:: (");
-	if (dump_cond(t->cond, t->cond, 1))
-		fprintf(tl_out, "1");
-	fprintf(tl_out, ") -> goto %s\n", t->name->name);
+
+	if (strcmp(t->name->name, "accept_all") == 0)	/* 6.2.4 */
+	{	/* not d_step because there may be remote refs */
+		fprintf(tl_out, "\t:: atomic { (");
+		if (dump_cond(t->cond, t->cond, 1))
+			fprintf(tl_out, "1");
+		fprintf(tl_out, ") -> assert(!(");
+		if (dump_cond(t->cond, t->cond, 1))
+			fprintf(tl_out, "1");
+		fprintf(tl_out, ")) }\n");
+	} else
+	{	fprintf(tl_out, "\t:: (");
+		if (dump_cond(t->cond, t->cond, 1))
+			fprintf(tl_out, "1");
+		fprintf(tl_out, ") -> goto %s\n", t->name->name);
+	}
 	tcnt++;
 }
 
@@ -578,11 +590,11 @@ printstate(State *b)
 	&&  Max_Red == 0)
 		fprintf(tl_out, "T0%s:\n", &(b->name->name[6]));
 
-	fprintf(tl_out, "\tif\n");
+	fprintf(tl_out, "\tdo\n");
 	tcnt = 0;
 	rev_trans(b->trans);
 	if (!tcnt) fprintf(tl_out, "\t:: false\n");
-	fprintf(tl_out, "\tfi;\n");
+	fprintf(tl_out, "\tod;\n");
 	Total++;
 }
 

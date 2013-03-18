@@ -25,7 +25,7 @@ extern Queue	*qtab;
 extern Symbol	*Fname;
 extern int	lineno, verbose, Pid, separate, old_scope_rules, nclaims;
 extern int	nrRdy, nqs, mst, Mpars, claimnr, eventmapnr;
-extern short	has_sorted, has_random, has_provided;
+extern short	has_sorted, has_random, has_provided, has_priority;
 extern Queue	*ltab[];
 
 int	Npars=0, u_sync=0, u_async=0, hastrack = 1;
@@ -51,14 +51,14 @@ reverse_names(ProcList *p)
 {
 	if (!p) return;
 	reverse_names(p->nxt);
-	fprintf(th, "   \"%s\",\n", p->n->name);
+	fprintf(tc, "   \"%s\",\n", p->n->name);
 }
 static void
 reverse_types(ProcList *p)
 {
 	if (!p) return;
 	reverse_types(p->nxt);
-	fprintf(th, "   %d,	/* %s */\n", p->b, p->n->name);
+	fprintf(tc, "   %d,	/* %s */\n", p->b, p->n->name);
 }
 
 static int
@@ -89,11 +89,11 @@ genheader(void)
 	fprintf(th, "	#else\n");
 	fprintf(th, "		#define NCORE	1\n");
 	fprintf(th, "	#endif\n");
-	fprintf(th, "#endif\n");
+	fprintf(th, "#endif\n\n");
 
 	putunames(th);
 
-	fprintf(tc, "short Air[] = { ");
+	fprintf(tc, "\nshort Air[] = { ");
 	for (p = rdy, i=0; p; p = p->nxt, i++)
 		fprintf(tc, "%s (short) Air%d", (p!=rdy)?",":"", i);
 	fprintf(tc, ", (short) Air%d", i);	/* np_ */
@@ -104,19 +104,20 @@ genheader(void)
 	}
 	fprintf(tc, " };\n");
 
-	fprintf(th, "char *procname[] = {\n");
+	fprintf(tc, "char *procname[] = {\n");
 		reverse_names(rdy);
-	fprintf(th, "   \":np_:\",\n");
-	fprintf(th, "};\n\n");
+	fprintf(tc, "   \":np_:\",\n");
+	fprintf(tc, "};\n\n");
 
-	fprintf(th, "enum btypes { NONE=%d, N_CLAIM=%d,", NONE, N_CLAIM);
-	fprintf(th, " I_PROC=%d, A_PROC=%d,", I_PROC, A_PROC);
-	fprintf(th, " P_PROC=%d, E_TRACE=%d, N_TRACE=%d };\n",
+	fprintf(tc, "enum btypes { NONE=%d, N_CLAIM=%d,", NONE, N_CLAIM);
+	fprintf(tc, " I_PROC=%d, A_PROC=%d,", I_PROC, A_PROC);
+	fprintf(tc, " P_PROC=%d, E_TRACE=%d, N_TRACE=%d };\n\n",
 		P_PROC, E_TRACE, N_TRACE);
-	fprintf(th, "int Btypes[] = {\n");
+
+	fprintf(tc, "int Btypes[] = {\n");
 		reverse_types(rdy);
-	fprintf(th, "   0	/* :np_: */\n");
-	fprintf(th, "};\n\n");
+	fprintf(tc, "   0	/* :np_: */\n");
+	fprintf(tc, "};\n\n");
 
 here:
 	for (p = rdy; p; p = p->nxt)
@@ -157,7 +158,11 @@ here:
 		{	fprintf(th, "	uint c_cur[NCLAIMS]; /* claim-states */\n");
 		}
 		fprintf(th, "} P%d;\n", nrRdy+1);
-		fprintf(th, "uchar spin_c_typ[NCLAIMS]; /* claim-types */\n");
+
+		fprintf(tc, "#ifndef NOCLAIM\n");
+		fprintf(tc, "uchar spin_c_typ[NCLAIMS]; /* claim-types */\n");
+		fprintf(tc, "#endif\n");
+
 		fprintf(th, "	#define Air%d	(0)\n\n", nrRdy+1);
 		fprintf(th, "#endif\n");
 		/*
@@ -171,11 +176,11 @@ here:
 		 *	mapstate  [ claimnr ][ curstate ]
 		 */
 	} else
-	{	fprintf(th, "\n#define Pclaim	P0\n");
+	{	fprintf(th, "#define Pclaim	P0\n");
 		fprintf(th, "#ifndef NCLAIMS\n");
 		fprintf(th, "	#define NCLAIMS 1\n");
 		fprintf(th, "#endif\n");
-		fprintf(th, "uchar spin_c_typ[NCLAIMS]; /* claim-types */\n");
+		fprintf(tc, "uchar spin_c_typ[NCLAIMS]; /* claim-types */\n");
 	}
 
 	ntimes(th, 0, 1, Head0);
@@ -191,6 +196,8 @@ here:
 
 		c_add_stack(th);
 		ntimes(th, 0, 1, Header0);
+	} else
+	{	fprintf(th, "extern char *emalloc(unsigned long);\n");
 	}
 	ntimes(th, 0, 1, Head1);
 
@@ -224,15 +231,14 @@ here:
 	fprintf(th, "	short parent_pid;\n");
 	fprintf(th, "	struct TRIX_v6 *nxt;\n");
 	fprintf(th, "} TRIX_v6;\n");
-	fprintf(th, "TRIX_v6 *freebodies;\n");
-	fprintf(th, "TRIX_v6 *processes[MAXPROC+1];\n");
-	fprintf(th, "TRIX_v6 *channels[MAXQ+1]; \n");
-	fprintf(th, "long _p_count[MAXPROC];\n");
-	fprintf(th, "long _c_count[MAXPROC];\n");
 	fprintf(th, "#endif\n\n");
 
 	fprintf(th, "#define HAS_TRACK	%d\n", hastrack);
-
+	if (0 && hastrack)	/* not really a problem */
+	{	fprintf(th, "#ifdef BFS_PAR\n");
+		fprintf(th, "	#error cannot use BFS_PAR on models with c_track stmnts\n");
+		fprintf(th, "#endif\n");
+	}
 	if (separate != 2)
 		dohidden();
 }
@@ -240,38 +246,24 @@ here:
 void
 genaddproc(void)
 {	ProcList *p;
-	int i = 0, j;
+	int i = 0;
 
 	if (separate == 2) goto shortcut;
 
-	fprintf(tc, "\n#ifdef TRIX\n");
+	ntimes(tc, nrRdy+1, nrRdy+2, R2); /* +1 for np_ -- was th */
+
+	fprintf(tc, "#ifdef TRIX\n");
 	fprintf(tc, "int what_p_size(int);\n");
 	fprintf(tc, "int what_q_size(int);\n\n");
+
 	/* the number of processes just changed by 1 (up or down) */
 	/* this means that the channel indices move up or down by one slot */
 	/* not all new channels may have a valid index yet, but we move */
 	/* all of them anyway, as if they existed */
-	fprintf(tc, "void\nre_mark_all(int whichway)\n");
-	fprintf(tc, "{	int j;\n");
-	fprintf(tc, "	#ifdef V_TRIX\n");
-	fprintf(tc, "		printf(\"%%d: re_mark_all channels %%d\\n\", depth, whichway);\n");
-	fprintf(tc, "	#endif\n");
-	fprintf(tc, "	#ifndef BFS\n");
-	fprintf(tc, "	for (j = 0; j < now._nr_qs; j++)\n");
-	fprintf(tc, "		channels[j]->modified = 1; /* channel index moved */\n");
-	fprintf(tc, "	#endif\n");
-	fprintf(tc, "	#ifndef TRIX_ORIG\n");
-	fprintf(tc, "	if (whichway > 0)\n");
-	fprintf(tc, "	{	for (j = now._nr_pr + now._nr_qs - 1; j >= now._nr_pr; j--)\n");
-	fprintf(tc, "			now._ids_[j] = now._ids_[j-1];\n");
-	fprintf(tc, "	} else\n");
-	fprintf(tc, "	{	for (j = now._nr_pr; j < now._nr_pr + now._nr_qs; j++)\n");
-	fprintf(tc, "			now._ids_[j] = now._ids_[j+1];\n");
-	fprintf(tc, "	}\n");
-	fprintf(tc, "	#endif\n");
-	fprintf(tc, "}\n");
-
+	ntimes(tc, 0, 1, R7a);
 	fprintf(tc, "#endif\n\n");
+
+	ntimes(tc, 0, 1, R7b);
 
 	fprintf(tc, "int\naddproc(int calling_pid, int n");
 	for (/* i = 0 */; i < Npars; i++)
@@ -322,8 +314,17 @@ void
 do_locinits(FILE *fd)
 {	ProcList *p;
 
+	/* the locinit functions may refer to pptr or qptr */
+	fprintf(fd, "#if VECTORSZ>32000\n");
+	fprintf(fd, "	extern int \n");
+	fprintf(fd, "#else\n");
+	fprintf(fd, "	extern short \n");
+	fprintf(fd, "#endif\n");
+	fprintf(fd, "	*proc_offset, *q_offset;\n");
+
 	for (p = rdy; p; p = p->nxt)
-		c_add_locinit(fd, p->tn, p->n->name);
+	{	c_add_locinit(fd, p->tn, p->n->name);
+	}
 }
 
 void
@@ -336,6 +337,9 @@ genother(void)
 		{	for (p = rdy; p; p = p->nxt)
 			{	if (p->b == N_CLAIM)
 				{	ntimes(tc, p->tn, p->tn+1, R0); /* claims only */
+					fprintf(tc, "#ifdef HAS_CODE\n");
+					ntimes(tc, p->tn, p->tn+1, R00);
+					fprintf(tc, "#endif\n");
 		}	}	}
 		break;
 	case 1:
@@ -343,12 +347,27 @@ genother(void)
 		for (p = rdy; p; p = p->nxt)
 		{	if (p->b != N_CLAIM)
 			{	ntimes(tc, p->tn, p->tn+1, R0); /* all except claims */
+				fprintf(tc, "#ifdef HAS_CODE\n");
+				ntimes(tc, p->tn, p->tn+1, R00);
+				fprintf(tc, "#endif\n");
 		}	}
 		break;
 	case 0:
 		ntimes(tc,     0,    1, Code0);
 		ntimes(tc,     0, nrRdy+1, R0); /* +1 for np_ */
+		fprintf(tc, "#ifdef HAS_CODE\n");
+		ntimes(tc,     0, nrRdy+1, R00); /* +1 for np_ */
+		fprintf(tc, "#endif\n");
 		break;
+	}
+	/* new place, make sure Maxbody is set to its final value here */
+	fprintf(tc, "\n");
+
+	if (separate != 2)
+	{	ntimes(tc, 1, u_sync+u_async+1, R3); /* nqs is still 0 */
+		fprintf(tc, "\tMaxbody = max(Maxbody, sizeof(State)-VECTORSZ);\n");
+		fprintf(tc, "\tif ((Maxbody %% WS) != 0)\n");
+		fprintf(tc, "\t	Maxbody += WS - (Maxbody %% WS);\n\n");
 	}
 
 	for (p = rdy; p; p = p->nxt)
@@ -380,9 +399,9 @@ genother(void)
 
 	ntimes(th, acceptors,   acceptors+1,   Code1);
 	ntimes(th, progressors, progressors+1, Code3);
-	ntimes(th, nrRdy+1, nrRdy+2, R2); /* +1 for np_ */
 
 	ntimes(tc, 0,     1, Code2a);	/* dfs, bfs */
+	ntimes(tc, 0,     1, Code2e);	/* multicore */
 	ntimes(tc, 0,     1, Code2c);	/* multicore */
 	ntimes(tc, 0,     1, Code2d);
 
@@ -391,12 +410,6 @@ genother(void)
 	fprintf(tc, "}\n\n");
 
 	fprintf(tc, "void\niniglobals(int calling_pid)\n{\n");
-	ntimes(tc, 1, u_sync+u_async+1, R3); /* because nqs is still 0 */
-	fprintf(tc, "\tMaxbody = max(Maxbody, sizeof(State)-VECTORSZ);\n");
-	fprintf(tc, "\tif ((Maxbody %% WS) != 0)\n");
-	fprintf(tc, "\t	Maxbody += WS - (Maxbody %% WS);\n\n");
-
-	/* after the value of Maxbody has settled */
 	if (doglobal("", INIV) > 0)
 	{	fprintf(tc, "#ifdef VAR_RANGES\n");
 		(void) doglobal("logval(\"", LOGV);
@@ -604,8 +617,8 @@ c_chandump(FILE *fd)
 	int i;
 
 	if (!qtab)
-	{	fprintf(fd, "void\nc_chandump(int unused) ");
-		fprintf(fd, "{ unused++; /* avoid complaints */ }\n");
+	{	fprintf(fd, "void\nc_chandump(int unused)\n");
+		fprintf(fd, "{\tunused++; /* avoid complaints */\n}\n");
 		return;
 	}
 
@@ -841,7 +854,6 @@ dohidden(void)
 			fprintf(th, "/* hidden variable: */");
 			typ2c(sp);
 	}	}
-	fprintf(th, "int _; /* a predefined write-only variable */\n\n");
 }
 
 void
@@ -948,15 +960,17 @@ put_ptype(char *s, int i, int m0, int m1, enum btypes b)
 	fprintf(th, "	unsigned _pid : 8;  /* 0..255 */\n");
 	fprintf(th, "	unsigned _t   : %d; /* proctype */\n", blog(m1));
 	fprintf(th, "	unsigned _p   : %d; /* state    */\n", blog(m0));
+	fprintf(th, "#ifdef HAS_PRIORITY\n");
+	fprintf(th, "	unsigned _priority : 8; /* 0..255 */\n");
+	fprintf(th, "#endif\n");
 	LstSet = ZS;
 	nBits = 8 + blog(m1) + blog(m0);
 	k = dolocal(tc, "", PUTV, i, s, b);	/* includes pars */
-
 	c_add_loc(th, s);
 
 	fprintf(th, "} P%d;\n", i);
 	if ((!LstSet && k > 0) || has_state)
-		fprintf(th, "#define Air%d	0\n", i);
+		fprintf(th, "#define Air%d	0\n\n", i);
 	else if (LstSet || k == 0)			/* 5.0, added condition */
 	{	fprintf(th, "#define Air%d	(sizeof(P%d) - ", i, i);
 		if (k == 0)
@@ -987,31 +1001,32 @@ put_ptype(char *s, int i, int m0, int m1, enum btypes b)
 			fatal("cannot happen Air %s",
 				LstSet->name);
 		}
-done:		fprintf(th, ")\n");
+done:		fprintf(th, ")\n\n");
 	}
 }
 
 static void
 tc_predef_np(void)
-{	int i = nrRdy;	/* 1+ highest proctype nr */
+{
+	fprintf(th, "#define _NP_	%d\n", nrRdy);	/* 1+ highest proctype nr */
 
-	fprintf(th, "#define _NP_	%d\n", i);
-/*	if (separate == 2) fprintf(th, "extern ");	*/
-	fprintf(th, "uchar reached%d[3];  /* np_ */\n", i);
-	fprintf(th, "uchar *loopstate%d;  /* np_ */\n", i);
+	fprintf(th, "#define nstates%d	3 /* np_ */\n", nrRdy);
+	fprintf(th, "#define endstate%d	2 /* np_ */\n\n", nrRdy);
+	fprintf(th, "#define start%d	0 /* np_ */\n", nrRdy);
 
-	fprintf(th, "#define nstates%d	3 /* np_ */\n", i);
-	fprintf(th, "#define endstate%d	2 /* np_ */\n\n", i);
-	fprintf(th, "#define start%d	0 /* np_ */\n", i);
-
-	fprintf(tc, "\tcase %d:	/* np_ */\n", i);
+	fprintf(tc, "\tcase %d:	/* np_ */\n", nrRdy);
 	if (separate == 1)
-	{	fprintf(tc, "\t\tini_claim(%d, h);\n", i);
+	{	fprintf(tc, "\t\tini_claim(%d, h);\n", nrRdy);
 	} else
-	{	fprintf(tc, "\t\t((P%d *)pptr(h))->_t = %d;\n", i, i);
-		fprintf(tc, "\t\t((P%d *)pptr(h))->_p = 0;\n", i);
-		fprintf(tc, "\t\treached%d[0] = 1;\n", i);
-		fprintf(tc, "\t\taccpstate[%d][1] = 1;\n", i);
+	{	fprintf(tc, "\t\t((P%d *)pptr(h))->_t = %d;\n", nrRdy, nrRdy);
+		fprintf(tc, "\t\t((P%d *)pptr(h))->_p = 0;\n", nrRdy);
+
+		fprintf(tc, "#ifdef HAS_PRIORITY\n");
+		fprintf(tc, "\t\t((P%d *)pptr(h))->_priority = 1;\n", nrRdy);
+		fprintf(tc, "#endif\n");
+
+		fprintf(tc, "\t\treached%d[0] = 1;\n", nrRdy);
+		fprintf(tc, "\t\taccpstate[%d][1] = 1;\n", nrRdy);
 	}
 	fprintf(tc, "\t\tbreak;\n");
 }
@@ -1087,6 +1102,10 @@ put_pinit(ProcList *P)
 
 	fprintf(tc, "\t\t((P%d *)pptr(h))->_t = %d;\n", i, i);
 	fprintf(tc, "\t\t((P%d *)pptr(h))->_p = %d;\n", i, ini);
+	fprintf(tc, "#ifdef HAS_PRIORITY\n");
+	fprintf(tc, "\t\t((P%d *)pptr(h))->_priority = %d;\n", i,
+		(P->priority<1)? 1 : P->priority);
+	fprintf(tc, "#endif\n");
 	fprintf(tc, "\t\treached%d[%d]=1;\n", i, ini);
 	if (P->b == N_CLAIM)
 	{	fprintf(tc, "\t\tsrc_claim = src_ln%d;\n", i);
@@ -1158,7 +1177,7 @@ huntstart(Element *f)
 	}	}
 
 	if (cnt >= 200 || !e)
-		fatal("confusing control structure", (char *) 0);
+		fatal("confusing control. structure", (char *) 0);
 	return e;
 }
 
@@ -1168,7 +1187,7 @@ huntele(Element *f, int o, int stopat)
 	int cnt=0; /* a precaution against loops */
 
 	if (e)
-	for ( ; cnt < 200 && e->n; cnt++)
+	for ( ; cnt < 500 && e->n; cnt++)
 	{
 		if (e->seqno == stopat)
 			break;
@@ -1186,6 +1205,9 @@ huntele(Element *f, int o, int stopat)
 			break;
 		case UNLESS:
 			g = huntele(e->sub->this->frst, o, stopat);
+			if (!g)
+			{	fatal("unexpected error 1", (char *) 0);
+			}
 			break;
 		case D_STEP:
 		case ATOMIC:
@@ -1197,7 +1219,7 @@ huntele(Element *f, int o, int stopat)
 			return e;
 		e = g;
 	}
-	if (cnt >= 200 || !e)
+	if (cnt >= 500 || !e)
 		fatal("confusing control structure", (char *) 0);
 	return e;
 }
@@ -1296,12 +1318,11 @@ genaddqueue(void)
 	Queue *q;
 
 	ntimes(tc, 0, 1, Addq0);
+
 	if (has_io && !nqs)
 		fprintf(th, "#define NQS	1 /* nqs=%d, but has_io */\n", nqs);
 	else
 		fprintf(th, "#define NQS	%d\n", nqs);
-	fprintf(th, "short q_flds[%d];\n", nqs+1);
-	fprintf(th, "short q_max[%d];\n", nqs+1);
 
 	for (q = qtab; q; q = q->nxt)
 		if (q->nslots > qmax)
@@ -1512,12 +1533,12 @@ genaddqueue(void)
 	fprintf(tc, "	case %d: j = sizeof(Q%d); break;\n",
 		q->qid, q->qid);
 	ntimes(tc, 0, 1, R8b);
+	ntimes(th, 0, 1, Proto);	/* function prototypes */
 
-	ntimes(th, 0, 1, Proto);	/* tag on function prototypes */
 	fprintf(th, "void qsend(int, int");
 	for (j = 0; j < Mpars; j++)
 		fprintf(th, ", int");
-	fprintf(th, ", int);\n");
+	fprintf(th, ", int);\n\n");
 
 	fprintf(th, "#define Addproc(x)	addproc(256, x");
 	/* 256 is param outside the range of valid pids */

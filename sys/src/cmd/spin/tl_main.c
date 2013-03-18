@@ -235,10 +235,14 @@ tl_non_fatal(char *s1, char *s2)
 	int i;
 
 	printf("tl_spin: ");
+#if 1
+	printf(s1, s2);	/* prevent a compiler warning */
+#else
 	if (s2)
 		printf(s1, s2);
 	else
 		printf(s1);
+#endif
 	if (tl_yychar != -1 && tl_yychar != 0)
 	{	printf(", saw '");
 		tl_explain(tl_yychar);

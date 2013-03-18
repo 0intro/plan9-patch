@@ -10,6 +10,7 @@
 /* Send all bug-reports and/or questions to: bugs@spinroot.com            */
 
 #include <stdlib.h>
+#include <errno.h>
 #include "spin.h"
 #include "y.tab.h"
 
@@ -21,6 +22,7 @@ typedef struct IType {
 	Symbol *nm;		/* name of the type */
 	Lextok *cn;		/* contents */
 	Lextok *params;		/* formal pars if any */
+	Lextok *rval;		/* variable to assign return value, if any */
 	char   **anms;		/* literal text for actual pars */
 	char   *prec;		/* precondition for c_code or c_expr */
 	int    uiid;		/* unique inline id */
@@ -41,7 +43,7 @@ extern ProcList	*rdy;
 extern Symbol	*Fname, *oFname;
 extern Symbol	*context, *owner;
 extern YYSTYPE	yylval;
-extern short	has_last, has_code;
+extern short	has_last, has_code, has_priority;
 extern int	verbose, IArgs, hastrack, separate, ltl_mode;
 
 short	has_stack = 0;
@@ -111,8 +113,8 @@ Ungetch(int c)
 		ungetc(c,yyin);
 	else
 		uninline();
-	if (0)
-	{	printf("<bs>");
+	if (1)
+	{	printf("\n<bs{%d}bs>\n", c);
 	}
 }
 #endif
@@ -162,7 +164,8 @@ follow(int tok, int ifyes, int ifno)
 {	int c;
 
 	if ((c = Getchar()) == tok)
-		return ifyes;
+	{	return ifyes;
+	}
 	Ungetch(c);
 
 	return ifno;
@@ -264,6 +267,20 @@ iseqname(char *t)
 	return 0;
 }
 
+Lextok *
+return_statement(Lextok *n)
+{
+	if (Inline_stub[Inlining]->rval)
+	{	Lextok *g = nn(ZN, NAME, ZN, ZN);
+		Lextok *h = Inline_stub[Inlining]->rval;
+		g->sym = lookup("rv_");
+		return nn(h, ASGN, h, n);
+	} else
+	{	fatal("return statement outside inline", (char *) 0);
+	}
+	return ZN;
+}
+
 static int
 getinline(void)
 {	int c;
@@ -275,12 +292,16 @@ getinline(void)
 			c = *Inliner[Inlining]++;
 		}
 	} else
+	{
 		c = *Inliner[Inlining]++;
+	}
 
 	if (c == '\0')
-	{	lineno = Inline_stub[Inlining]->cln;
+	{
+		lineno = Inline_stub[Inlining]->cln;
 		Fname  = Inline_stub[Inlining]->cfn;
 		Inlining--;
+
 #if 0
 		if (verbose&32)
 		printf("spin: %s:%d, done inlining %s\n",
@@ -359,21 +380,45 @@ c_track(Symbol *s, Symbol *t, Symbol *stackonly)	/* name, size */
 }
 
 char *
+skip_white(char *p)
+{
+	if (p != NULL)
+	{	while (*p == ' ' || *p == '\t')
+			p++;
+	} else
+	{	fatal("bad format - 1", (char *) 0);
+	}
+	return p;
+}
+
+char *
+skip_nonwhite(char *p)
+{
+	if (p != NULL)
+	{	while (*p != ' ' && *p != '\t')
+			p++;
+	} else
+	{	fatal("bad format - 2", (char *) 0);
+	}
+	return p;
+}
+
+char *
 jump_etc(char *op)
 {	char *p = op;
 
-	/* kludgy - try to get the type separated from the name */
+	/* try to get the type separated from the name */
 
-	while (*p == ' ' || *p == '\t')
-		p++;	/* initial white space */
-	while (*p != ' ' && *p != '\t')
-		p++;	/* type name */
-	while (*p == ' ' || *p == '\t')
-		p++;	/* white space */
-	while (*p == '*')
-		p++;	/* decorations */
-	while (*p == ' ' || *p == '\t')
-		p++;	/* white space */
+	p = skip_white(p);	/* initial white space */
+
+	if (strncmp(p, "enum", strlen("enum")) == 0) /* special case: a two-part typename */
+	{	p += strlen("enum")+1;
+		p = skip_white(p);
+	}
+	p = skip_nonwhite(p);	/* type name */
+	p = skip_white(p);	/* white space */
+	while (*p == '*') p++;	/* decorations */
+	p = skip_white(p);	/* white space */
 
 	if (*p == '\0')
 		fatal("c_state format (%s)", op);
@@ -460,9 +505,9 @@ c_add_locinit(FILE *fd, int tpnr, char *pnm)
 			}
 
 			if (p)
-			fprintf(fd, "		((P%d *)this)->%s = %s;\n",
-				tpnr, p, r->ival->name);
-
+			{	fprintf(fd, "\t\t((P%d *)this)->%s = %s;\n",
+					tpnr, p, r->ival->name);
+			}
 		}
 	fprintf(fd, "}\n");
 }
@@ -599,6 +644,7 @@ c_add_loc(FILE *fd, char *s)	/* state vector entries for proctype s */
 	for (r = c_added; r; r = r->nxt)	/* pickup local decls */
 		if (strncmp(r->t->name, " Local", strlen(" Local")) == 0)
 		{	p = r->t->name + strlen(" Local");
+fprintf(fd, "/* XXX p=<%s>, s=<%s>, buf=<%s> r->s->name=<%s>XXX */\n", p, s, buf, r->s->name);
 			while (*p == ' ' || *p == '\t')
 				p++;
 			if (strcmp(p, buf) == 0)
@@ -609,7 +655,7 @@ void
 c_add_def(FILE *fd)	/* 3 - called in plunk_c_fcts() */
 {	C_Added *r;
 
-	fprintf(fd, "#if defined(C_States) && defined(HAS_TRACK)\n");
+	fprintf(fd, "#if defined(C_States) && (HAS_TRACK==1)\n");
 	for (r = c_added; r; r = r->nxt)
 	{	r->s->name[strlen(r->s->name)-1] = ' ';
 		r->s->name[0] = ' '; /* remove the "s */
@@ -662,7 +708,7 @@ c_add_def(FILE *fd)	/* 3 - called in plunk_c_fcts() */
 
 	fprintf(fd, "void\nc_update(uchar *p_t_r)\n{\n");
 	fprintf(fd, "#ifdef VERBOSE\n");
-	fprintf(fd, "	printf(\"c_update %%u\\n\", p_t_r);\n");
+	fprintf(fd, "	printf(\"c_update %%p\\n\", p_t_r);\n");
 	fprintf(fd, "#endif\n");
 	for (r = c_added; r; r = r->nxt)
 	{	if (strncmp(r->t->name, " Global ", strlen(" Global ")) == 0
@@ -707,7 +753,7 @@ c_add_def(FILE *fd)	/* 3 - called in plunk_c_fcts() */
 
 	fprintf(fd, "void\nc_revert(uchar *p_t_r)\n{\n");
 	fprintf(fd, "#ifdef VERBOSE\n");
-	fprintf(fd, "	printf(\"c_revert %%u\\n\", p_t_r);\n");
+	fprintf(fd, "	printf(\"c_revert %%p\\n\", p_t_r);\n");
 	fprintf(fd, "#endif\n");
 	for (r = c_added; r; r = r->nxt)
 	{	if (strncmp(r->t->name, " Global ", strlen(" Global ")) == 0
@@ -823,9 +869,11 @@ preruse(FILE *fd, Lextok *n)	/* check a condition for c_expr with preconditions 
 	{	tmp = find_inline(n->sym->name);
 		if (tmp->prec)
 		{	fprintf(fd, "if (!(%s)) { if (!readtrail) { depth++; ", tmp->prec);
-			fprintf(fd, "trpt++; trpt->pr = II; trpt->o_t = t;");
-			fprintf(fd, "trpt->st = tt; uerror(\"%s\"); continue; } ", tmp->prec);
-			fprintf(fd, "else { printf(\"pan: precondition false: %s\\n\"); ", tmp->prec);
+			fprintf(fd, "trpt++; trpt->pr = II; trpt->o_t = t; trpt->st = tt; ");
+			fprintf(fd, "uerror(\"c_expr line %d precondition false: %s\"); continue;",
+				tmp->dln, tmp->prec);
+			fprintf(fd, " } else { printf(\"pan: precondition false: %s\\n\"); ",
+				tmp->prec);
 			fprintf(fd, "_m = 3; goto P999; } } \n\t\t");
 		}
 	} else
@@ -856,7 +904,8 @@ plunk_inline(FILE *fd, char *s, int how, int gencode)	/* c_code with preconditio
 	if (how && tmp->prec)
 	{	fprintf(fd, "if (!(%s)) { if (!readtrail) {",
 			tmp->prec);
-		fprintf(fd, " uerror(\"%s\"); continue; ",
+		fprintf(fd, " uerror(\"c_code line %d precondition false: %s\"); continue; ",
+			tmp->dln,
 			tmp->prec);
 		fprintf(fd, "} else { ");
 		fprintf(fd, "printf(\"pan: precondition false: %s\\n\"); _m = 3; goto P999; } } ",
@@ -908,7 +957,7 @@ bad:		lineno = tmp->dln;
 }
 
 void
-pickup_inline(Symbol *t, Lextok *apars)
+pickup_inline(Symbol *t, Lextok *apars, Lextok *rval)
 {	IType *tmp; Lextok *p, *q; int j;
 
 	tmp = find_inline(t->name);
@@ -917,6 +966,7 @@ pickup_inline(Symbol *t, Lextok *apars)
 		fatal("inlines nested too deeply", 0);
 	tmp->cln = lineno;	/* remember calling point */
 	tmp->cfn = Fname;	/* and filename */
+	tmp->rval = rval;
 
 	for (p = apars, q = tmp->params, j = 0; p && q; p = p->rgt, q = q->rgt)
 		j++; /* count them */
@@ -942,6 +992,8 @@ pickup_inline(Symbol *t, Lextok *apars)
 		if (Inline_stub[j] == Inline_stub[Inlining])
 		fatal("cyclic inline attempt on: %s", t->name);
 }
+
+extern int pp_mode;
 
 static void
 do_directive(int first)
@@ -1133,6 +1185,21 @@ set_cur_scope(void)
 }
 
 static int
+pre_proc(void)
+{	char c, b[512];
+	int i = 0;
+
+	b[i++] = '#';
+	while ((c = Getchar()) != '\n')
+	{	b[i++] = c;
+	}
+	b[i] = '\0';
+	yylval = nn(ZN, 0, ZN, ZN);
+	yylval->sym = lookup(b);
+	return PREPROC;
+}
+
+int
 lex(void)
 {	int c;
 
@@ -1153,6 +1220,9 @@ again:
 
 	case '#':		/* preprocessor directive */
 		if (in_comment) goto again;
+		if (pp_mode)
+		{	return pre_proc();
+		}
 		do_directive(c);
 		goto again;
 
@@ -1188,8 +1258,15 @@ again:
 	}
 
 	if (isdigit_(c))
-	{	getword(c, isdigit_);
-		ValToken(atoi(yytext), CONST)
+	{	long int nr;
+		getword(c, isdigit_);
+		errno = 0;
+		nr = strtol(yytext, NULL, 10);
+		if (errno != 0)
+		{	fprintf(stderr, "spin: value out of range: '%s' read as '%d'\n",
+				yytext, (int) nr);
+		}
+		ValToken((int)nr, CONST)
 	}
 
 	if (isalpha_(c) || c == '_')
@@ -1230,7 +1307,7 @@ again:
 		  if (!c) { in_comment = 0; goto again; }
 		  break;
 	case ':': c = follow(':', SEP, ':'); break;
-	case '-': c = follow('>', SEMI, follow('-', DECR, '-')); break;
+	case '-': c = follow('>', ARROW, follow('-', DECR, '-')); break;
 	case '+': c = follow('+', INCR, '+'); break;
 	case '<': c = follow('<', LSHIFT, follow('=', LE, LT)); break;
 	case '>': c = follow('>', RSHIFT, follow('=', GE, GT)); break;
@@ -1294,6 +1371,7 @@ static struct {
 	{"fi",		FI,		0,		0},
 	{"for",		FOR,		0,		0},
 	{"full",	FULL,		0,		0},
+	{"get_priority", GET_P,		0,		0},
 	{"goto",	GOTO,		0,		0},
 	{"hidden",	HIDDEN,		0,		":hide:"},
 	{"if",		IF,		0,		0},
@@ -1319,9 +1397,11 @@ static struct {
 	{"priority",	PRIORITY,	0,		0},
 	{"proctype",	PROCTYPE,	0,		0},
 	{"provided",	PROVIDED,	0,		0},
+	{"return",	RETURN,		0,		0},
 	{"run",		RUN,		0,		0},
 	{"d_step",	D_STEP,		0,		0},
-	{"select",	SELECT,		0,	0},
+	{"select",	SELECT,		0,		0},
+	{"set_priority", SET_P,		0,		0},
 	{"short",	TYPE,		SHORT,		0},
 	{"skip",	CONST,		1,		0},
 	{"timeout",	TIMEOUT,	0,		0},
@@ -1363,6 +1443,9 @@ check_name(char *s)
 
 	if (strcmp(s, "_last") == 0)
 		has_last++;
+
+	if (strcmp(s, "_priority") == 0)
+		has_priority++;
 
 	if (Inlining >= 0 && !ReDiRect)
 	{	Lextok *tt, *t = Inline_stub[Inlining]->params;
@@ -1481,7 +1564,8 @@ yylex(void)
 			{	IArgno = 0;
 				IArg_cont[0][0] = '\0';
 			} else
-				strcat(IArg_cont[IArgno], yytext);
+			{	strcat(IArg_cont[IArgno], yytext);
+			}
 		} else if (strcmp(yytext, ")") == 0)
 		{	if (--IArg_nst > 0)
 				strcat(IArg_cont[IArgno], yytext);
@@ -1494,6 +1578,7 @@ yylex(void)
 		} else
 		{
 			switch (c) {
+			case ARROW:	strcpy(yytext, "->"); break; /* NEW */
 			case SEP:	strcpy(yytext, "::"); break;
 			case SEMI:	strcpy(yytext, ";"); break;
 			case DECR:	strcpy(yytext, "--"); break;

@@ -19,8 +19,11 @@ extern Ordered	*all_names;
 extern Symbol	*Fname, *context;
 extern int	lineno, nr_errs, dumptab, xspin, jumpsteps, columns;
 extern int	u_sync, Elcnt, interactive, TstOnly, cutoff;
-extern short	has_enabled;
-extern int	limited_vis, old_scope_rules, product, nclaims;
+extern short	has_enabled, has_priority;
+extern int	limited_vis, product, nclaims, old_priority_rules;
+extern int	old_scope_rules, scope_seq[128], scope_level, has_stdin;
+
+extern int	pc_highest(Lextok *n);
 
 RunList		*X   = (RunList  *) 0;
 RunList		*run = (RunList  *) 0;
@@ -44,11 +47,15 @@ runnable(ProcList *p, int weight, int noparams)
 	r->tn = p->tn;
 	r->b  = p->b;
 	r->pid = nproc++ - nstop + Skip_claim;
+	r->priority = weight;
+	p->priority = weight; /* not quite the best place of course */
 
 	if (!noparams && ((verbose&4) || (verbose&32)))
-		printf("Starting %s with pid %d\n",
+	{	printf("Starting %s with pid %d",
 			p->n?p->n->name:"--", r->pid);
-
+		if (has_priority) printf(" priority %d", r->priority);
+		printf("\n");
+	}
 	if (!p->s)
 		fatal("parsing error, no sequence %s",
 			p->n?p->n->name:"--");
@@ -61,7 +68,9 @@ runnable(ProcList *p, int weight, int noparams)
 
 	r->nxt = run;
 	r->prov = p->prov;
-	r->priority = weight;
+	if (weight < 1 || weight > 255)
+	{	fatal("bad process priority, valid range: 1..255", (char *) 0);
+	}
 
 	if (noparams) setlocals(r);
 	Priority_Sum += weight;
@@ -81,6 +90,8 @@ ready(Symbol *n, Lextok *p, Sequence *s, int det, Lextok *prov, enum btypes b)
 	r->b = b;
 	r->prov = prov;
 	r->tn = nrRdy++;
+	n->sc = scope_seq[scope_level];	/* scope_level should be 0 */
+
 	if (det != 0 && det != 1)
 	{	fprintf(stderr, "spin: bad value for det (cannot happen)\n");
 	}
@@ -345,6 +356,24 @@ silent_moves(Element *e)
 	return e;
 }
 
+static int
+x_can_run(void)	/* the currently selected process in X can run */
+{
+	if (X->prov && !eval(X->prov))
+	{
+if (0) printf("pid %d cannot run: not provided\n", X->pid);
+		return 0;
+	}
+	if (has_priority && !old_priority_rules)
+	{	Lextok *n = nn(ZN, CONST, ZN, ZN);
+		n->val = X->pid;
+if (0) printf("pid %d %s run (priority)\n", X->pid, pc_highest(n)?"can":"cannot");
+		return pc_highest(n);
+	}
+if (0) printf("pid %d can run\n", X->pid);
+	return 1;
+}
+
 static RunList *
 pickproc(RunList *Y)
 {	SeqList *z; Element *has_else;
@@ -378,8 +407,7 @@ try_more:	for (X = run, k = 1; X; X = X->nxt)
 
 			Choices[X->pid] = (short) k;
 
-			if (!X->pc
-			||  (X->prov && !eval(X->prov)))
+			if (!X->pc || !x_can_run())
 			{	if (X == run)
 					Choices[X->pid] = 0;
 				continue;
@@ -512,7 +540,7 @@ multi_claims(void)
 		}	}
 		printf("\n");
 		printf("  only one claim is used in a verification run\n");
-		printf("  choose which one with ./pan -N name (defaults to -N %s)\n",
+		printf("  choose which one with ./pan -a -N name (defaults to -N %s)\n",
 			q?q->n->name:"--");
 	}
 }
@@ -583,9 +611,9 @@ sched(void)
 		depth++; LastStep = ZE;
 		oX = X;	/* a rendezvous could change it */
 		go = 1;
-		if (X->prov && X->pc
+		if (X->pc
 		&& !(X->pc->status & D_ATOM)
-		&& !eval(X->prov))
+		&& !x_can_run())
 		{	if (!xspin && ((verbose&32) || (verbose&4)))
 			{	p_talk(X->pc, 1);
 				printf("\t<<Not Enabled>>\n");
@@ -653,13 +681,15 @@ sched(void)
 				X = (X->nxt) ? X->nxt : run;
 			} else
 			{	if (p_blocked(X->pid))
-				{	if (Tval) break;
-					Tval = 1;
-					if (depth >= jumpsteps)
+				{	if (Tval && !has_stdin)
+					{	break;
+					}
+					if (!Tval && depth >= jumpsteps)
 					{	oX = X;
 						X = (RunList *) 0; /* to suppress indent */
 						dotag(stdout, "timeout\n");
 						X = oX;
+						Tval = 1;
 		}	}	}	}
 
 		if (!run || !X) break;	/* new 5.0 */
@@ -708,7 +738,7 @@ complete_rendez(void)
 				printf("	[");
 				comment(stdout, s_was->n, 0);
 				printf("]\n");
-				tmp = orun; orun = X; X = tmp;
+				tmp = orun; /* orun = X; */ X = tmp;
 				if (!LastStep) LastStep = X->pc;
 				p_talk(LastStep, 1);
 				printf("	[");

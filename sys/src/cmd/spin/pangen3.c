@@ -12,8 +12,8 @@
 #include "spin.h"
 #include "y.tab.h"
 
-extern FILE	*th;
-extern int	eventmapnr;
+extern FILE	*th, *tc;
+extern int	eventmapnr, old_priority_rules;
 
 typedef struct SRC {
 	int ln, st;	/* linenr, statenr */
@@ -36,10 +36,10 @@ static void
 putnr(int n)
 {
 	if (col++ == 8)
-	{	fprintf(th, "\n\t");
+	{	fprintf(tc, "\n\t");	/* was th */
 		col = 1;
 	}
-	fprintf(th, "%3d, ", n);
+	fprintf(tc, "%3d, ", n);	/* was th */
 }
 
 static void
@@ -49,7 +49,7 @@ putfnm(int j, Symbol *s)
 		return;
 
 	if (lastfnm)
-		fprintf(th, "{ \"%s\", %d, %d },\n\t",
+		fprintf(tc, "{ \"%s\", %d, %d },\n\t",	/* was th */
 			lastfnm->name,
 			lastfrom,
 			j-1);
@@ -61,7 +61,7 @@ static void
 putfnm_flush(int j)
 {
 	if (lastfnm)
-		fprintf(th, "{ \"%s\", %d, %d }\n",
+		fprintf(tc, "{ \"%s\", %d, %d }\n",	/* was th */
 			lastfnm->name,
 			lastfrom, j);
 }
@@ -121,9 +121,10 @@ putsrc(Element *e)	/* match states to source lines */
 static void
 dumpskip(int n, int m)
 {	SRC *tmp, *lst;
+	FILE *tz = tc;	/* was th */
 	int j;
 
-	fprintf(th, "uchar reached%d [] = {\n\t", m);
+	fprintf(tz, "uchar reached%d [] = {\n\t", m);
 	for (j = 0, col = 0; j <= n; j++)
 	{	lst = (SRC *) 0;
 		for (tmp = skip; tmp; lst = tmp, tmp = tmp->nxt)
@@ -138,9 +139,8 @@ dumpskip(int n, int m)
 		if (!tmp)
 			putnr(0);
 	}
-	fprintf(th, "};\n");
-
-	fprintf(th, "uchar *loopstate%d;\n", m);
+	fprintf(tz, "};\n");
+	fprintf(tz, "uchar *loopstate%d;\n", m);
 
 	if (m == eventmapnr)
 		fprintf(th, "#define reached_event	reached%d\n", m);
@@ -153,11 +153,11 @@ dumpsrc(int n, int m)
 {	SRC *tmp, *lst;
 	int j;
 	static int did_claim = 0;
+	FILE *tz = tc;	/* was th */
 
-	fprintf(th, "short src_ln%d [] = {\n\t", m);
+	fprintf(tz, "\nshort src_ln%d [] = {\n\t", m);
 	for (j = 0, col = 0; j <= n; j++)
-	{	lst = (SRC *) 0;
-		for (tmp = frst; tmp; lst = tmp, tmp = tmp->nxt)
+	{	for (tmp = frst; tmp; tmp = tmp->nxt)
 			if (tmp->st == j)
 			{	putnr(tmp->ln);
 				break;
@@ -165,11 +165,11 @@ dumpsrc(int n, int m)
 		if (!tmp)
 			putnr(0);
 	}
-	fprintf(th, "};\n");
+	fprintf(tz, "};\n");
 
 	lastfnm = (Symbol *) 0;
 	lastdef.name = "-";
-	fprintf(th, "S_F_MAP src_file%d [] = {\n\t", m);
+	fprintf(tz, "S_F_MAP src_file%d [] = {\n\t", m);
 	for (j = 0, col = 0; j <= n; j++)
 	{	lst = (SRC *) 0;
 		for (tmp = frst; tmp; lst = tmp, tmp = tmp->nxt)
@@ -185,10 +185,10 @@ dumpsrc(int n, int m)
 			putfnm(j, &lastdef);
 	}
 	putfnm_flush(j);
-	fprintf(th, "};\n");
+	fprintf(tz, "};\n");
 
 	if (pid_is_claim(m) && !did_claim)
-	{	fprintf(th, "short *src_claim;\n");
+	{	fprintf(tz, "short *src_claim;\n");
 		did_claim++;
 	}
 	if (m == eventmapnr)
@@ -324,6 +324,22 @@ comwork(FILE *fd, Lextok *now, int m)
 	case ENABLED:	Cat3("enabled(", now->lft, ")");
 			break;
 
+	case GET_P:	if (old_priority_rules)
+			{	fprintf(fd, "1");
+			} else
+			{	Cat3("get_priority(", now->lft, ")");
+			}
+			break;
+
+	case SET_P:	if (!old_priority_rules)
+			{	fprintf(fd, "set_priority(");
+				comwork(fd, now->lft->lft, m);
+				fprintf(fd, ", ");
+				comwork(fd, now->lft->rgt, m);
+				fprintf(fd, ")");
+			}
+			break;
+
 	case EVAL:	Cat3("eval(", now->lft, ")");
 			break;
 
@@ -346,7 +362,9 @@ comwork(FILE *fd, Lextok *now, int m)
 			}
 			break;	
 
-	case ASGN:	comwork(fd,now->lft,m);
+	case ASGN:
+			if (check_track(now) == STRUCT) { break; }
+			comwork(fd,now->lft,m);
 			fprintf(fd," = ");
 			comwork(fd,now->rgt,m);
 			break;
@@ -379,7 +397,8 @@ comwork(FILE *fd, Lextok *now, int m)
 			putname(fd, "", now, m, "");
 			break;
 
-	case   'p':	if (ltl_mode)
+	case   'p':
+			if (ltl_mode)
 			{	fprintf(fd, "%s", now->lft->sym->name); /* proctype */
 				if (now->lft->lft)
 				{	fprintf(fd, "[");

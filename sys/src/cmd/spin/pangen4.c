@@ -44,7 +44,7 @@ undostmnt(Lextok *now, int m)
 	case FULL:	case EMPTY:	case 'R':
 	case NFULL:	case NEMPTY:	case ENABLED:
 	case '?':	case PC_VAL:	case '^':
-	case C_EXPR:
+	case C_EXPR:	case GET_P:
 	case NONPROGRESS:
 		putstmnt(tb, now, m);
 		break;
@@ -153,7 +153,13 @@ undostmnt(Lextok *now, int m)
 		fprintf(tb, "p_restor(II);\n\t\t");
 		break;
 
+	case SET_P:
+		fprintf(tb, "((P0 *)pptr((trpt->bup.oval >> 8)))->_priority = trpt->bup.oval & 255");
+		break;
+
 	case ASGN:
+		if (check_track(now) == STRUCT) { break; }
+
 		nocast=1; putstmnt(tb,now->lft,m);
 		nocast=0; fprintf(tb, " = trpt->bup.oval");
 		if (multi_oval > 0)
@@ -319,7 +325,8 @@ proper_enabler(Lextok *n)
 	case LEN:	case 'R':
 	case NAME:
 		has_provided = 1;
-		if (strcmp(n->sym->name, "_pid") == 0)
+		if (strcmp(n->sym->name, "_pid") == 0
+		||  strcmp(n->sym->name, "_priority") == 0)
 			return 1;
 		return (!(n->sym->context));
 
@@ -330,6 +337,7 @@ proper_enabler(Lextok *n)
 		return 1;
 
 	case ENABLED:	case PC_VAL:
+	case GET_P:	/* not SET_P */
 		return proper_enabler(n->lft);
 
 	case '!': case UMIN: case '~':
@@ -339,8 +347,9 @@ proper_enabler(Lextok *n)
 	case '%': case LT:  case GT: case '&': case '^':
 	case '|': case LE:  case GE:  case NE: case '?':
 	case EQ:  case OR:  case AND: case LSHIFT:
-	case RSHIFT: case 'c':
+	case RSHIFT: case 'c': /* case ',': */
 		return proper_enabler(n->lft) && proper_enabler(n->rgt);
+
 	default:
 		break;
 	}

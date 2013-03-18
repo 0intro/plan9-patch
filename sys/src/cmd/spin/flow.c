@@ -13,7 +13,7 @@
 #include "y.tab.h"
 
 extern Symbol	*Fname;
-extern int	nr_errs, lineno, verbose, in_for;
+extern int	nr_errs, lineno, verbose, in_for, old_scope_rules, s_trail;
 extern short	has_unless, has_badelse, has_xu;
 extern char CurScope[MAXSCOPESZ];
 
@@ -39,6 +39,7 @@ void
 open_seq(int top)
 {	SeqList *t;
 	Sequence *s = (Sequence *) emalloc(sizeof(Sequence));
+	s->minel = -1;
 
 	t = seqlist(s, cur_s);
 	cur_s = t;
@@ -89,6 +90,7 @@ cross_dsteps(Lextok *a, Lextok *b)
 	&&  a->indstep != b->indstep)
 	{	lineno = a->ln;
 		Fname  = a->fn;
+		if (!s_trail)
 		fatal("jump into d_step sequence", (char *) 0);
 	}
 }
@@ -192,12 +194,12 @@ close_seq(int nottop)
 			printf("\"Label: { statement ... }\"\n");
 			break;
 		case 6:
-			printf("=====>instead of\n");
+			printf("=====> instead of\n");
 			printf("	do (or if)\n");
 			printf("	:: ...\n");
 			printf("	:: Label: statement\n");
 			printf("	od (of fi)\n");
-			printf("=====>always use\n");
+			printf("=====> use\n");
 			printf("Label:	do (or if)\n");
 			printf("	:: ...\n");
 			printf("	:: statement\n");
@@ -207,8 +209,9 @@ close_seq(int nottop)
 			printf("cannot happen - labels\n");
 			break;
 		}
-		alldone(1);
-	}
+		if (nottop != 6)
+		{	alldone(1);
+	}	}
 
 	if (nottop == 4
 	&& !Rjumpslocal(s->frst, s->last))
@@ -357,6 +360,15 @@ loose_ends(void)	/* properly tie-up ends of sub-sequences */
 	}	}
 }
 
+void
+popbreak(void)
+{
+	if (!breakstack)
+		fatal("cannot happen, breakstack", (char *) 0);
+
+	breakstack = breakstack->nxt;	/* pop stack */
+}
+
 static Element *
 if_seq(Lextok *n)
 {	int	tok = n->ntyp;
@@ -410,13 +422,13 @@ if_seq(Lextok *n)
 	e->n = nn(n, tok, ZN, ZN);
 	e->n->sl = s;			/* preserve as info only */
 	e->sub = s;
-	for (z = s; z; prev_z = z, z = z->nxt)
+	for (z = s; z; z = z->nxt)
 		add_el(t, z->this);	/* append target */
 	if (tok == DO)
 	{	add_el(t, cur_s->this); /* target upfront */
 		t = new_el(nn(n, BREAK, ZN, ZN)); /* break target */
 		set_lab(break_dest(), t);	/* new exit  */
-		breakstack = breakstack->nxt;	/* pop stack */
+		popbreak();
 	}
 	add_el(e, cur_s->this);
 	add_el(t, cur_s->this);
@@ -575,13 +587,6 @@ add_seq(Lextok *n)
 }
 
 void
-show_lab(void)
-{	Label *l;
-	for (l = labtab; l; l = l->nxt)
-		printf("label %s\n", l->s->name);
-}
-
-void
 set_lab(Symbol *s, Element *e)
 {	Label *l; extern Symbol *context;
 	int cur_uiid = is_inline();
@@ -591,6 +596,7 @@ set_lab(Symbol *s, Element *e)
 	for (l = labtab; l; l = l->nxt)
 	{	if (strcmp(l->s->name, s->name) == 0
 		&&  l->c == context
+		&&  (old_scope_rules || strcmp((const char *) s->bscp, (const char *) l->s->bscp) == 0)
 		&&  l->uiid == cur_uiid)
 		{	non_fatal("label %s redeclared", s->name);
 			break;
@@ -609,7 +615,9 @@ static Label *
 get_labspec(Lextok *n)
 {	Symbol *s = n->sym;
 	Label *l, *anymatch = (Label *) 0;
+#if 0
 	int cur_uiid = n->uiid;
+#endif
 	/*
 	 * try to find a label with the same uiid
 	 * but if it doesn't exist, return any other
@@ -619,7 +627,14 @@ get_labspec(Lextok *n)
 	{	if (strcmp(s->name, l->s->name) == 0
 		&&  s->context == l->s->context)
 		{	anymatch = l;
+#if 0
+			if (0) printf("Label %s uiid now::then %d :: %d bcsp %s :: %s\n",
+				s->name, cur_uiid, l->uiid, s->bscp, l->s->bscp);
+
 			if (cur_uiid == l->uiid) /* best match */
+#else
+			if (strcmp((const char *) s->bscp, (const char *) l->s->bscp) == 0)
+#endif
 			{	return l;
 	}	}	}
 
@@ -720,8 +735,9 @@ fix_dest(Symbol *c, Symbol *a)		/* c:label name, a:proctype name */
 	}
 	l->e->status |= CHECK2;	/* treat as if global */
 	if (l->e->status & (ATOM | L_ATOM | D_ATOM))
-	{	non_fatal("cannot reference label inside atomic or d_step (%s)",
-			c->name);
+	{	printf("spin: %s:%d, warning, reference to label ",
+			Fname->name, lineno);
+		printf("from inside atomic or d_step (%s)\n", c->name);
 	}
 }
 
@@ -851,7 +867,7 @@ match_struct(Symbol *s, Symbol *t)
 	||  !t->ini->rgt
 	||  !t->ini->rgt->sym
 	||   t->ini->rgt->rgt)
-	{	fatal("chan %s in for should have only one field (a typedef)", t->name);
+	{	fatal("chan %s in for should have only one field (a typedef)", t?t->name:"--");
 	}
 	/* we already know that s is a STRUCT */
 	if (0)
@@ -967,8 +983,6 @@ for_body(Lextok *a3, int with_else)
 	rv = nn(a3, ASGN, a3, rv);
 	add_seq(rv);	/* initial increment */
 
-	pushbreak();
-
 	/* completed loop body, main sequence */
 	t1 = nn(ZN, 0, ZN, ZN);
 	t1->sq = close_seq(8);
@@ -988,6 +1002,7 @@ for_body(Lextok *a3, int with_else)
 
 	rv = nn(ZN, DO, ZN, ZN);
 	rv->sl = t0->sl;
+
 	return rv;
 }
 
@@ -1002,6 +1017,7 @@ sel_index(Lextok *a3, Lextok *a5, Lextok *a7)
 	open_seq(0);
 	add_seq(nn(ZN, 'c', nn(a3, LT, a3, a7), ZN));	/* condition */
 
+	pushbreak(); /* new 6.2.1 */
 	return for_body(a3, 0);	/* no else, just a non-deterministic break */
 }
 
@@ -1017,7 +1033,7 @@ walk_atomic(Element *a, Element *b, int added)
 		switch (f->n->ntyp) {
 		case ATOMIC:
 			if (verbose&32)
-			  printf("spin: warning, %s:%d, atomic inside %s (ignored)\n",
+			  printf("spin: %s:%d, warning, atomic inside %s (ignored)\n",
 			  f->n->fn->name, f->n->ln, (added)?"d_step":"atomic");
 			goto mknonat;
 		case D_STEP:
@@ -1025,7 +1041,7 @@ walk_atomic(Element *a, Element *b, int added)
 			{	if (added) goto mknonat;
 				break;
 			}
-			printf("spin: warning, %s:%d, d_step inside ",
+			printf("spin: %s:%d, warning, d_step inside ",
 			 f->n->fn->name, f->n->ln);
 			if (added)
 			{	printf("d_step (ignored)\n");
@@ -1062,8 +1078,12 @@ dumplabels(void)
 		{	printf("label	%s	%d	",
 				l->s->name, l->e->seqno);
 			if (l->uiid == 0)
-				printf("<%s>\n", l->c->name);
+				printf("<%s>", l->c->name);
 			else
-				printf("<%s i%d>\n", l->c->name, l->uiid);
+				printf("<%s i%d>", l->c->name, l->uiid);
+			if (!old_scope_rules)
+			{	printf("\t{scope %s}", l->s->bscp);
+			}
+			printf("\n");
 		}
 }

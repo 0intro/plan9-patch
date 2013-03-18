@@ -204,7 +204,8 @@ CollectGuards(FILE *fd, Element *e, int inh)
 
 int
 putcode(FILE *fd, Sequence *s, Element *nxt, int justguards, int ln, int seqno)
-{	int isg=0; char buf[64];
+{	int isg=0;
+	static char buf[64];
 
 	NextLab[0] = "continue";
 	filterbad(s->frst);

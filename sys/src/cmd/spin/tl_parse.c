@@ -44,6 +44,9 @@ tl_factor(void)
 		ptr = tl_yylval;
 		tl_yychar = tl_yylex();
 		ptr->lft = tl_factor();
+		if (!ptr->lft)
+		{	fatal("malformed expression", (char *) 0);
+		}
 		ptr = push_negation(ptr);
 		break;
 	case ALWAYS:
