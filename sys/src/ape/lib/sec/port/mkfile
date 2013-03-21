@@ -39,15 +39,20 @@ UPDATE=\
 	$HFILES\
 	$CFILES\
 
+CLEANFILES=\
+	x509-ape.c
+
 </sys/src/cmd/mksyslib
 
-CFLAGS=-c -+ -D_POSIX_SOURCE -D_PLAN9_SOURCE -I../../../../libmp/port -I. -I/sys/include/ape -I/sys/include
+CFLAGS=-c -+ -D_POSIX_SOURCE -D_PLAN9_SOURCE -I. -I/sys/src/libmp/port -I/sys/include/ape
 
-%.$O:	../../../../libsec/port/%.c
-	$CC $CFLAGS ../../../../libsec/port/$stem.c
+%.$O:	/sys/src/libsec/port/%.c
+	$CC $CFLAGS /sys/src/libsec/port/$stem.c
 
-x509-ape.c:	../../../../libsec/port/x509.c
-
+x509-ape.c:	/sys/src/libsec/port/x509.c
+	cat /sys/src/libsec/port/x509.c | \
+	sed 's/Tm \*tm = gmtime\(t\)/struct tm *tm0 = gmtime\(\&t\)/;s/tm->/tm0->tm_/g' | \
+	sed 's/static //g' > x509-ape.c
 
 $O.rsatest: rsatest.$O
 	$LD -o $target $prereq

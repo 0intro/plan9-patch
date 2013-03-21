@@ -157,4 +157,3 @@ extern	vlong	nsec(void);
 extern void sysfatal(char*, ...);
 
 extern	ulong	truerand(void);			/* uses /dev/random */
-extern	int	getfields(char*, char**, int, int, char*);
