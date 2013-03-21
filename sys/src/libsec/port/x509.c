@@ -41,6 +41,7 @@ typedef struct Elist Elist;
 #define ENUMERATED 10
 #define EMBEDDED_PDV 11
 #define UTF8String 12
+#define RELATIVE_OID 13
 #define SEQUENCE 16		/* also SEQUENCE OF */
 #define SETOF 17				/* also SETOF OF */
 #define NumericString 18
@@ -54,6 +55,7 @@ typedef struct Elist Elist;
 #define VisibleString 26
 #define GeneralString 27
 #define UniversalString 28
+#define CharacterString 29
 #define BMPString 30
 
 struct Bytes {
@@ -1510,9 +1512,13 @@ freevalfields(Value* v)
  *		issuer Name,
  *		validity Validity,
  *		subject Name,
- *		subjectPublicKeyInfo SubjectPublicKeyInfo }
+ *		subjectPublicKeyInfo SubjectPublicKeyInfo,
+ *		issuerUniqueID IMPLICIT UniqueIdentifier OPTIONAL,
+ *		subjectUniqueID IMPLICIT UniqueIdentifier OPTIONAL,
+ *		extensions EXPLICIT Extensions OPTIONAL }
  *	(version v2 has two more fields, optional unique identifiers for
  *  issuer and subject; since we ignore these anyway, we won't parse them)
+ *	(version v3 adds extensions)
  *
  *	Validity ::= SEQUENCE {
  *		notBefore UTCTime,
@@ -1521,6 +1527,13 @@ freevalfields(Value* v)
  *	SubjectPublicKeyInfo ::= SEQUENCE {
  *		algorithm AlgorithmIdentifier,
  *		subjectPublicKey BIT STRING }
+ *
+ *	Extensions ::= SEQUENCE SIZE (1..MAX) OF Extension
+ *
+ *	Extension :== SEQUENCE {
+ *		extnID OBJECT IDENTIFIER,
+ *		critical BOOLEAN DEFAULT FALSE,
+ *		extnValue OCTECT STRING }
  *
  *	AlgorithmIdentifier ::= SEQUENCE {
  *		algorithm OBJECT IDENTIFER,
@@ -1548,6 +1561,7 @@ freevalfields(Value* v)
  *		universalString UniversalString }
  *
  *  See rfc1423, rfc2437 for AlgorithmIdentifier, subjectPublicKeyInfo, signature.
+ *	See rfc5280 for v2 issuerUniqueID, subjectUniqueID, and v3 extensions.
  *
  *  Not yet implemented:
  *   CertificateRevocationList ::= SIGNED SEQUENCE{
@@ -1563,7 +1577,8 @@ freevalfields(Value* v)
  */
 
 typedef struct CertX509 {
-	int	serial;
+	int	version;
+	mpint*	serial;
 	char*	issuer;
 	char*	validity_start;
 	char*	validity_end;
@@ -1717,11 +1732,14 @@ decode_cert(Bytes* a)
 	Elem* evalidity;
 	Elem* esubj;
 	Elem* epubkey;
+/*	Elem* eiuid;			* issuserUniqueID */
+/*	Elem* esuid;			* subjectUniqueID */
 	Elist* el;
 	Elist* elcert = nil;
 	Elist* elcertinfo = nil;
 	Elist* elvalidity = nil;
 	Elist* elpubkey = nil;
+/*	Elist* elextensions = nil; */
 	Bits* bits = nil;
 	Bytes* b;
 	Elem* e;
@@ -1730,7 +1748,8 @@ decode_cert(Bytes* a)
 		goto errret;
 
 	c = (CertX509*)emalloc(sizeof(CertX509));
-	c->serial = -1;
+	c->version = 0;			/* the default version 1 that we care about */
+	c->serial = nil;
 	c->issuer = nil;
 	c->validity_start = nil;
 	c->validity_end = nil;
@@ -1756,10 +1775,25 @@ decode_cert(Bytes* a)
 	n = elistlen(elcertinfo);
   	if(n < 6)
 		goto errret;
-	eserial =&elcertinfo->hd;
+	eserial = &elcertinfo->hd;
  	el = elcertinfo->tl;
  	/* check for optional version, marked by explicit context tag 0 */
 	if(eserial->tag.class == Context && eserial->tag.num == 0) {
+		if(eserial->val.tag == VOctets){
+			uchar *p, *pend;
+			Value v;
+			Elem elem;
+
+			v = eserial->val;
+			b = v.u.octetsval;
+			p = b->data;
+			pend = b->data + b->len;
+
+			if(ber_decode(&p, pend, &elem) == ASN_OK) {
+				if(!is_int(&elem, &c->version))
+					c->version = 1;
+			}
+		}
  		eserial = &el->hd;
  		if(n < 7)
  			goto errret;
@@ -1776,11 +1810,19 @@ decode_cert(Bytes* a)
  	esubj = &el->hd;
  	el = el->tl;
  	epubkey = &el->hd;
- 	if(!is_int(eserial, &c->serial)) {
-		if(!is_bigint(eserial, &b))
-			goto errret;
-		c->serial = -1;	/* else we have to change cert struct */
-  	}
+	el = el->tl;
+	if(n > 7){
+		e = &el->hd;
+		if(e != nil)
+		if(e->tag.class == Context && e->tag.num == BIT_STRING && c->version == 0){
+			/* assume v3 until we stop ignoring the v2&v3 options */
+			c->version = 2;
+		}
+	}
+
+	if(!is_bigint(eserial, &b))
+ 		goto errret;
+	c->serial = betomp(b->data, b->len, nil);
 	c->issuer = parse_name(eissuer);
 	if(c->issuer == nil)
 		goto errret;
@@ -2095,8 +2137,7 @@ digest_certinfo(Bytes *cert, DigestFun digestfun, uchar *digest)
 	if(tag_decode(&p, pend, &tag, &isconstr) != ASN_OK ||
 	   tag.class != Universal || tag.num != SEQUENCE ||
 	   length_decode(&p, pend, &length) != ASN_OK ||
-	   p+length > pend ||
-	   p+length < p)
+	   length > pend - p)
 		return;
 	info = p;
 	if(ber_decode(&p, pend, &elem) != ASN_OK)
@@ -2387,9 +2428,9 @@ mkDN(char *dn)
 uchar*
 X509gen(RSApriv *priv, char *subj, ulong valid[2], int *certlen)
 {
-	int serial = 0;
 	uchar *cert = nil;
 	RSApub *pk = rsaprivtopub(priv);
+	int serial = 0;
 	Bytes *certbytes, *pkbytes, *certinfobytes, *sigbytes;
 	Elem e, certinfo, issuer, subject, pubkey, validity, sig;
 	uchar digest[MD5dlen], *buf;
@@ -2528,6 +2569,7 @@ tagdump(Tag tag)
 	case REAL: return "REAL";
 	case ENUMERATED: return "ENUMERATED";
 	case EMBEDDED_PDV: return "EMBEDDED PDV";
+	case RELATIVE_OID: return "RELATIVE-OID";
 	case SEQUENCE: return "SEQUENCE";
 	case SETOF: return "SETOF";
 	case UTF8String: return "UTF8String";
@@ -2617,7 +2659,8 @@ X509dump(uchar *cert, int ncert)
 		return;
 	}
 
-	print("serial %d\n", c->serial);
+	print("version %d (0x%x)\n", c->version + 1, c->version);
+	print("serial %B\n", c->serial);
 	print("issuer %s\n", c->issuer);
 	print("validity %s %s\n", c->validity_start, c->validity_end);
 	print("subject %s\n", c->subject);
