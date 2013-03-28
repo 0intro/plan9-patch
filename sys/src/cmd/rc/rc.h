@@ -3,20 +3,30 @@
  * Please don't litter the code with ifdefs.  The six below should be enough.
  */
 
-#ifndef Unix
-/* plan 9 */
+#ifdef Plan9
 #include <u.h>
 #include <libc.h>
-
 #define	NSIG	32
 #define	SIGINT	2
 #define	SIGQUIT	3
-
 #define fcntl(fd, op, arg)	/* unix compatibility */
 #define F_SETFD
 #define FD_CLOEXEC
-#else
+#endif
+
+#ifdef Unix
 #include "unix.h"
+#endif
+
+#ifdef Windows
+extern char *argv0;
+
+#include "unix.h"
+#define	SIGINT	2
+#define	SIGQUIT	3
+#define fcntl(fd, op, arg)	/* unix compatibility */
+#define F_SETFD
+#define FD_CLOEXEC
 #endif
 
 #ifndef ERRMAX

@@ -10,6 +10,7 @@
 #define _RESEARCH_SOURCE
 #define _SUSV2_SOURCE
 
+#include <stdio.h>
 #include <stdlib.h>
 #include <stdarg.h>
 #include <string.h>
@@ -32,6 +33,7 @@
 char *strdup(const char *);
 
 #define nil ((void*)0)
+#define nelem(x)	(sizeof((x)) / sizeof((x)[0]))
 
 /* in case uchar, etc. are built-in types */
 #define uchar	_fmtuchar

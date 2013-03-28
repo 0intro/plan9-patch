@@ -1,4 +1,5 @@
 void	Abort(void);
+int	Abspath(char *w);
 void	Closedir(int);
 int	Creat(char*);
 int	Dup(int, int);

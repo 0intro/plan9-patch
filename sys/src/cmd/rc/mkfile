@@ -1,5 +1,6 @@
 </$objtype/mkfile
 
+CFLAGS=-DPlan9
 TARG=rc
 COMMONOFILES=\
 	code.$O\

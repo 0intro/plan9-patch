@@ -1,0 +1,16 @@
+
+win32 port
+
+	rewrite to give unicode support
+
+	there is an underlying assumption in haventfork.c that argv0 can 
+	be used to envoke rc again without looking down the path.
+	This may or may not be true but I will leave it for now.
+
+	rework #! handling - code is a bit ugly.
+
+	whatis doesn't walk the path and probably should so
+	it claims not to know about things which do really exist.
+
+	exec (rc command) doesn't work - is there any way to emulate this
+	if is it all too horrid to even think of.

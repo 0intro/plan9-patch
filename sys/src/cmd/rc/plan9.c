@@ -378,6 +378,20 @@ Execute(word *args, word *path)
 #define	NDIR	256		/* shoud be a better way */
 
 int
+Abspath(char *w)
+{
+	if(strncmp(w, "/", 1)==0)
+		return 1;
+	if(strncmp(w, "./", 2)==0)
+		return 1;
+	if(strncmp(w, "../", 3)==0)
+		return 1;
+	if(strncmp(w, "#", 1)==0)
+		return 1;
+	return 0;
+}
+
+int
 Globsize(char *p)
 {
 	int isglob = 0, globlen = NDIR+1;

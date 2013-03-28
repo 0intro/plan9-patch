@@ -217,6 +217,7 @@ execforkexec(void)
 
 	switch(pid = fork()){
 	case -1:
+		Xerror("try again");
 		return -1;
 	case 0:
 		clearwaitpids();

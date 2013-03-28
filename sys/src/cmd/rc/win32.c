@@ -3,32 +3,60 @@
  *	By convention, exported routines herein have names beginning with an
  *	upper case letter.
  */
+#include <windows.h>
+#include <stdio.h>
+#include <string.h>
+#undef IN
 #include "rc.h"
 #include "exec.h"
 #include "io.h"
 #include "fns.h"
 #include "getflags.h"
+
+enum {
+	Maxshebang = 1024
+};
+
+struct {
+	int e;
+	char *s;
+} Winerrs[] = {				/* some more common errors translated to more friendly messages */
+	{ ERROR_HANDLE_EOF,				"end of file" },
+	{ ERROR_INVALID_HANDLE,			"invalid handle" },
+	{ ERROR_SHARING_VIOLATION,		"sharing violation" },
+	{ ERROR_FILE_NOT_FOUND,			"file does not exist" },
+	{ ERROR_PATH_NOT_FOUND,			"path does not exist" },
+	{ ERROR_BAD_PATHNAME,			"bad path" },
+	{ ERROR_TOO_MANY_OPEN_FILES,	"too many open files" },
+	{ ERROR_ACCESS_DENIED,			"permission denied" },
+	{ ERROR_INVALID_NAME,			"filename syntax" },
+	{ ERROR_OUTOFMEMORY,			"out of memory" },
+	{ ERROR_NOT_ENOUGH_MEMORY,		"not enough emmory" },
+	{ ERROR_WRITE_PROTECT,			"read only" },
+	{ ERROR_BROKEN_PIPE,			"broken pipe" },
+	{ ERROR_NO_MORE_SEARCH_HANDLES,	"too many open directories" },
+	{ ERROR_ALREADY_EXISTS,			"already exists" },
+	{ ERROR_BAD_EXE_FORMAT,			"bad executable format" },
+	{ ERROR_SEEK_ON_DEVICE,			"seek on device" },
+	{ ERROR_GEN_FAILURE,			"general failure" },
+	{ ERROR_NOT_SUPPORTED,			"not supported" },
+	{ ERROR_NOT_READY,				"device not ready" },
+	{ ERROR_BAD_NETPATH,			"network path not found" },
+	{ ERROR_BAD_NET_NAME,			"host not known" },
+	{ ERROR_HANDLE_DISK_FULL,		"disk full" },
+	{ 0,							nil },
+};
+
 char *Signame[] = {
 	"sigexit",	"sighup",	"sigint",	"sigquit",
 	"sigalrm",	"sigkill",	"sigfpe",	"sigterm",
 	0
 };
-char *syssigname[] = {
-	"exit",		/* can't happen */
-	"hangup",
-	"interrupt",
-	"quit",		/* can't happen */
-	"alarm",
-	"kill",
-	"sys: fp: ",
-	"term",
-	0
-};
-char *Rcmain = "/rc/lib/rcmain";
-char *Fdprefix = "/fd/";
+
+char *Rcmain = "undefined";
+
 
 void execfinit(void);
-void execbind(void);
 
 builtin Builtin[] = {
 	"cd",		execcd,
@@ -44,90 +72,235 @@ builtin Builtin[] = {
 	0
 };
 
+#define	SEP	';'
+char *xenviron;
+
+/*
+ * Windows preserves case but ignores it, even in environment variables.
+ * We need to be able to find these vars so we force their
+ * case to that below as they are parsed from the environment.
+ */
+char *Force[] = {
+	"path",
+	"pathext",
+	nil
+};
+
+
+static struct {
+	int pid;
+	HANDLE hand;
+} Child[10];
+
+
+static int
+cistrcmp(char *s1, char *s2)
+{
+	int c1, c2;
+
+	while(*s1){
+		c1 = *(uchar*)s1++;
+		c2 = *(uchar*)s2++;
+
+		if(c1 == c2)
+			continue;
+
+		if(c1 >= 'A' && c1 <= 'Z')
+			c1 -= 'A' - 'a';
+
+		if(c2 >= 'A' && c2 <= 'Z')
+			c2 -= 'A' - 'a';
+
+		if(c1 != c2)
+			return c1 - c2;
+	}
+	return -*s2;
+}
+
+struct word*
+enval(char *s)
+{
+	char *t, c;
+	struct word *v;
+
+	for(t = s;*t && *t != SEP;t++)
+		continue;
+
+	c=*t;
+	*t='\0';
+	v = newword(s, c=='\0'?(struct word *)0:enval(t+1));
+	*t = c;
+	return v;
+}
+
+static void
+reslash(char *s, char new)
+{
+	char *p;
+
+	for(p = s; *p; p++)
+		if(*p == '\\' || *p == '/')
+			*p = new;
+}
+
+int
+cmpvar(const void *aa, const void *ab)
+{
+	struct var * const *a = aa, * const *b = ab;
+
+	return strcmp((*a)->name, (*b)->name);
+}
+
+char *
+exportenv(void)
+{
+	char *env, *p, *q;
+	struct var **h, *v, **idx;
+	struct word *a;
+	int nvar = 0, nchr = 0, sep, i;
+int x;
+	/*
+	 * Slightly kludgy loops look at locals then globals.
+	 * locals no longer exist - geoff
+	 */
+	for(h = gvar-1; h != &gvar[NVAR]; h++)
+	for(v = h >= gvar? *h: runq->local; v ;v = v->next){
+		if(v==vlook(v->name) && v->val){
+			nvar++;
+			nchr+=strlen(v->name)+1;
+			for(a = v->val;a;a = a->next)
+				nchr+=strlen(a->word)+1;
+		}
+		if(v->fn){
+			nvar++;
+			nchr+=strlen(v->name)+strlen(v->fn[v->pc-1].s)+8;
+		}
+	}
+
+	idx = (struct var **)emalloc(nvar * sizeof(struct var *));
+
+	i = 0;
+	for(h = gvar-1; h != &gvar[NVAR]; h++)
+	for(v = h >= gvar? *h: runq->local; v ;v = v->next){
+		if((v==vlook(v->name) && v->val) || v->fn)
+			idx[i++] = v;
+	}
+
+	qsort((void *)idx, nvar, sizeof idx[0], cmpvar);
+
+	env = (char *)emalloc(nvar+nchr+1);
+
+	p = env;
+	for(i = 0; i < nvar; i++){
+		v = idx[i];
+		if((v==vlook(v->name)) && v->val){
+			q = v->name;
+			while(*q) *p++=*q++;
+			sep='=';
+			for(a = v->val;a;a = a->next){
+				*p++=sep;
+				sep = SEP;
+				q = a->word;
+				while(*q) *p++=*q++;
+			}
+			*p++='\0';
+		}
+		if(v->fn){
+			*p++='f'; *p++='n'; *p++='#';
+			q = v->name;
+			while(*q) *p++=*q++;
+			*p++='=';
+			q = v->fn[v->pc-1].s;
+			while(*q) *p++=*q++;
+			*p++='\0';
+		}
+	}
+	*p = 0;
+
+	return env;	
+}
+	
+/*
+ * had to change the parsing from plan9/unix code as windows
+ * tends to use braces in variables and variable names with inpunity.
+ * FIXME: should handle UTF really
+ */
 void
 Vinit(void)
 {
-	int dir, f, len;
-	word *val;
-	char *buf, *s;
-	Dir *ent;
-	int i, nent;
-	char envname[256];
-	dir = open("/env", OREAD);
-	if(dir<0){
-		pfmt(err, "rc: can't open /env: %r\n");
-		return;
-	}
-	ent = nil;
-	for(;;){
-		nent = dirread(dir, &ent);
-		if(nent <= 0)
-			break;
-		for(i = 0; i<nent; i++){
-			len = ent[i].length;
-			if(len && strncmp(ent[i].name, "fn#", 3)!=0){
-				snprint(envname, sizeof envname, "/env/%s", ent[i].name);
-				if((f = open(envname, 0))>=0){
-					buf = emalloc((int)len+1);
-					read(f, buf, (long)len);
-					val = 0;
-					/* Charitably add a 0 at the end if need be */
-					if(buf[len-1])
-						buf[len++]='\0';
-					s = buf+len-1;
-					for(;;){
-						while(s!=buf && s[-1]!='\0') --s;
-						val = newword(s, val);
-						if(s==buf)
-							break;
-						--s;
-					}
-					setvar(ent[i].name, val);
-					vlook(ent[i].name)->changed = 0;
-					close(f);
-					efree(buf);
-				}
-			}
-		}
-		free(ent);
-	}
-	close(dir);
-}
-int envdir;
+	int a;
+	struct word *w;
+	char *p, *s, **f, *env;
+	static char buf[MAX_PATH];
 
+	env = GetEnvironmentStrings();
+	xenviron = env;
+	for(; env && *env; env = strchr(env, 0)+1){
+		if((s = strchr(env, '=')) == NULL)
+			continue;
+		if(strncmp(env, "fn#", 3) == 0)		/* ignore functions */
+			continue;
+		*s='\0';
+		for(f = Force; *f; f++)
+			if(cistrcmp(*f, env) == 0)
+				break;
+		if(*f){
+			reslash(s+1, '/');
+			setvar(*f, enval(s+1));
+		}else{
+			setvar(env, enval(s+1));
+		}
+		*s='=';
+	}
+
+	/* look for rcmain in $path */
+	for(w = vlook("path")->val; w; w = w->next){
+		snprintf(buf, sizeof(buf), "%s/rcmain", w->word);
+		a = GetFileAttributes(buf);
+		if(a != -1 && a != FILE_ATTRIBUTE_DIRECTORY)
+			break;
+	}
+	if(w == nil){
+		pfmt(err, "rc: cannot find 'rcmain' in $path :\n");
+		exit(0);
+	}
+	Rcmain = buf;
+}
+
+char *xenv;
+
+/*
+ * called once per func read from env, returns after each,
+ * but calls Xreturn() before returning when the list is empty
+ */
 void
 Xrdfn(void)
 {
-	int f, len;
-	static Dir *ent, *allocent;
-	static int nent;
-	Dir *e;
-	char envname[256];
+	int len;
+	char *s, *nxt;
 
-	for(;;){
-		if(nent == 0){
-			free(allocent);
-			nent = dirread(envdir, &allocent);
-			ent = allocent;
-		}
-		if(nent <= 0)
-			break;
-		while(nent){
-			e = ent++;
-			nent--;
-			len = e->length;
-			if(len && strncmp(e->name, "fn#", 3)==0){
-				snprint(envname, sizeof envname, "/env/%s", e->name);
-				if((f = open(envname, 0))>=0){
-					execcmds(openfd(f));
-					return;
-				}
-			}
-		}
+	for(; xenv && *xenv; xenv = nxt){
+		nxt = strchr(xenv, 0) +1;
+		if(strncmp(xenv, "fn#", 3) != 0)		/* ignore variables */
+			continue;
+		if((s = strchr(xenv, '=')) == NULL)
+			continue;
+
+		len = strlen(xenv);
+		*s=' ';
+		xenv[2]=' ';
+		xenv[len]='\n';
+		execcmds(opencore(xenv, len+1));
+		xenv[len]='\0';
+		xenv[2]='#';
+		*s='=';
+		xenv = nxt;
+		return;
 	}
-	close(envdir);
 	Xreturn();
 }
+
+
 union code rdfns[4];
 
 void
@@ -142,224 +315,175 @@ execfinit(void)
 		first = 0;
 	}
 	Xpopm();
-	envdir = open("/env", 0);
-	if(envdir<0){
-		pfmt(err, "rc: can't open /env: %r\n");
-		return;
-	}
+	xenv = xenviron;
 	start(rdfns, 1, runq->local);
 }
 
-int
-Waitfor(int pid, int persist)
+static int
+addchild(int pid, HANDLE hand)
 {
-	thread *p;
-	Waitmsg *w;
-	char errbuf[ERRMAX];
-
-	while((w = wait()) != nil){
-		if(w->pid==pid){
-			setstatus(w->msg);
-			free(w);
-			return 0;
+	int i;
+	
+	for(i = 0; i < nelem(Child); i++) {
+		if(Child[i].hand == 0) {
+			Child[i].pid = pid;
+			Child[i].hand = hand;
+			return 1;
 		}
-		for(p = runq->ret;p;p = p->ret)
-			if(p->pid==w->pid){
-				p->pid=-1;
-				strcpy(p->status, w->msg);
-			}
-		free(w);
 	}
-
-	errstr(errbuf, sizeof errbuf);
-	if(strcmp(errbuf, "interrupted")==0) return -1;
+	pfmt(err, "adchild: child table full\n");
 	return 0;
 }
 
-char*
-*mkargv(word *a)
+/* NB: return -1 only on interrupt, may cause a retry */
+int
+Waitfor(int pid, int persist)
 {
-	char **argv = (char **)emalloc((count(a)+2)*sizeof(char *));
-	char **argp = argv+1;	/* leave one at front for runcoms */
-	for(;a;a = a->next) *argp++=a->word;
-	*argp = 0;
-	return argv;
-}
+	int i;
+	HANDLE h;
+	ulong status;
+	char buf[32];
 
-void
-addenv(var *v)
-{
-	char envname[256];
-	word *w;
-	int f;
-	io *fd;
-	if(v->changed){
-		v->changed = 0;
-		snprint(envname, sizeof envname, "/env/%s", v->name);
-		if((f = Creat(envname))<0)
-			pfmt(err, "rc: can't open %s: %r\n", envname);
-		else{
-			for(w = v->val;w;w = w->next)
-				write(f, w->word, strlen(w->word)+1L);
-			close(f);
+	if(pid == 0)
+		return 0;
+
+	for(i = 0; i < nelem(Child); i++)
+		if(Child[i].pid == pid){
+			h = Child[i].hand;
+			break;
+		}
+
+	/* we don't know about this one - let the system try to find it */
+	if(h == nil){
+		h = OpenProcess(PROCESS_ALL_ACCESS, 0, pid);
+		if(h == nil){
+			pfmt(err, "%d cannot open process\n", pid);
+			return 0;
 		}
 	}
-	if(v->fnchanged){
-		v->fnchanged = 0;
-		snprint(envname, sizeof envname, "/env/fn#%s", v->name);
-		if((f = Creat(envname))<0)
-			pfmt(err, "rc: can't open %s: %r\n", envname);
-		else{
-			if(v->fn){
-				fd = openfd(f);
-				pfmt(fd, "fn %q %s\n", v->name, v->fn[v->pc-1].s);
-				closeio(fd);
-			}
-			close(f);
-		}
-	}
-}
 
-void
-updenvlocal(var *v)
-{
-	if(v){
-		updenvlocal(v->next);
-		addenv(v);
+	status = 1;
+	WaitForSingleObject(h, INFINITE);
+	GetExitCodeProcess(h, &status);
+
+	CloseHandle(h);
+	for(i = 0; i < nelem(Child); i++)
+		if(Child[i].pid == pid){
+			Child[i].pid = 0;
+			Child[i].hand = nil;
+			break;
+		}
+
+	if(status){
+		inttoascii(buf, status);
+		setstatus(buf);
+		return 0;
 	}
+	setstatus("");
+	return 0;
 }
 
 void
 Updenv(void)
 {
-	var *v, **h;
-	for(h = gvar;h!=&gvar[NVAR];h++)
-		for(v=*h;v;v = v->next)
-			addenv(v);
-	if(runq)
-		updenvlocal(runq->local);
-}
-
-int
-ForkExecute(char *file, char **argv, int sin, int sout, int serr)
-{
-	int pid;
-
-{int i;
-fprint(2, "forkexec %s", file);
-for(i = 0; argv[i]; i++)fprint(2, " %s", argv[i]);
-fprint(2, " %d %d %d\n", sin, sout, serr);
-}
-	if(access(file, 1) != 0)
-		return -1;
-fprint(2, "forking\n");
-	switch(pid = fork()){
-	case -1:
-		return -1;
-	case 0:
-		if(sin >= 0)
-			dup(sin, 0);
-		else
-			close(0);
-		if(sout >= 0)
-			dup(sout, 1);
-		else
-			close(1);
-		if(serr >= 0)
-			dup(serr, 2);
-		else
-			close(2);
-fprint(2, "execing\n");
-		exec(file, argv);
-fprint(2, "exec: %r\n");
-		exits(file);
-	}
-	return pid;
 }
 
 void
 Execute(word *args, word *path)
 {
-	char **argv = mkargv(args);
-	char file[1024];
-	int nc;
-	Updenv();
-	for(;path;path = path->next){
-		nc = strlen(path->word);
-		if(nc<1024){
-			strcpy(file, path->word);
-			if(file[0]){
-				strcat(file, "/");
-				nc++;
-			}
-			if(nc+strlen(argv[1])<1024){
-				strcat(file, argv[1]);
-				exec(file, argv+1);
-			}
-			else werrstr("command name too long");
-		}
-	}
-	rerrstr(file, sizeof file);
-	pfmt(err, "%s: %s\n", argv[1], file);
-	efree((char *)argv);
+	pfmt(err, "rc: exec not supported\n");
 }
-#define	NDIR	256		/* shoud be a better way */
+
+int
+Abspath(char *w)
+{
+	if(strncmp(w, "./", 2)==0)
+		return 1;
+	if(strncmp(w, ".\\", 2)==0)
+		return 1;
+	if(strncmp(w, "../", 3)==0)
+		return 1;
+	if(strncmp(w, "..\\", 3)==0)
+		return 1;
+	if(strncmp(w, "/", 1)==0)
+		return 1;
+	if(strncmp(w, "\\", 1)==0)
+		return 1;
+	if(isalpha(w[0]) && w[1] == ':') 
+		return 1;
+	return 0;
+}
 
 int
 Globsize(char *p)
 {
-	int isglob = 0, globlen = NDIR+1;
-	for(;*p;p++){
-		if(*p==GLOB){
+	int isglob, globlen;
+
+	isglob = 0;
+	globlen = FILENAME_MAX+1;
+
+	for(; *p; p++){
+		if(*p == GLOB){
 			p++;
-			if(*p!=GLOB)
+			if(*p != GLOB)
 				isglob++;
-			globlen+=*p=='*'?NDIR:1;
+			if(*p == '*')
+				globlen += FILENAME_MAX;
+			else
+				globlen += 1;
 		}
 		else
 			globlen++;
 	}
-	return isglob?globlen:0;
+	if(isglob)
+		return globlen;
+	return 0;
 }
-#define	NFD	50
-#define	NDBUF	32
-struct{
-	Dir	*dbuf;
-	int	i;
-	int	n;
-}dir[NFD];
+
+
+enum { Ndirs = 50 };
+typedef struct {
+	HANDLE h;
+	int first;
+	WIN32_FIND_DATA data;
+} Dir;
+static Dir Dirs[Ndirs];
 
 int
-Opendir(char *name)
+Opendir(char *path)
 {
-	Dir *db;
-	int f;
-	f = open(name, 0);
-	if(f==-1)
-		return f;
-	db = dirfstat(f);
-	if(db!=nil && (db->mode&DMDIR)){
-		if(f<NFD){
-			dir[f].i = 0;
-			dir[f].n = 0;
+	long n;
+	Dir *dp;
+	char fullpath[MAX_PATH];
+
+
+	for(dp = Dirs; dp < &Dirs[Ndirs]; dp++)
+		if(dp == nil){
+			snprintf(fullpath, MAX_PATH, "%s\\*.*", path);
+			dp->h = FindFirstFile(fullpath, &dp->data);
+			if(dp->h == INVALID_HANDLE_VALUE){
+				dp->h = 0;						/* paranoia */
+				return -1;
+			}
+			dp->first = 1;
+			return dp-Dirs;
 		}
-		free(db);
-		return f;
-	}
-	free(db);
-	close(f);
 	return -1;
 }
 
 static int
-trimdirs(Dir *d, int nd)
+validfile(WIN32_FIND_DATA *wfd, int onlydirs)
 {
-	int r, w;
+	char *s;
 
-	for(r=w=0; r<nd; r++)
-		if(d[r].mode&DMDIR)
-			d[w++] = d[r];
-	return w;
+	s = wfd->cFileName;
+	if(! (wfd->dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) && onlydirs)
+		return 0;
+	if(s[0] == '.' && s[1] == 0)
+		return 0;
+	if(s[0] == '.' && s[1] == '.' && s[2] == 0)
+		return 0;
+	return 1;
 }
 
 /*
@@ -373,71 +497,79 @@ int
 Readdir(int f, void *p, int onlydirs)
 {
 	int n;
+	WIN32_FIND_DATA *wfd;
 
-	if(f<0 || f>=NFD)
-		return 0;
-Again:
-	if(dir[f].i==dir[f].n){	/* read */
-		free(dir[f].dbuf);
-		dir[f].dbuf = 0;
-		n = dirread(f, &dir[f].dbuf);
-		if(n>0){
-			if(onlydirs){
-				n = trimdirs(dir[f].dbuf, n);
-				if(n == 0)
-					goto Again;
-			}	
-			dir[f].n = n;
-		}else
-			dir[f].n = 0;
-		dir[f].i = 0;
+	if(f < 0 || f >= Ndirs)
+		return -1;
+
+	wfd = &Dirs[f].data;
+	if(Dirs[f].first){
+		Dirs[f].first = 0;
+		if(validfile(wfd, onlydirs)){
+			strcpy(p, wfd->cFileName);
+			return 1;
+		}
 	}
-	if(dir[f].i == dir[f].n)
-		return 0;
-	strcpy(p, dir[f].dbuf[dir[f].i].name);
-	dir[f].i++;
-	return 1;
+
+	while(FindNextFile(Dirs[f].h, wfd) != 0){
+		if(! validfile(wfd, onlydirs))
+			continue;
+		strcpy(p, wfd->cFileName);
+		return 1;
+	}
+	return 0;
 }
 
 void
 Closedir(int f)
 {
-	if(f>=0 && f<NFD){
-		free(dir[f].dbuf);
-		dir[f].i = 0;
-		dir[f].n = 0;
-		dir[f].dbuf = 0;
-	}
-	close(f);
+	if(f < 0 || f >= Ndirs)
+		return;
+
+	FindClose(Dirs[f].h);
+	Dirs[f].h = 0;
 }
+
 int interrupted = 0;
-void
-notifyf(void*, char *s)
+
+static BOOL WINAPI
+gettrap(DWORD code)
 {
 	int i;
-	for(i = 0;syssigname[i];i++) if(strncmp(s, syssigname[i], strlen(syssigname[i]))==0){
-		if(strncmp(s, "sys: ", 5)!=0) interrupted = 1;
-		goto Out;
+
+	switch(code){
+	case CTRL_C_EVENT:
+		trap[SIGINT]++;
+		break;
+	case CTRL_BREAK_EVENT:
+		trap[SIGQUIT]++;
+		break;
+	case CTRL_CLOSE_EVENT:	/* window close or "End Task"  task manager */
+	case CTRL_LOGOFF_EVENT:
+	case CTRL_SHUTDOWN_EVENT:
+		trap[SIGTERM]++;
+		break;
+	default:
+		pfmt(err, "rc: %d unexpected trap code\n", code);
+		break;
 	}
-	pfmt(err, "rc: note: %s\n", s);
-	noted(NDFLT);
-	return;
-Out:
-	if(strcmp(s, "interrupt")!=0 || trap[i]==0){
-		trap[i]++;
-		ntrap++;
+	ntrap++;
+	if(ntrap >= NSIG){
+		pfmt(err, "rc: Too many traps (trap %d), aborting\n", code);
+		return 0;		/* default action (exit) */
 	}
-	if(ntrap>=32){	/* rc is probably in a trap loop */
-		pfmt(err, "rc: Too many traps (trap %s), aborting\n", s);
-		abort();
-	}
-	noted(NCONT);
+	
+	interrupted = 1;
+	for(i = 0; i < nelem(Child); i++)
+		if(Child[i].hand != nil)
+			GenerateConsoleCtrlEvent(CTRL_BREAK_EVENT, Child[i].pid);
+	return 1;			/* continue */
 }
 
 void
 Trapinit(void)
 {
-	notify(notifyf);
+	SetConsoleCtrlHandler(gettrap, TRUE);
 }
 
 void
@@ -449,59 +581,89 @@ Unlink(char *name)
 long
 Write(int fd, void *buf, long cnt)
 {
-	return write(fd, buf, (long)cnt);
+	return write(fd, buf, cnt);
 }
 
 long
 Read(int fd, void *buf, long cnt)
 {
-	return read(fd, buf, cnt);
+	int n;
+
+	n = read(fd, buf, cnt);
+	if(interrupted)
+		return -1;
+	return n;
 }
 
 long
 Seek(int fd, long cnt, long whence)
 {
-	return seek(fd, cnt, whence);
+	return lseek(fd, cnt, whence);
 }
 
+
+/* used by whatis only */
 int
 Executable(char *file)
 {
-	Dir *statbuf;
-	int ret;
+	int a;
+	FILE *fp;
+	ulong type;
+	struct word *w;
+	char *ext, buf[4];
 
-	statbuf = dirstat(file);
-	if(statbuf == nil)
+	if(GetBinaryType(file, &type))
+		return 1;
+
+	if((ext = strrchr(file, '.')) != nil)
+		for(w = vlook("pathext")->val; w; w = w->next)
+			if(cistrcmp(ext, w->word) == 0)
+				return 1;
+
+	if((fp = fopen(file, "r")) == nil)
 		return 0;
-	ret = ((statbuf->mode&0111)!=0 && (statbuf->mode&DMDIR)==0);
-	free(statbuf);
-	return ret;
+	if(fread(buf, 1, sizeof(buf), fp) <= 0){
+		fclose(fp);
+		return 0;
+	}
+	fclose(fp);
+	if(strncmp(buf, "#!", 2) == 0)
+		return 1;
+	return 0;
 }
 
 int
 Creat(char *file)
 {
-	return create(file, 1, 0666L);
+	return creat(file, 0644);
 }
 
 int
 Dup(int a, int b)
 {
-	return dup(a, b);
+	return dup2(a, b);
 }
 
 int
-Dup1(int)
+Dup1(int a)
 {
-	return -1;
+	return dup(a);
 }
 
 void
 Exit(char *stat)
 {
-	Updenv();
-	setstatus(stat);
-	exits(truestatus()?"":getstatus());
+	int n = 0;
+
+	while(*stat){
+		if(*stat != '|'){
+			if(*stat < '0' || '9' < *stat)
+				exit(1);
+			else n = n*10 + *stat - '0';
+		}
+		stat++;
+	}
+	exit(n);
 }
 
 int
@@ -515,29 +677,20 @@ Noerror(void)
 {
 	interrupted = 0;
 }
-
+ 
 int
 Isatty(int fd)
 {
-	Dir *d1, *d2;
-	int ret;
-
-	d1 = dirfstat(fd);
-	if(d1 == nil)
-		return 0;
-	if(strncmp(d1->name, "ptty", 4)==0){	/* fwd complaints to philw */
-		free(d1);
+	switch(GetFileType((HANDLE *)_get_osfhandle(fd))){
+	case FILE_TYPE_CHAR:	/* console or maybe a uart */
+	case FILE_TYPE_PIPE:	/* ssh session */
 		return 1;
-	}
-	d2 = dirstat("/dev/cons");
-	if(d2 == nil){
-		free(d1);
+	case FILE_TYPE_DISK:	/* redirection */
+	case FILE_TYPE_REMOTE:	/* unused they say */
+	case FILE_TYPE_UNKNOWN:
+	default:
 		return 0;
 	}
-	ret = (d1->type==d2->type&&d1->dev==d2->dev&&d1->qid.path==d2->qid.path);
-	free(d1);
-	free(d2);
-	return ret;
 }
 
 void
@@ -545,7 +698,7 @@ Abort(void)
 {
 	pfmt(err, "aborting\n");
 	flush(err);
-	Exit("aborting");
+	exit(2);
 }
 
 void
@@ -558,4 +711,408 @@ void*
 Malloc(ulong n)
 {
 	return malloc(n);
+}
+
+int
+needsrcquote(int c)
+{
+	if(c <= ' ')
+		return 1;
+	if(strchr("`^#*[]=|\\?${}()'<>&;", c))
+		return 1;
+	return 0;
+}
+
+void
+errstr(char *buf, int len)
+{
+	int e, i;
+	char *p, *q;
+
+	e = GetLastError();
+	if(e == ERROR_SUCCESS){
+		*buf = 0;
+		return;
+	}
+
+	for(i = 0; Winerrs[i].e; i++)
+		if(Winerrs[i].e == e){
+			strncpy(buf, Winerrs[i].s, len);
+			buf[len -1] = 0;
+			return;
+		}
+
+	FormatMessage(FORMAT_MESSAGE_FROM_SYSTEM, nil, e, 0, buf, len, 0);
+	for(p=q=buf; *p; p++) {
+		if(*p == '\r')
+			continue;
+		if(*p == '\n')
+			*q++ = ' ';
+		else
+			*q++ = *p;
+	}
+}
+
+char **
+mkargv(struct word *a)
+{
+	int n;
+	char **argv, **argp;
+
+	n = count(a)+2;
+	if(n < 8)			/* plenty of room for shebangs */
+		n = 8;
+	argv = (char **)emalloc(n*sizeof(char *));
+	memset(argv, 0, n*sizeof(char *));
+
+
+	argp = argv+1;	/* leave one at front for runcoms */
+	for(;a;a = a->next)
+		*argp++=a->word;
+	*argp = 0;
+	return argv;
+}
+
+static int
+setpath(char *path, char *file)
+{
+	char *p, *last, tmp[MAX_PATH+1];
+	int n;
+
+	if(strlen(file) >= MAX_PATH){
+		pfmt(err, "%s: file name too long", file);
+		return -1;
+	}
+	strcpy(tmp, file);
+
+	for(p=tmp; *p; p++) {
+		if(*p == '/')
+			*p = '\\';
+	}
+
+	if(tmp[0] != 0 && tmp[1] == ':') {
+		if(tmp[2] == 0) {
+			tmp[2] = '\\';
+			tmp[3] = 0;
+		} else if(tmp[2] != '\\') {
+			/* don't allow c:foo - only c:\foo */
+			pfmt(err, "%s: illegal file name", file);
+			return -1;
+		}
+	}
+
+	path[0] = 0;
+	n = GetFullPathName(tmp, MAX_PATH, path, &last);
+	if(n >= MAX_PATH) {
+		pfmt(err, "%s: expanded path too long", file);
+		return -1;
+	}
+	if(n == 0 && tmp[0] == '\\' && tmp[1] == '\\' && tmp[2] != 0) {
+		strcpy(path, tmp);
+		return -1;
+	}
+
+	if(n == 0) {
+		pfmt(err, "%s: bad file name", tmp);
+		return -1;
+	}
+
+	for(p=path; *p; p++) {
+		if(*p < 32 || *p == '*' || *p == '?') {
+			pfmt(err, "%s: wildcards in path", path);
+			return -1;
+		}
+	}
+
+	/* get rid of trailling \ */
+	if(path[n-1] == '\\') {
+		if(n <= 2) {
+			pfmt(err, "%s: illegal path", path);
+			return -1;
+		}
+		path[n-1] = 0;
+		n--;
+	}
+
+	if(path[1] == ':' && path[2] == 0) {
+		path[2] = '\\';
+		path[3] = '.';
+		path[4] = 0;
+		return -1;
+	}
+
+	if(path[0] != '\\' || path[1] != '\\')
+		return 0;
+
+	for(p=path+2,n=0; *p; p++)
+		if(*p == '\\')
+			n++;
+	if(n == 0)
+		return -1;
+	if(n == 1)
+		return -1;
+	return 0;
+}
+
+static int
+shargs(char *s, int n, char **ap)
+{
+	int i;
+
+	s += 2;
+	n -= 2;		/* skip #! */
+	for(i=0; s[i]!='\n'; i++)
+		if(i == n-1)
+			return 0;
+	s[i] = 0;
+
+	if(flag['p'])
+		pfmt(err, "got %s\n", s);
+
+	*ap = 0;
+	i = 0;
+	for(;;) {
+		while(*s==' ' || *s=='\t')
+			s++;
+		if(*s == 0)
+			break;
+		i++;
+		*ap++ = s;
+		*ap = 0;
+		while(*s && *s!=' ' && *s!='\t')
+			s++;
+		if(*s == 0)
+			break;
+		else
+			*s++ = 0;
+	}
+	return i;
+}
+
+static int
+exetype(char *path, char *file, char **bangv)
+{
+	int a, n, hasext;
+	FILE *fp;
+	ulong type;
+	struct word *w;
+	char *ext, *p;
+	static char line[Maxshebang];
+
+	/* has it a valid looking extension? */
+	hasext = 0;
+	if((ext = strrchr(file, '.')) != 0){
+		for(w = vlook("pathext")->val; w; w = w->next)
+			if(cistrcmp(ext, w->word) == 0){
+				hasext++;
+				snprintf(path, MAX_PATH, "%s", file);
+				if(flag['p'])
+					pfmt(err, "srch: %s good ext\n", path);
+				a = GetFileAttributes(path);
+				if(a != -1 && a != FILE_ATTRIBUTE_DIRECTORY)
+					return 0;
+			}
+	}
+
+	/* is it an rc script, or a windows executable? */
+	snprintf(path, MAX_PATH, "%s", file);
+	if(flag['p'])
+		pfmt(err, "srch: %s raw name\n", path);
+	if((fp = fopen(path, "r")) != nil)
+		if((n = fread(line, 1, sizeof(line), fp)) > 0){
+			fclose(fp);
+
+			if(strncmp(line, "MZ", 2) == 0)
+				return 0;
+
+			if(strncmp(line, "#!", 2) == 0)
+				if(shargs(line, n, bangv) > 0){
+					if(strcmp(bangv[0], "/bin/rc") == 0)
+						bangv[0] = argv0;
+					snprintf(path, MAX_PATH, "%s", bangv[0]);
+					return 0;
+				}
+	}
+
+	/* try appending a known extensions (.BAT files etc)*/
+	if(! hasext)
+		for(w = vlook("pathext")->val; w; w = w->next){
+			snprintf(path, MAX_PATH, "%s%s", file, w->word);
+			if(flag['p'])
+				pfmt(err, "srch: %s add ext\n", path);
+			a = GetFileAttributes(path);
+			if(a != -1 && a != FILE_ATTRIBUTE_DIRECTORY)
+				return 0;
+		}
+	return -1;
+}
+
+
+
+/*
+ * windows quoting rules - I think
+ * Words are seperated by space or tab
+ * Words containing a space or tab can be quoted using "
+ * 2N backslashes + " ==> N backslashes and end quote
+ * 2N+1 backslashes + " ==> N backslashes + literal "
+ * N backslashes not followed by " ==> N backslashes
+ */
+static char *
+dblquote(char *cmd, char *s)
+{
+	int nb;
+	char *p;
+
+	for(p=s; *p; p++)
+		if(*p == ' ' || *p == '\t' || *p == '\n' || *p == '\r' || *p == '"')
+			break;
+
+	if(p == s){					/* empty arg */
+		strcpy(cmd, "\"\"");
+		return cmd+2;
+	}
+
+	if(*p == 0){				/* easy case */
+		strcpy(cmd, s);
+		return cmd+(p-s);
+	}
+
+	*cmd++ = '"';
+	for(;;) {
+		for(nb=0; *s=='\\'; nb++)
+			*cmd++ = *s++;
+
+		if(*s == 0) {			/* trailing backslashes -> 2N */
+			while(nb-- > 0)
+				*cmd++ = '\\';
+			break;
+		}
+
+		if(*s == '"') {			/* literal quote -> 2N+1 backslashes */
+			while(nb-- > 0)
+				*cmd++ = '\\';
+			*cmd++ = '\\';		/* escape the quote */
+		}
+		*cmd++ = *s++;
+	}
+
+	*cmd++ = '"';
+	*cmd = 0;
+
+	return cmd;
+}
+
+static char *
+proccmd(char **bangv, char **argv)
+{
+	int i, n;
+	char *cmd, *p;
+
+	/* conservatively calculate length of command;
+	 * backslash expansion can cause growth in dblquote().
+	 */
+	n = 0;
+	for(i=0; bangv[i]; i++)
+		n += (bangv[i])? 2*strlen(bangv[i]): 2;
+	for(i=0; argv[i]; i++)
+		n += (argv[i])? 2*strlen(argv[i]): 2;
+	n++;
+	
+	cmd = emalloc(n);
+	p = cmd;
+	for(i=0; bangv[i]; i++){
+		p = dblquote(p, bangv[i]);
+		*p++ = ' ';
+	}
+	for(i=0; argv[i]; i++){
+		p = dblquote(p, argv[i]);
+		*p++ = ' ';
+	}
+	if(p != cmd)
+		p--;
+	*p = 0;
+
+	return cmd;
+}
+
+int
+pipe(int *fd)
+{
+	/*
+	 * If you want binary pipes in to/out of
+	 * rc then you will probably want to change
+	 * the definition of ifs in rcmain to include
+	 * a carriage return. I cannot see why you would
+	 * want to do this, but perhaps its a lack of vision.
+	 * -Steve
+	 */
+	return _pipe(fd, 8192, _O_TEXT);
+}
+
+static HANDLE
+fdexport(int fd)
+{
+	HANDLE h, r;
+
+	if(fd < 0)
+		return INVALID_HANDLE_VALUE;
+
+	h = (HANDLE)_get_osfhandle(fd);
+	if(h < 0)
+		return INVALID_HANDLE_VALUE;
+
+	if(!DuplicateHandle(GetCurrentProcess(), h,
+				GetCurrentProcess(), &r, DUPLICATE_SAME_ACCESS,
+				1, DUPLICATE_SAME_ACCESS))
+		return INVALID_HANDLE_VALUE;
+	return r;
+}
+
+int
+ForkExecute(char *name, char **argv, int sin, int sout, int serr)
+{
+	int r;
+	STARTUPINFO si;
+	PROCESS_INFORMATION pi;
+	char path[MAX_PATH], *bangv[1024], *cmd, *env;
+
+	bangv[0] = 0;
+	if(exetype(path, name, bangv) == -1)
+		return -1;
+
+	memset(&si, 0, sizeof(si));
+	si.cb = sizeof(si);
+	si.dwFlags = STARTF_USESHOWWINDOW|STARTF_USESTDHANDLES;
+	si.wShowWindow = SW_SHOW;
+	si.hStdInput = fdexport(sin);
+	si.hStdOutput = fdexport(sout);
+	si.hStdError = fdexport(serr);
+
+	env = exportenv();
+	cmd = proccmd(bangv, argv);
+
+	if(flag['d'])
+		pfmt(err, "proc: path='%s' cmd='%s'\n", path, cmd);
+	r = CreateProcess(path, cmd, nil, nil, TRUE, CREATE_NEW_PROCESS_GROUP, env, nil, &si, &pi);
+
+	/* allow child to run */
+	Sleep(0);
+
+	free(cmd);
+	free(env);
+
+	CloseHandle(si.hStdInput);
+	CloseHandle(si.hStdOutput);
+	CloseHandle(si.hStdError);
+
+	if(!r){
+		setstatus("cannot create process");
+		return 0;
+	}
+
+	CloseHandle(pi.hThread);
+	if(addchild(pi.dwProcessId, pi.hProcess) == 0)
+		return 0;
+
+	return pi.dwProcessId;
 }

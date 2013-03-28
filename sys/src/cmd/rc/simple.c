@@ -26,6 +26,7 @@ Xsimple(void)
 	int pid;
 	globlist();
 	a = runq->argv->words;
+
 	if(a==0){
 		Xerror1("empty argument list");
 		return;
@@ -60,10 +61,8 @@ Xsimple(void)
 		else{
 			flush(err);
 			Updenv();	/* necessary so changes don't go out again */
-			if((pid = execforkexec()) < 0){
-				Xerror("try again");
+			if((pid = execforkexec()) < 0)
 				return;
-			}
 
 			/* interrupts don't get us out */
 			poplist();
@@ -100,11 +99,7 @@ word*
 searchpath(char *w)
 {
 	word *path;
-	if(strncmp(w, "/", 1)==0
-	|| strncmp(w, "#", 1)==0
-	|| strncmp(w, "./", 2)==0
-	|| strncmp(w, "../", 3)==0
-	|| (path = vlook("path")->val)==0)
+	if(Abspath(w) ||(path = vlook("path")->val)==0)
 		path=&nullpath;
 	return path;
 }
@@ -383,7 +378,6 @@ execdot(void)
 			file = strdup(zero);
 
 		fd = open(file, 0);
-		free(file);
 		if(fd >= 0)
 			break;
 		if(strcmp(file, "/dev/stdin")==0){	/* for sun & ucb */
@@ -392,6 +386,7 @@ execdot(void)
 				break;
 		}
 	}
+	free(file);
 	if(fd<0){
 		pfmt(err, "%s: ", zero);
 		setstatus("can't open");

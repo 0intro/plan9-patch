@@ -47,7 +47,7 @@ Xasync(void)
 	}
 
 	runq->pc++;
-	sprint(buf, "%d", pid);
+	inttoascii(buf, pid);
 	setvar("apid", newword(buf, (word *)0));
 }
 
@@ -122,7 +122,7 @@ Xpipe(void)
 	char **argv;
 
 	if(pipe(pfd)<0){
-		Xerror1("can't get pipe");
+		Xerror("can't create pipe");
 		return;
 	}
 
@@ -178,15 +178,15 @@ Xsubshell(void)
 int
 execforkexec(void)
 {
-	char **argv;
-	char file[1024];
-	int nc;
 	word *path;
-	int pid;
+	int nc, pid;
+	char **argv, file[1024], e[128];
 
 	if(runq->argv->words==0)
 		return -1;
+
 	argv = mkargv(runq->argv->words);
+
 
 	for(path = searchpath(runq->argv->words->word);path;path = path->next){
 		nc = strlen(path->word);
@@ -206,6 +206,13 @@ execforkexec(void)
 			}
 		}
 	}
+
+	strncpy(file, "'", sizeof(file));
+	strncat(file, argv[1], sizeof(file));
+	strncat(file, "'", sizeof(file));
+	file[sizeof(file)-1] = 0;
+	Xerror(file);
+
 	free(argv);
 	return -1;
 }

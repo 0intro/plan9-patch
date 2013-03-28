@@ -1,0 +1,29 @@
+include ../make.$(objtype)
+
+CFLAGS=-DUnix
+LIBDIR=/usr/lib
+TARG=rc
+YFLAGS=-d
+OFILES=code.o exec.o getflags.o glob.o here.o io.o lex.o \
+	pcmd.o pfnc.o simple.o subr.o trap.o tree.o var.o \
+	y.tab.o havefork.o unix.o
+CLEANFILES=y.tab.h y.tab.c x.tab.h
+
+$(TARG): x.tab.h $(OFILES)
+	$(CC) -o $@ $(OFILES)
+
+y.tab.h y.tab.c: syn.y
+	$(YACC) $(YFLAGS) syn.y
+
+x.tab.h: y.tab.h
+	cmp -s x.tab.h y.tab.h || cp y.tab.h x.tab.h
+
+clean:
+	rm -f *.o $(EXFLEAN)
+
+nuke: clean
+	rm -f $(TARG)
+
+install: $(TARG)
+	cp $(TARG) $(BIN)/$(TARG)
+	-cp rcmain.$(objtype) $(LIBDIR)/rcmain

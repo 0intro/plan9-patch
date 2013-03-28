@@ -143,11 +143,11 @@ main(int argc, char *argv[])
 	if(flag['I'])
 		flag['i'] = 0;
 	else if(flag['i']==0 && argc==1 && Isatty(0)) flag['i'] = flagset;
-	rcmain = flag['m']?flag['m'][0]:Rcmain; 
 	err = openfd(2);
 	kinit();
 	Trapinit();
 	Vinit();
+	rcmain = flag['m']?flag['m'][0]:Rcmain; 	/* after Vinit for Windows */
 	inttoascii(num, mypid = getpid());
 	setvar("pid", newword(num, (word *)0));
 	setvar("cflag", flag['c']?newword(flag['c'][0], (word *)0)
@@ -919,25 +919,51 @@ Xrdcmds(void)
 	freenodes();
 }
 
+/* NB: Xerror() appends %r, Xerror1() does not */
 void
 Xerror(char *s)
 {
-	if(strcmp(argv0, "rc")==0 || strcmp(argv0, "/bin/rc")==0)
-		pfmt(err, "rc: %s: %r\n", s);
+	char *cmd;
+	struct thread *t;
+
+	cmd = argv0;
+	if(strcmp(cmd, "/bin/rc")==0)
+		cmd = "rc";
+
+	for(t = runq; !t->cmdfile; t = t->ret)
+		if(t->ret == 0)
+			break;
+
+	if(t->cmdfile == nil || t->iflag)
+		pfmt(err, "%s: %s %r\n", cmd, s);
 	else
-		pfmt(err, "rc (%s): %s: %r\n", argv0, s);
+		pfmt(err, "%s: %s:%d %s %r\n", cmd, t->cmdfile, t->lineno, s);
+
 	flush(err);
 	setstatus("error");
+
 	while(!runq->iflag) Xreturn();
 }
 
 void
 Xerror1(char *s)
 {
-	if(strcmp(argv0, "rc")==0 || strcmp(argv0, "/bin/rc")==0)
-		pfmt(err, "rc: %s\n", s);
+	char *cmd;
+	struct thread *t;
+
+	cmd = argv0;
+	if(strcmp(cmd, "/bin/rc")==0)
+		cmd = "rc";
+
+	for(t = runq; !t->cmdfile; t = t->ret)
+		if(t->ret == 0)
+			break;
+
+	if(t->cmdfile == nil || t->iflag)
+		pfmt(err, "%s: %s\n", cmd, s);
 	else
-		pfmt(err, "rc (%s): %s\n", argv0, s);
+		pfmt(err, "%s: %s:%d %s\n", cmd, t->cmdfile, t->lineno, s);
+
 	flush(err);
 	setstatus("error");
 	while(!runq->iflag) Xreturn();
