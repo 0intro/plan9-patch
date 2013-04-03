@@ -68,7 +68,7 @@ Do not insert
 directives into the output.
 .TP
 .B -+
-Understand C++ comments.
+Understand C++ comments.  This is now the default.
 .TP
 .B -.
 Inhibit include search in the source's directory.

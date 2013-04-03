@@ -287,7 +287,7 @@ void
 fixlex(void)
 {
 	/* do C++ comments? */
-	if (Cplusplus==0)
+	if (0 && Cplusplus==0)
 		bigfsm['/'][COM1] = bigfsm['x'][COM1];
 }
 

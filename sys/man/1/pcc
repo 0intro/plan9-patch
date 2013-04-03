@@ -28,7 +28,8 @@ The options are:
 .B "-+
 Accept C++
 .B //
-comments.
+comments.  This option is now ignored;
+C++ comments are always accepted.
 .TP
 .BI -o " out"
 Place loader output in file
