@@ -11,7 +11,6 @@ int chandebug=0;		/* toggled by sysr1 */
 enum
 {
 	PATHSLOP	= 20,
-	PATHMSLOP	= 20,
 };
 
 struct
@@ -301,16 +300,12 @@ newpath(char *s)
 	if(strchr(s, '/') && strcmp(s, "#/") != 0 && strcmp(s, "/") != 0)
 		print("newpath: %s from %#p\n", s, getcallerpc(&s));
 
-	p->mlen = 1;
-	p->malen = PATHMSLOP;
-	p->mtpt = smalloc(p->malen*sizeof p->mtpt[0]);
 	return p;
 }
 
 static Path*
 copypath(Path *p)
 {
-	int i;
 	Path *pp;
 	
 	pp = smalloc(sizeof(Path));
@@ -323,39 +318,20 @@ copypath(Path *p)
 	pp->s = smalloc(p->alen);
 	memmove(pp->s, p->s, p->len+1);
 	
-	pp->mlen = p->mlen;
-	pp->malen = p->malen;
-	pp->mtpt = smalloc(p->malen*sizeof pp->mtpt[0]);
-	for(i=0; i<pp->mlen; i++){
-		pp->mtpt[i] = p->mtpt[i];
-		if(pp->mtpt[i])
-			incref(pp->mtpt[i]);
-	}
-
 	return pp;
 }
 
 void
 pathclose(Path *p)
 {
-	int i;
-	
 	if(p == nil)
 		return;
-//XXX
-	DBG("pathclose %p %s ref=%ld =>", p, p->s, p->ref);
-	for(i=0; i<p->mlen; i++)
-		DBG(" %p", p->mtpt[i]);
-	DBG("\n");
+	DBG("pathclose %p %s ref=%ld\n", p, p->s, p->ref);
 
 	if(decref(p))
 		return;
 	decref(&npath);
 	free(p->s);
-	for(i=0; i<p->mlen; i++)
-		if(p->mtpt[i])
-			cclose(p->mtpt[i]);
-	free(p->mtpt);
 	free(p);
 }
 
@@ -374,6 +350,8 @@ fixdotdotname(Path *p)
 		if(r == nil)
 			return;
 		cleanname(r);
+		if(r[0] == 0)	/* compat with old cleannames */
+			strcpy(r, ".");
 
 		/*
 		 * The correct name is #i rather than #i/,
@@ -381,8 +359,11 @@ fixdotdotname(Path *p)
 		 */
 		if(strcmp(r, "/")==0 && p->s[1] != '/')
 			*r = '\0';
-	}else
+	}else{
 		cleanname(p->s);
+		if(p->s[0] == 0)	/* compat with old cleannames */
+			strcpy(p->s, ".");
+	}
 	p->len = strlen(p->s);
 }
 
@@ -401,11 +382,10 @@ uniquepath(Path *p)
 }
 
 static Path*
-addelem(Path *p, char *s, Chan *from)
+addelem(Path *p, char *s)
 {
 	char *t;
 	int a, i;
-	Chan *c, **tt;
 
 	if(s[0]=='.' && s[1]=='\0')
 		return p;
@@ -426,26 +406,11 @@ addelem(Path *p, char *s, Chan *from)
 		p->s[p->len++] = '/';
 	memmove(p->s+p->len, s, i+1);
 	p->len += i;
-	if(isdotdot(s)){
-		fixdotdotname(p);
-		DBG("addelem %s .. => rm %p\n", p->s, p->mtpt[p->mlen-1]);
-		if(p->mlen>1 && (c = p->mtpt[--p->mlen])){
-			p->mtpt[p->mlen] = nil;
-			cclose(c);
-		}
-	}else{
-		if(p->mlen >= p->malen){
-			p->malen = p->mlen+1+PATHMSLOP;
-			tt = smalloc(p->malen*sizeof tt[0]);
-			memmove(tt, p->mtpt, p->mlen*sizeof tt[0]);
-			free(p->mtpt);
-			p->mtpt = tt;
-		}
-		DBG("addelem %s %s => add %p\n", p->s, s, from);
-		p->mtpt[p->mlen++] = from;
-		if(from)
-			incref(from);
-	}
+
+if(isdotdot(s))
+panic("DOTDOT: addelem\n");
+
+	DBG("addelem %s %s \n", p->s, s);
 	return p;
 }
 
@@ -890,55 +855,19 @@ findmount(Chan **cp, Mhead **mp, int type, int dev, Qid qid)
 
 /*
  * Calls findmount but also updates path.
+ * NB: Kept because it also makes the path unique, but
+ * could probably go now that we don't track mount points
+ * within Paths.
  */
 static int
 domount(Chan **cp, Mhead **mp, Path **path)
 {
-	Chan **lc;
-	Path *p;
-
 	if(findmount(cp, mp, (*cp)->type, (*cp)->dev, (*cp)->qid) == 0)
 		return 0;
 
-	if(path){
-		p = *path;
-		p = uniquepath(p);
-		if(p->mlen <= 0)
-			print("domount: path %s has mlen==%d\n", p->s, p->mlen);
-		else{
-			lc = &p->mtpt[p->mlen-1];
-DBG("domount %p %s => add %p (was %p)\n", p, p->s, (*mp)->from, p->mtpt[p->mlen-1]);
-			incref((*mp)->from);
-			if(*lc)
-				cclose(*lc);
-			*lc = (*mp)->from;
-		}
-		*path = p;
-	}
+	if(path)
+		*path = uniquepath(*path);
 	return 1;
-}
-
-/*
- * If c is the right-hand-side of a mount point, returns the left hand side.
- * Changes name to reflect the fact that we've uncrossed the mountpoint,
- * so name had better be ours to change!
- */
-static Chan*
-undomount(Chan *c, Path *path)
-{
-	Chan *nc;
-
-	if(path->ref != 1 || path->mlen == 0)
-		print("undomount: path %s ref %ld mlen %d caller %#p\n",
-			path->s, path->ref, path->mlen, getcallerpc(&c));
-
-	if(path->mlen>0 && (nc=path->mtpt[path->mlen-1]) != nil){
-DBG("undomount %p %s => remove %p\n", path, path->s, nc);
-		cclose(c);
-		path->mtpt[path->mlen-1] = nil;
-		c = nc;
-	}
-	return c;
 }
 
 /*
@@ -964,8 +893,8 @@ static char Edoesnotexist[] = "does not exist";
 int
 walk(Chan **cp, char **names, int nnames, int nomount, int *nerror)
 {
-	int dev, didmount, dotdot, i, n, nhave, ntry, type;
-	Chan *c, *nc, *mtpt;
+	int dev, didmount, i, n, nhave, ntry, type;
+	Chan *c, *nc;
 	Path *path;
 	Mhead *mh, *nmh;
 	Mount *f;
@@ -980,13 +909,12 @@ walk(Chan **cp, char **names, int nnames, int nomount, int *nerror)
 	/*
 	 * While we haven't gotten all the way down the path:
 	 *    1. step through a mount point, if any
-	 *    2. send a walk request for initial dotdot or initial prefix without dotdot
+	 *    2. send a walk request for initial prefix without dotdot
 	 *    3. move to the first mountpoint along the way.
 	 *    4. repeat.
 	 *
 	 * Each time through the loop:
 	 *
-	 *	If didmount==0, c is on the undomount side of the mount point.
 	 *	If didmount==1, c is on the domount side of the mount point.
 	 * 	Either way, c's full path is path.
 	 */
@@ -1005,19 +933,12 @@ walk(Chan **cp, char **names, int nnames, int nomount, int *nerror)
 		ntry = nnames - nhave;
 		if(ntry > MAXWELEM)
 			ntry = MAXWELEM;
-		dotdot = 0;
-		for(i=0; i<ntry; i++){
-			if(isdotdot(names[nhave+i])){
-				if(i==0){
-					dotdot = 1;
-					ntry = 1;
-				}else
-					ntry = i;
-				break;
-			}
-		}
 
-		if(!dotdot && !nomount && !didmount)
+for(i=0; i<ntry; i++)
+if(isdotdot(names[nhave+i]))
+panic("DOTDOT: walk\n");
+
+		if(!nomount && !didmount)
 			domount(&c, &mh, &path);
 		
 		type = c->type;
@@ -1052,60 +973,46 @@ walk(Chan **cp, char **names, int nnames, int nomount, int *nerror)
 		}
 
 		didmount = 0;
-		if(dotdot){
-			assert(wq->nqid == 1);
-			assert(wq->clone != nil);
-
-			path = addelem(path, "..", nil);
-			nc = undomount(wq->clone, path);
-			nmh = nil;
-			n = 1;
-		}else{
-			nc = nil;
-			nmh = nil;
-			if(!nomount){
-				for(i=0; i<wq->nqid && i<ntry-1; i++){
-					if(findmount(&nc, &nmh, type, dev, wq->qid[i])){
-						didmount = 1;
-						break;
-					}
+		nc = nil;
+		nmh = nil;
+		if(!nomount){
+			for(i=0; i<wq->nqid && i<ntry-1; i++){
+				if(findmount(&nc, &nmh, type, dev, wq->qid[i])){
+					didmount = 1;
+					break;
 				}
-			}
-			if(nc == nil){	/* no mount points along path */
-				if(wq->clone == nil){
-					cclose(c);
-					pathclose(path);
-					if(wq->nqid==0 || (wq->qid[wq->nqid-1].type&QTDIR)){
-						if(nerror)
-							*nerror = nhave+wq->nqid+1;
-						strcpy(up->errstr, Edoesnotexist);
-					}else{
-						if(nerror)
-							*nerror = nhave+wq->nqid;
-						strcpy(up->errstr, Enotdir);
-					}
-					free(wq);
-					if(mh != nil)
-						putmhead(mh);
-					return -1;
-				}
-				n = wq->nqid;
-				nc = wq->clone;
-			}else{		/* stopped early, at a mount point */
-				didmount = 1;
-				if(wq->clone != nil){
-					cclose(wq->clone);
-					wq->clone = nil;
-				}
-				n = i+1;
-			}
-			for(i=0; i<n; i++){
-				mtpt = nil;
-				if(i==n-1 && nmh)
-					mtpt = nmh->from;
-				path = addelem(path, names[nhave+i], mtpt);
 			}
 		}
+		if(nc == nil){	/* no mount points along path */
+			if(wq->clone == nil){
+				cclose(c);
+				pathclose(path);
+				if(wq->nqid==0 || (wq->qid[wq->nqid-1].type&QTDIR)){
+					if(nerror)
+						*nerror = nhave+wq->nqid+1;
+					strcpy(up->errstr, Edoesnotexist);
+				}else{
+					if(nerror)
+						*nerror = nhave+wq->nqid;
+					strcpy(up->errstr, Enotdir);
+				}
+				free(wq);
+				if(mh != nil)
+					putmhead(mh);
+				return -1;
+			}
+			n = wq->nqid;
+			nc = wq->clone;
+		}else{		/* stopped early, at a mount point */
+			didmount = 1;
+			if(wq->clone != nil){
+				cclose(wq->clone);
+				wq->clone = nil;
+			}
+			n = i+1;
+		}
+		for(i=0; i<n; i++)
+			path = addelem(path, names[nhave+i]);
 		cclose(c);
 		c = nc;
 		putmhead(mh);
@@ -1324,6 +1231,7 @@ namec(char *aname, int amode, int omode, ulong perm)
 	Mhead *m;
 	char *createerr, tmperrbuf[ERRMAX];
 	char *name;
+	char *dotdotname, *s;
 
 	if(aname[0] == '\0')
 		error("empty file name");
@@ -1334,6 +1242,36 @@ namec(char *aname, int amode, int omode, ulong perm)
 	}
 	DBG("namec %s %d %d\n", aname, amode, omode);
 	name = aname;
+
+
+	/*
+	 * Get rid of ".." elements. Names starting with "../..." are
+	 * rewritten using the full path in up->dot.
+	 * No other portion of code should ever see a "..".
+	 */
+	dotdotname = nil;
+	if(up->dot == nil)	/* init0 called */
+		goto pathok;
+	cleanname(name);
+	if(name[0] == '.' && name[1] == '.' && (name[2] == '/' || name[2] == 0)){
+		path = up->dot->path;
+		dotdotname = smalloc(path->len + 1 + strlen(name) + 1);
+		memmove(dotdotname, path->s, path->len);
+		s = dotdotname+path->len;
+		if(s[-1] != '/')
+			*s++ = '/';
+		strcpy(s, name);
+		cleanname(dotdotname);
+		DBG("namec dotdot %s\n", dotdotname);
+		name = dotdotname;
+	}
+pathok:
+	if(name[0] == 0)
+		strcpy(name, ".");
+	if(waserror()){
+		free(dotdotname);
+		nexterror();
+	}
 
 	/*
 	 * Find the starting off point (the current slash, the root of
@@ -1623,7 +1561,7 @@ if(c->umh != nil){
 				putmhead(m);
 			cclose(c);
 			c = cnew;
-			c->path = addelem(c->path, e.elems[e.nelems-1], nil);
+			c->path = addelem(c->path, e.elems[e.nelems-1]);
 			break;
 		}
 
@@ -1658,6 +1596,8 @@ if(c->umh != nil){
 	free(e.elems);
 	free(e.off);
 	poperror();	/* e c */
+	free(dotdotname);
+	poperror();	/* dotdotname */
 	free(aname);
 	poperror();	/* aname */
 
