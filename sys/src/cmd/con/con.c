@@ -302,7 +302,7 @@ rawoff(void)
 /*
  *  control menu
  */
-#define STDHELP	"\t(b)reak, (q)uit, (i)nterrupt, toggle printing (r)eturns, (.)continue, (!cmd)\n"
+#define STDHELP	"\t(b)reak, (q)uit, (i)nterrupt, toggle printing (r)eturns, (.)continue, (!cmd),  (t)^T^T\n"
 
 int
 menu(int net)
@@ -345,6 +345,12 @@ menu(int net)
 			break;
 		case 'r':
 			returns = 1-returns;
+			done = 1;
+			break;
+		case 't':
+			write(net, "", 2);
+			if(buf[1] != '\n' && buf[1] != 0)
+				write(net, buf+1, 1);
 			done = 1;
 			break;
 		default:

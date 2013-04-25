@@ -176,6 +176,18 @@ over the connections using programs such as
 .TP
 .B r
 Toggle printing of carriage returns.
+.TP
+.B t
+Send a
+.LR ^T^T
+sequence to the network connection. To use
+.IR cons (3)
+debugging requests on the remote system. If a char is
+typed after the
+.LR t
+it is sent after the
+.LR ^T^T
+sequence.
 .PD
 .PP
 .I Telnet
