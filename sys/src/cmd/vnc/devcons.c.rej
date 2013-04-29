@@ -1,0 +1,11 @@
+--- sys/src/cmd/vnc/devcons.c	Wed Apr 24 01:13:15 2013
++++ sys/src/cmd/vnc/devcons.c	Wed Apr 24 01:13:15 2013
+@@ -158,7 +158,7 @@
+ kbdputc(int ch)
+ {
+ 	int n;
+-	char buf[3];
++	char buf[UTFmax];
+ 	Rune r;
+ 
+ 	r = ch;

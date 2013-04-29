@@ -1,0 +1,11 @@
+--- sys/src/cmd/freq.c	Wed Apr 24 01:13:14 2013
++++ sys/src/cmd/freq.c	Wed Apr 24 01:13:14 2013
+@@ -2,7 +2,7 @@
+ #include <libc.h>
+ #include <bio.h>
+ 
+-uvlong	count[1<<16];
++uvlong	count[Runemax+1];
+ Biobuf	bout;
+ 
+ void	usage(void);

@@ -1,0 +1,11 @@
+--- sys/src/libbio/bputrune.c	Thu Apr 25 00:55:17 2013
++++ sys/src/libbio/bputrune.c	Thu Apr 25 00:55:17 2013
+@@ -6,7 +6,7 @@
+ Bputrune(Biobufhdr *bp, long c)
+ {
+ 	Rune rune;
+-	char str[4];
++	char str[UTFmax];
+ 	int n;
+ 
+ 	rune = c;

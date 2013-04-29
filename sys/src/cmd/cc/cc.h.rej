@@ -1,0 +1,30 @@
+--- sys/src/cmd/cc/cc.h	Wed Apr 24 01:13:14 2013
++++ sys/src/cmd/cc/cc.h	Wed Apr 24 01:13:14 2013
+@@ -53,7 +55,7 @@
+ 	double	fconst;		/* fp constant */
+ 	vlong	vconst;		/* non fp const */
+ 	char*	cstring;	/* character string */
+-	ushort*	rstring;	/* rune string */
++	TRune*	rstring;	/* rune string */
+ 
+ 	Sym*	sym;
+ 	Type*	type;
+@@ -338,6 +340,9 @@
+ 	TFILE,
+ 	TOLD,
+ 	NALLTYPES,
++
++	/* adapt size of Rune to target system's size */
++	TRUNE = sizeof(TRune)==4? TUINT: TUSHORT,
+ };
+ enum
+ {
+@@ -742,7 +747,7 @@
+ void	gextern(Sym*, Node*, long, long);
+ void	ginit(void);
+ long	outstring(char*, long);
+-long	outlstring(ushort*, long);
++long	outlstring(TRune*, long);
+ void	xcom(Node*);
+ long	exreg(Type*);
+ long	align(long, Type*, int);

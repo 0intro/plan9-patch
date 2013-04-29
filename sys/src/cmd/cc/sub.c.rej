@@ -1,0 +1,14 @@
+--- sys/src/cmd/cc/sub.c	Wed Apr 24 01:13:14 2013
++++ sys/src/cmd/cc/sub.c	Wed Apr 24 01:13:14 2013
+@@ -85,7 +85,10 @@
+ 		break;
+ 
+ 	case OLSTRING:
+-		print(" \"%S\"", n->rstring);
++		if(sizeof(TRune) == sizeof(Rune))
++			print(" \"%S\"", (Rune*)n->rstring);
++		else
++			print(" \"...\"");
+ 		i = 0;
+ 		break;
+ 

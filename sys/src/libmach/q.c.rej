@@ -1,0 +1,10 @@
+--- sys/src/libmach/q.c	Thu Apr 25 00:58:16 2013
++++ sys/src/libmach/q.c	Thu Apr 25 00:58:16 2013
+@@ -3,6 +3,7 @@
+  *	forsyth@terzarima.net
+  */
+ #include <u.h>
++#include <libc.h>
+ #include <bio.h>
+ #include "/power/include/ureg.h"
+ #include <mach.h>

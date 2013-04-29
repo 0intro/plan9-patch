@@ -1,0 +1,11 @@
+--- sys/src/cmd/cc/dcl.c	Wed Apr 24 01:13:14 2013
++++ sys/src/cmd/cc/dcl.c	Wed Apr 24 01:13:14 2013
+@@ -232,7 +232,7 @@
+ 			a->cstring++;
+ 		}
+ 		if(a->op == OLSTRING) {
+-			b->vconst = convvtox(*a->rstring, TUSHORT);
++			b->vconst = convvtox(*a->rstring, TRUNE);
+ 			a->rstring++;
+ 		}
+ 		a->type->width -= b->type->width;

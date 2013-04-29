@@ -1,0 +1,15 @@
+--- sys/src/cmd/cc/com.c	Wed Apr 24 01:13:14 2013
++++ sys/src/cmd/cc/com.c	Wed Apr 24 01:13:14 2013
+@@ -634,10 +635,10 @@
+ 		break;
+ 
+ 	case OLSTRING:
+-		if(n->type->link != types[TUSHORT]) {
++		if(n->type->link != types[TRUNE]) {
+ 			o = outstring(0, 0);
+ 			while(o & 3) {
+-				outlstring(L"", sizeof(ushort));
++				outlstring(&zer, sizeof(TRune));
+ 				o = outlstring(0, 0);
+ 			}
+ 		}

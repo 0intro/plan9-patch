@@ -1,0 +1,52 @@
+--- sys/src/cmd/cc/lex.c	Wed Apr 24 01:13:14 2013
++++ sys/src/cmd/cc/lex.c	Wed Apr 24 01:13:14 2013
+@@ -80,7 +80,8 @@
+ 
+ 	case 'I':
+ 		p = ARGF();
+-		setinclude(p);
++		if(p)
++			setinclude(p);
+ 		break;
+ 	} ARGEND
+ 	if(argc < 1 && outfile == 0) {
+@@ -465,7 +466,7 @@
+ 				yyerror("missing '");
+ 				peekc = c1;
+ 			}
+-			yylval.vval = convvtox(c, TUSHORT);
++			yylval.vval = convvtox(c, TRUNE);
+ 			return LUCONST;
+ 		}
+ 		if(c == '"') {
+@@ -539,15 +540,15 @@
+ 			c = escchar('"', 1, 0);
+ 			if(c == EOF)
+ 				break;
+-			cp = allocn(cp, c1, sizeof(ushort));
+-			*(ushort*)(cp + c1) = c;
+-			c1 += sizeof(ushort);
++			cp = allocn(cp, c1, sizeof(TRune));
++			*(TRune*)(cp + c1) = c;
++			c1 += sizeof(TRune);
+ 		}
+ 		yylval.sval.l = c1;
+ 		do {
+-			cp = allocn(cp, c1, sizeof(ushort));
+-			*(ushort*)(cp + c1) = 0;
+-			c1 += sizeof(ushort);
++			cp = allocn(cp, c1, sizeof(TRune));
++			*(TRune*)(cp + c1) = 0;
++			c1 += sizeof(TRune);
+ 		} while(c1 & MAXALIGN);
+ 		yylval.sval.s = cp;
+ 		return LLSTRING;
+@@ -1025,7 +1026,7 @@
+ 	} else
+ 		c = GETC();
+ 	for(;;) {
+-		if(!isspace(c))
++		if(c >= Runeself || !isspace(c))
+ 			return c;
+ 		if(c == '\n') {
+ 			lineno++;

@@ -1,0 +1,11 @@
+--- sys/src/cmd/htmlroff/char.c	Wed Apr 24 01:13:14 2013
++++ sys/src/cmd/htmlroff/char.c	Wed Apr 24 01:13:14 2013
+@@ -65,7 +71,7 @@
+ typedef struct Trtab Trtab;
+ struct Trtab
+ {
+-	char t[3];
++	char t[UTFmax];
+ 	Rune r;
+ };
+ 

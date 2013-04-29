@@ -1,0 +1,11 @@
+--- sys/src/libc/port/mkfile	Thu Apr 25 00:51:02 2013
++++ sys/src/libc/port/mkfile	Thu Apr 25 00:51:02 2013
+@@ -60,6 +60,8 @@
+ 	rand.c\
+ 	readn.c\
+ 	rune.c\
++	runebase.c\
++	runebsearch.c\
+ 	runestrcat.c\
+ 	runestrchr.c\
+ 	runestrcmp.c\
