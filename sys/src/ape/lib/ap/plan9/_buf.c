@@ -23,7 +23,6 @@ typedef struct Muxseg {
 	Muxbuf	bufs[INITBUFS];		/* can grow, via segbrk() */
 } Muxseg;
 
-#define MUXADDR ((void*)0x6000000)
 static Muxseg *mux = 0;			/* shared memory segment */
 
 /* _muxsid and _killmuxsid are known in libbsd's listen.c */
@@ -50,15 +49,15 @@ static int copynotehandler(void *, char *);
 int
 _startbuf(int fd)
 {
-	long i, n, slot;
-	int pid, sid;
+	long i, slot;
+	int pid;
 	Fdinfo *f;
 	Muxbuf *b;
 
 	if(mux == 0){
 		_RFORK(RFREND);
-		mux = (Muxseg*)_SEGATTACH(0, "shared", MUXADDR, sizeof(Muxseg));
-		if((long)mux == -1){
+		mux = (Muxseg*)_SEGATTACH(0, "shared", 0, sizeof(Muxseg));
+		if(mux == (void*)-1){
 			_syserrno();
 			return -1;
 		}
@@ -264,7 +263,7 @@ goteof:
 int
 select(int nfds, fd_set *rfds, fd_set *wfds, fd_set *efds, struct timeval *timeout)
 {
-	int n, i, tmp, t, slots, fd, err;
+	int n, i, t, slots, fd, err;
 	Fdinfo *f;
 	Muxbuf *b;
 
@@ -368,7 +367,7 @@ static int timerreset;
 static int timerpid;
 
 static void
-alarmed(int v)
+alarmed(int)
 {
 	timerreset = 1;
 }
@@ -454,11 +453,8 @@ _detachbuf(void)
 }
 
 static int
-copynotehandler(void *u, char *msg)
+copynotehandler(void*, char*)
 {
-	int i;
-	void(*f)(int);
-
 	if(_finishing)
 		_finish(0, 0);
 	_NOTED(1);
