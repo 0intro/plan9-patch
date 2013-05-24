@@ -9,10 +9,15 @@
 #include "getflags.h"
 #include <errno.h>
 
+#ifndef ETXTBSY
+#define ETXTBSY	9999
+#endif
+
 char *Rcmain = "/usr/lib/rcmain";
 char *Fdprefix = "/dev/fd/";
 
 void execfinit(void);
+void execlimit(void);
 
 struct builtin Builtin[] = {
 	"cd",		execcd,
@@ -26,14 +31,14 @@ struct builtin Builtin[] = {
 	".",		execdot,
 	"finit",	execfinit,
 	"flag",		execflag,
+	"limit",	execlimit,
 	0
 };
 #define	SEP	'\1'
 char **environp;
 
 struct word*
-enval(s)
-register char *s;
+enval(char *s)
 {
 	char *t, c;
 	struct word *v;
@@ -115,10 +120,98 @@ execfinit(void)
 	start(rdfns, 1, runq->local);
 }
 
+static struct {
+	char *name;
+	int id;
+} limits[] = {
+	{ "cputime",		RLIMIT_CPU },
+	{ "filesize",		RLIMIT_FSIZE },
+	{ "datasize",		RLIMIT_DATA },
+	{ "stacksize",		RLIMIT_STACK },
+	{ "coredumpsize",	RLIMIT_CORE },
+	{ "descriptors",	RLIMIT_NOFILE },
+	{ "memoryuse",		RLIMIT_AS },
+	{ "memoryrss",		RLIMIT_RSS },
+	{ "maxproc",		RLIMIT_NPROC },
+	{ "memorylocked",	RLIMIT_MEMLOCK },
+	{ "filelocks",		RLIMIT_LOCKS },
+};
+
+static void 
+prlim(char *name, int id)
+{
+	char pad[32];
+	struct rlimit rlim;
+
+	memset(pad, ' ', sizeof(pad));
+	pad[sizeof(pad)-strlen(name)] = 0;
+
+	pfmt(err, "%s%s ", name, pad);
+	if(getrlimit(id, &rlim) < 0){
+		pfmt(err, "%s			%s\n", "?", "?");
+		return;
+	}
+	if(rlim.rlim_max == RLIM_INFINITY)
+		pfmt(err, "%s			", "∞");
+	else
+		pfmt(err, "%d		", rlim.rlim_max);
+	if(rlim.rlim_cur == RLIM_INFINITY)
+		pfmt(err, "%s\n", "∞");
+	else
+		pfmt(err, "%d\n", rlim.rlim_cur);
+}
+
+void
+execlimit(void)
+{
+	int i;
+	struct rlimit rlim;
+	word *a = runq->argv->words;
+
+	switch(count(a)){
+	case 1:
+		for(i = 0; i < nelem(limits); i++)
+			prlim(limits[i].name, limits[i].id);
+		setstatus("");
+		break;
+	case 4:
+		for(i = 0; i < nelem(limits); i++)
+			if(strcmp(limits[i].name, a->next->word) == 0)
+				break;
+		if(i >= nelem(limits)){
+			pfmt(err, "%s: %s unknown limit\n", a->word, a->next->word);
+			setstatus("unknown");
+			break;
+		}
+
+		if(strcmp(a->next->next->word, "∞") == 0)
+			rlim.rlim_max = RLIM_INFINITY;
+		else
+			rlim.rlim_max = atoi(a->next->next->word);
+		if(strcmp(a->next->next->next->word, "∞") == 0)
+			rlim.rlim_cur = RLIM_INFINITY;
+		else
+			rlim.rlim_cur = atoi(a->next->next->next->word);
+
+		if(setrlimit(limits[i].id, &rlim) < 0){
+			pfmt(err, "%s: %s failed - %r\n", a->word, a->next->word);
+			setstatus("failed");
+			break;
+		}
+		setstatus("");
+		break;
+	default:
+		pfmt(err, "usage: limit name hard soft\n");
+		setstatus("usage");
+		break;
+	}
+	poplist();
+}
+
 int
 cmpenv(const void *aa, const void *ab)
 {
-	char **a = aa, **b = ab;
+	char * const*a = aa, * const*b = ab;
 
 	return strcmp(*a, *b);
 }
@@ -254,8 +347,7 @@ Waitfor(int pid, int persist)
 }
 
 char **
-mkargv(a)
-register struct word *a;
+mkargv(struct word *a)
 {
 	char **argv = (char **)emalloc((count(a)+2)*sizeof(char *));
 	char **argp = argv+1;	/* leave one at front for runcoms */
@@ -315,10 +407,41 @@ Bad:
 	efree((char *)argv);
 }
 
-#define	NDIR	14		/* should get this from param.h */
+/* posix max path component length */
+#ifndef NDIR
+#ifdef MAXNAMLEN
+#define NDIR MAXNAMLEN
+#endif
+#endif
 
-Globsize(p)
-register char *p;
+/* BSD max path component length */
+#ifndef NDIR
+#ifdef NAME_MAX
+#define NDIR NAME_MAX
+#endif
+#endif
+
+/* last resort guess of path component length */
+#ifndef NDIR	
+#define	NDIR	256
+#endif
+
+int
+Abspath(char *w)
+{
+	if(strncmp(w, "/", 1)==0)
+		return 1;
+	if(strncmp(w, "#", 1)==0)
+		return 1;
+	if(strncmp(w, "./", 2)==0)
+		return 1;
+	if(strncmp(w, "../", 3)==0)
+		return 1;
+	return 0;
+}
+
+int
+Globsize(char *p)
 {
 	int isglob = 0, globlen = NDIR+1;
 	for(;*p;p++){
@@ -341,8 +464,7 @@ register char *p;
 
 DIR *dirlist[NDIRLIST];
 
-Opendir(name)
-char *name;
+Opendir(char *name)
 {
 	DIR **dp;
 	for(dp = dirlist;dp!=&dirlist[NDIRLIST];dp++)
@@ -416,40 +538,36 @@ Trapinit(void)
 	}
 }
 
-Unlink(name)
-char *name;
+Unlink(char *name)
 {
 	return unlink(name);
 }
-Write(fd, buf, cnt)
-char *buf;
+Write(int fd, char *buf, int cnt)
 {
 	return write(fd, buf, cnt);
 }
-Read(fd, buf, cnt)
-char *buf;
+Read(int fd, char *buf, int cnt)
 {
 	return read(fd, buf, cnt);
 }
-Seek(fd, cnt, whence)
-long cnt;
+Seek(int fd, long cnt, int whence)
 {
 	return lseek(fd, cnt, whence);
 }
-Executable(file)
-char *file;
+Executable(char *file)
 {
 	return(access(file, 01)==0);
 }
-Creat(file)
-char *file;
+Creat(char *file)
 {
 	return creat(file, 0666);
 }
-Dup(a, b){
+Dup(int a, int b)
+{
 	return dup2(a, b);
 }
-Dup1(a){
+Dup1(int a)
+{
 	return dup(a);
 }
 /*
@@ -470,21 +588,23 @@ Exit(char *stat)
 	}
 	exit(n);
 }
-Eintr(){
+Eintr(void)
+{
 	return errno==EINTR;
 }
 
 void
-Noerror()
+Noerror(void)
 {
 	errno = 0;
 }
-Isatty(fd){
+Isatty(fd)
+{
 	return isatty(fd);
 }
 
 void
-Abort()
+Abort(void)
 {
 	abort();
 }
@@ -517,8 +637,7 @@ execumask(void)		/* wrong -- should fork before writing */
 }
 
 void
-Memcpy(a, b, n)
-char *a, *b;
+Memcpy(char *a, char *b, int n)
 {
 	memmove(a, b, n);
 }
