@@ -327,8 +327,8 @@ isint(char *s, int *pans)
 int
 isolder(char *pin, char *f)
 {
-	int r;
-	ulong n, m;
+	int r, rel;
+	long n, m;
 	char *p = pin;
 	Dir *dir;
 
@@ -338,6 +338,7 @@ isolder(char *pin, char *f)
 
 	/* parse time */
 	n = 0;
+	rel = 0;
 	while(*p){
 		m = strtoul(p, &p, 0);
 		switch(*p){
@@ -362,13 +363,19 @@ isolder(char *pin, char *f)
 		case 's':
 			n += m;
 			p++;
+			rel = 1;
 			break;
 		default:
 			synbad("bad time syntax, ", pin);
 		}
 	}
 
-	r = dir->mtime + n < time(0);
+	if(rel)
+		n = time(0) - n;
+	if(n < 0)
+		return 0;
+	r = dir->mtime < n;
+
 	free(dir);
 	return r;
 }
