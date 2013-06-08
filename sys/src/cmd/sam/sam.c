@@ -566,7 +566,10 @@ readflist(int readall, int delete)
 	int c;
 	File *f;
 	String t;
+	char* ifs;
 
+	ifs=getenv("ifs");
+	if (!ifs) ifs=strdup(" \t\n");
 	Strinit(&t);
 	for(i=0,f=0; f==0 || readall || delete; i++){	/* ++ skips blank */
 		Strdelete(&genstr, (Posn)0, i);
@@ -575,8 +578,9 @@ readflist(int readall, int delete)
 		if(i >= genstr.n)
 			break;
 		Strdelete(&genstr, (Posn)0, i);
-		for(i=0; (c=genstr.s[i]) && c!=' ' && c!='\t' && c!='\n'; i++)
-			;
+		for(i=0; (c=genstr.s[i]); i++)
+			if (c=='\n') break;
+			else if (0!=strchr(ifs,c)) break;
 
 		if(i == 0)
 			break;
@@ -593,6 +597,7 @@ readflist(int readall, int delete)
 			logsetname(f = newfile(), &t);
 	}
 	Strclose(&t);
+	if (ifs) free(ifs);
 	return f;
 }
 
