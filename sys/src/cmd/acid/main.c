@@ -90,8 +90,10 @@ main(int argc, char *argv[])
 			aout = argv[0];
 		}
 	} else
-	if(remote)
-		aout = "/mips/9ch";
+	if(remote) {
+		snprint(prog, sizeof(prog), "/proc/%d/text", pid);
+		aout = prog;
+	}
 
 	fmtinstall('x', xfmt);
 	fmtinstall('L', Lfmt);
@@ -147,7 +149,7 @@ main(int argc, char *argv[])
 		}
 		stacked = 0;
 
-		Bprint(bout, "acid: ");
+		Bprint(bout, prompt);
 
 		if(yyparse() != 1)
 			die();

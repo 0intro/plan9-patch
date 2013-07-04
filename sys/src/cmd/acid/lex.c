@@ -7,6 +7,8 @@
 #include "acid.h"
 #include "y.tab.h"
 
+char prompt[] = "acid: ";
+
 struct keywd
 {
 	char	*name;
@@ -305,7 +307,7 @@ eatnl(void)
 int
 yylex(void)
 {
-	int c;
+	int c, n;
 	extern char vfmt[];
 
 loop:
@@ -316,7 +318,7 @@ loop:
 		if(gotint) {
 			gotint = 0;
 			stacked = 0;
-			Bprint(bout, "\nacid: ");
+			Bprint(bout, "\n%s", prompt);
 			goto loop;
 		}
 		return Eof;
@@ -464,7 +466,10 @@ loop:
 		return '-';
 
 	default:
-		return numsym(c);
+		n = numsym(c);
+		if(n == Tskip)
+			goto loop;
+		return n;
 	}
 }
 
@@ -529,13 +534,17 @@ numsym(char first)
 		c = lexc();
 		if(c < 0)
 			error("%d <eof> eating symbols", line);
+		*p++ = c;
 		if(c == '\n')
 			line++;
 		if(c != '_' && c != '$' && c <= '~' && !isalnum(c)) {	/* checking against ~ lets UTF names through */
+			if(c == ':')
+			if(strncmp(prompt, symbol, p-symbol) == 0)
+				return Tskip;
 			unlexc(c);
+			p--;
 			break;
 		}
-		*p++ = c;
 	}
 
 	*p = '\0';

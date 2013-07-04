@@ -40,7 +40,7 @@
 %token <fval>	Tfconst
 %token <string>	Tstring
 %token Tif Tdo Tthen Telse Twhile Tloop Thead Ttail Tappend Tfn Tret Tlocal
-%token Tcomplex Twhat Tdelete Teval Tbuiltin
+%token Tcomplex Twhat Tdelete Teval Tbuiltin Tskip
 
 %%
 
@@ -56,7 +56,7 @@ bigstmnt	: stmnt
 			mkvar("_thiscmd")->proc = nil;
 			gc();
 			if(interactive)
-				Bprint(bout, "acid: ");
+				Bprint(bout, prompt);
 		}
 		| Tfn Tid '(' args ')' zsemi '{' slist '}'
 		{
