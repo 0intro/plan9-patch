@@ -124,6 +124,7 @@ enum
 	Xfpregs,
 	Xkregs,
 	Xmem,
+	Xnote,
 	Xproc,
 	Xregs,
 	Xtext,
@@ -134,6 +135,8 @@ enum
 int	textfd;
 int	rfd;
 Biobuf	rfb;
+int	cfd;
+char*	baudrate;
 char*	portname = "/dev/eia0";
 char*	textfile = "/386/9pc";
 char*	procname = "1";
@@ -143,8 +146,19 @@ Channel* rchan;
 void
 usage(void)
 {
-	fprint(2, "usage: rdbfs [-p procnum] [-s srvname] [-t textfile] [serialport]\n");
+	fprint(2, "usage: rdbfs [-b baudrate] [-p procnum] [-s srvname] [-t textfile] [serialport]\n");
 	exits("usage");
+}
+
+char *
+basename(char *s)
+{
+	char *p;
+
+	p = strrchr(s, '/');
+	if(p == nil)
+		return p;
+	return p+1;
 }
 
 void
@@ -224,9 +238,11 @@ eiaread(void*)
 					goto Break2;
 				}else{
 					DBG(2, "unknown message\n");
+					break;
 				}
 			}
 		}
+		respond(r, "timed out");
 	Break2:;
 	}
 }
@@ -234,7 +250,6 @@ eiaread(void*)
 void
 attachremote(char* name)
 {
-	int fd;
 	char buf[128];
 
 	print("attach %s\n", name);
@@ -243,11 +258,13 @@ attachremote(char* name)
 		sysfatal("can't open remote %s", name);
 
 	sprint(buf, "%sctl", name);
-	fd = open(buf, OWRITE);
-	if(fd < 0)
-		sysfatal("can't set baud rate on %s", buf);
-	write(fd, "B9600", 6);
-	close(fd);
+	cfd = open(buf, OWRITE);
+	if(cfd < 0)
+		sysfatal("can't open ctl %s", buf);
+
+	if(baudrate)
+		fprint(cfd, "b%s", baudrate);
+
 	Binit(&rfb, rfd, OREAD);
 }
 
@@ -301,7 +318,7 @@ fsread(Req *r)
 		respond(r, nil);
 		break;
 	case Xstatus:
-		n = sprint(buf, "%-28s%-28s%-28s", "remote", "system", "New");
+		n = sprint(buf, "%-28s%-28s%-28s", basename(portname), getuser(), "Broken");
 		for(i = 0; i < 9; i++)
 			n += sprint(buf+n, "%-12d", 0);
 		readstr(r, buf);
@@ -317,13 +334,15 @@ fswrite(Req *r)
 {
 	char buf[ERRMAX];
 
+	r->ofcall.count = r->ifcall.count;
 	switch((uintptr)r->fid->file->aux) {
 	case Xctl:
+	case Xnote:
 		if(strncmp(r->ifcall.data, "kill", 4) == 0 ||
 		   strncmp(r->ifcall.data, "exit", 4) == 0) {
+			fprint(cfd, "k");
 			respond(r, nil);
-			postnote(PNGROUP, getpid(), "umount");
-			exits(nil);
+			threadexitsall(nil);
 		}else if(strncmp(r->ifcall.data, "refresh", 7) == 0){
 			flushcache();
 			respond(r, nil);
@@ -362,6 +381,7 @@ struct {
 	"fpregs",	Xfpregs,	0666,
 	"kregs",	Xkregs,		0666,
 	"mem",		Xmem,		0666,
+	"note",		Xnote,		0222,
 	"proc",		Xproc,		0444,
 	"regs",		Xregs,		0666,
 	"text",		Xtext,		0444,
@@ -391,6 +411,9 @@ threadmain(int argc, char **argv)
 	ARGBEGIN{
 	case 'D':
 		chatty9p++;
+		break;
+	case 'b':
+		baudrate = EARGF(usage());
 		break;
 	case 'd':
 		dbg = 1;
@@ -434,4 +457,3 @@ threadmain(int argc, char **argv)
 	threadpostmountsrv(&fs, srvname, "/proc", MBEFORE);
 	exits(0);
 }
-

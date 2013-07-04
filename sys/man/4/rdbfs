@@ -7,6 +7,10 @@ rdbfs \- remote kernel debugging file system
 .B -d
 ]
 [
+.B -b
+.I baudrate
+]
+[
 .B -p 
 .I pid
 ]
@@ -31,7 +35,10 @@ a set of process files for debugging
 a kernel over the serial line 
 .I device
 (default 
-.BR /dev/eia0 ).
+.BR /dev/eia0 ),
+optionally setting the baudrate if the
+.B -b
+option is specified.
 If the
 .B -s
 option is given,
