@@ -122,6 +122,7 @@ main(int argc, char *argv[])
 			argv0, argv[0], argc == 4 ? "risc" : "cisc");
 		break;
 	}
+	print("acid %s\n", argv[0]);
 	(*t)(pc, sp, link);
 	exits(0);
 }
@@ -156,11 +157,9 @@ rtrace(uvlong pc, uvlong sp, uvlong link)
 		fmt(buf, pc);
 
 		oldpc = pc;
-		if(s.type == 'L' || s.type == 'l' || pc <= s.value+mach->pcquant){
-			if(link == 0)
-				fprint(2, "%s: need to supply a valid link register\n", argv0);
+		if(s.type == 'L' || s.type == 'l' || pc <= s.value+mach->pcquant)
 			pc = link;
-		}else{
+		else{
 			pc = getval(sp);
 			if(pc == 0)
 				break;
