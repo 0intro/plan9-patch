@@ -224,25 +224,28 @@ i8250fifo(Uart* uart, int level)
 	 * Some UARTs require FIFOena to be set before
 	 * other bits can take effect, so set it twice.
 	 */
-	ctlr->fena = level;
 	switch(level){
-	case 0:
-		break;
-	case 1:
-		level = FIFO1|FIFOena;
-		break;
-	case 4:
-		level = FIFO4|FIFOena;
+	default:
+		level = 14;
+	case 14:
+		ctlr->sticky[Fcr] = FIFO14|FIFOena;
 		break;
 	case 8:
-		level = FIFO8|FIFOena;
+		ctlr->sticky[Fcr] = FIFO8|FIFOena;
 		break;
-	default:
-		level = FIFO14|FIFOena;
+	case 4:
+		ctlr->sticky[Fcr] = FIFO4|FIFOena;
+		break;
+	case 1:
+		ctlr->sticky[Fcr] = FIFO1|FIFOena;
+		break;
+	case 0:
+		ctlr->sticky[Fcr] = 0;
 		break;
 	}
-	csr8w(ctlr, Fcr, level);
-	csr8w(ctlr, Fcr, level);
+	ctlr->fena = level;
+	csr8w(ctlr, Fcr, 0);
+	csr8w(ctlr, Fcr, 0);
 	iunlock(ctlr);
 }
 
@@ -605,6 +608,7 @@ i8250enable(Uart* uart, int ie)
 
 	(*uart->phys->dtr)(uart, 1);
 	(*uart->phys->rts)(uart, 1);
+	(*uart->phys->fifo)(uart, 1);
 
 	/*
 	 * During startup, the i8259 interrupt controller is reset.
