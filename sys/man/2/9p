@@ -1,6 +1,11 @@
 .TH 9P 2
 .SH NAME
 Srv,
+auth9p,
+authattach,
+authdestroy,
+authread,
+authwrite,
 dirread9p,
 emalloc9p,
 erealloc9p,
@@ -14,7 +19,8 @@ respond,
 responderror,
 threadlistensrv,
 threadpostmountsrv,
-srv \- 9P file service
+srv,
+walkandclone \- 9P file service
 .SH SYNOPSIS
 .ft L
 .nf
@@ -75,6 +81,15 @@ typedef int Dirgen(int n, Dir *dir, void *aux)
 void		dirread9p(Req *r, Dirgen *gen, void *aux)
 void	walkandclone(Req *r, char *(*walk1)(Fid *old, char *name, void *v),
           char *(*clone)(Fid *old, Fid *new, void *v), void *v)
+.fi
+.PP
+.nf
+.ft L
+void	auth9p(Req *r)
+int	authattach(Req *r)
+void	authdestroy(Fie *fid)
+void	authread(Req *r)
+void	authwrite(Req *r)
 .fi
 .PP
 .nf
@@ -363,6 +378,57 @@ is the program name variable as set by
 .I ARGBEGIN
 (see
 .IR arg (2)).
+.IP
+If the
+.I auth
+member of the
+.B Srv
+structure is set to
+.IR auth9p ,
+the server will prepare for a
+.I p9any
+authentication in conjunction with
+.IR factotum (4).
+When using
+.IR auth9p ,
+the
+.IR read ,
+.IR write ,
+and
+.I destroy
+service functions should call
+.IR authread ,
+.IR authwrite ,
+and
+.IR authdestroy ,
+respectively when operating on a
+.B Fid
+where
+.IB r -> fid -> qid.type
+has the
+.B QTAUTH
+flag set.
+In all three cases the
+.I auth
+function makes the
+.I respond
+call.
+Finally, before carrying out the normal attach operation, the
+.I attach
+service function should call
+.IR authattach .
+If there is an authentication error, then
+.I authattach
+will return
+.B -1
+and will have called
+.I respond
+with an appropriate error.
+Otherwise, the
+.I attach
+service function should continue and call
+.I respond
+when it's done.
 .TP
 .I Attach
 The
@@ -759,7 +825,7 @@ are good examples of simple single-threaded file servers.
 and
 .I sshnet
 (see
-.IR ssh (1))
+.IR ssh1 (1))
 are good examples of multithreaded file servers.
 .PP
 In general, the
