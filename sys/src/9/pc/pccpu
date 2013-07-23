@@ -89,6 +89,7 @@ misc
 	sdmv50xx	pci sdscsi
 	sdmylex		pci sdscsi
 	sdiahci		pci sdscsi
+	sdmpt2		pci sdscsi
 	sdaoe		sdscsi
 
 ip
