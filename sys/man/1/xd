@@ -79,8 +79,12 @@ Print file addresses in the given style (and size 4).
 .B -u
 (Unbuffered) Flush the output buffer after each 16-byte sequence.
 .TP
-.B -s
-Reverse (swab) the order of bytes in each group of 4 before printing.
+.BI -s " n"
+Reverse (swab) the order of bytes in each group of
+.I n
+before printing.  By default
+.I n
+is 4.  Legal values range from 1 to 8.
 .TP
 .B -r
 Print repeating groups of identical 16-byte sequences as the first group

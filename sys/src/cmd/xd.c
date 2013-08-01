@@ -25,7 +25,7 @@ typedef struct Arg Arg;
 typedef void fmtfn(char *);
 struct Arg
 {
-	int	chartype;		/* TNone, TAscii, TRunes */
+	int	chartype;	/* TNone, TAscii, TRunes */
 	int	loglen;		/* 0==1, 1==2, 2==4, 3==8 */
 	int	base;		/* 0==8, 1==10, 2==16 */
 	fmtfn	*fn;		/* function to call with data */
@@ -87,8 +87,10 @@ main(int argc, char *argv[])
 			continue;
 		}
 		if(argv[0][0] == 's'){
-			swizzle = 1;
+			swizzle = 4;
 			if(argv[0][1])
+				swizzle = atoi(argv[0]+1);
+			if(swizzle <= 0 || swizzle > 8)
 				goto Usage;
 			continue;
 		}
@@ -160,7 +162,7 @@ main(int argc, char *argv[])
 				break;
 			default:
 			Usage:
-   fprint(2, "usage: xd [-u] [-r] [-s] [-a{odx}] [-c|{b1w2l4v8}{odx}] ... file ...\n");
+   fprint(2, "usage: xd [-u] [-r] [-s[n]] [-a{odx}] [-c|-R|{b1w2l4v8}{odx}] ... file ...\n");
 				exits("usage");
 			}
 			argv[0]++;
@@ -282,26 +284,28 @@ xd(char *name, int title)
 	return 0;
 }
 
+uchar order[] = {7, 6, 5, 4, 3, 2, 1, 0};
+
 void
 swizz(void)
 {
-	uchar *p, *q;
-	int i;
+	uchar *p, *q, *t;
+	int i, j, n;
 	uchar swdata[16];
 
 	p = data;
 	q = swdata;
+	t = order + (8-swizzle);
 	for(i=0; i<16; i++)
 		*q++ = *p++;
 	p = data;
 	q = swdata;
-	for(i=0; i<4; i++){
-		p[0] = q[3];
-		p[1] = q[2];
-		p[2] = q[1];
-		p[3] = q[0];
-		p += 4;
-		q += 4;
+	n = 16/swizzle;
+	for(i=0; i<n; i++){
+		for(j = 0; j < swizzle; j++)
+			p[j] = q[t[j]];
+		p += j;
+		q += j;
 	}
 }
 
