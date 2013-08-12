@@ -213,7 +213,7 @@ struct
 	Lock;
 	long	machs;		/* bitmap of processors */
 	short	exiting;
-	int	ispanic;
+	ulong	panicking;
 }active;
 
 extern KMap kpte[];

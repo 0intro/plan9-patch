@@ -567,9 +567,19 @@ dumpstackwithureg(Ureg *ureg)
 {
 	uintptr l, i, v, estack;
 	u32int *p;
+	char *s;
+	extern char *kernfile;
 
-	iprint("ktrace /kernel/path %#.8lux %#.8lux %#.8lux # pc, sp, link\n",
-		ureg->pc, ureg->sp, ureg->r14);
+	if((s = getconf("*nodumpstack")) != nil && strcmp(s, "0") != 0){
+		iprint("dumpstack disabled\n");
+		return;
+	}
+	if((s = getconf("*nodumppath")) != nil && strcmp(s, "0") != 0){
+		if(s = strrchr(kernfile, '/'))
+			kernfile = ++s;
+	}
+	iprint("ktrace %s %#.8lux %#.8lux %#.8lux # pc, sp, link\n",
+		kernfile, ureg->pc, ureg->sp, ureg->r14);
 	delay(2000);
 	i = 0;
 	if(up != nil && (uintptr)&l <= (uintptr)up->kstack+KSTACK)

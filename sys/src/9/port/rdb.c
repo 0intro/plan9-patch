@@ -30,8 +30,10 @@ getline(void)
 	int i, c;
 
 	for(;;){
-		for(i=0; i<nelem(buf) && (c=uartgetc()) != '\n'; i++){
+		for(i=0; i<nelem(buf) && (c=uartgetc()) != '\n' && c != '\r'; i++){
 			DBG("%c...", c);
+			if(c == 0)	/* break */
+				return nil;
 			buf[i] = c;
 		}
 
@@ -65,6 +67,10 @@ talkrdb(Ureg *ureg)
 	iprint("Edebugger reset\n");
 	for(;;){
 		req = getline();
+		if(req == nil){
+			iprint("Edebugger break\n");
+			return;
+		}
 		switch(*req){
 		case 'r':
 			a = addr(req+1, ureg, nil);
@@ -106,4 +112,13 @@ rdb(void)
 	splhi();
 	iprint("rdb...");
 	callwithureg(talkrdb);
+}
+
+void
+rdbinit(void)
+{
+	char *s;
+
+	if((s = getconf("rdb")) != nil && strcmp(s, "0") != 0)
+		consdebug = rdb;
 }

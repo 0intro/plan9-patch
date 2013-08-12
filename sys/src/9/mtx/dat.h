@@ -184,9 +184,9 @@ struct Mach
 struct
 {
 	Lock;
-	short	machs;
-	short	exiting;
-	short	ispanic;
+	int	machs;
+	int	exiting;
+	int	panicking;
 }active;
 
 /*

@@ -135,11 +135,10 @@ static void
 deadlineintr(Ureg*, Timer *t)
 {
 	/* Proc reached deadline */
-	extern int panicking;
 	Proc *p;
 	void (*pt)(Proc*, int, vlong);
 
-	if(panicking || active.exiting)
+	if(active.panicking || active.exiting)
 		return;
 
 	p = t->ta;
@@ -211,10 +210,9 @@ static void
 releaseintr(Ureg*, Timer *t)
 {
 	Proc *p;
-	extern int panicking;
 	Schedq *rq;
 
-	if(panicking || active.exiting)
+	if(active.panicking || active.exiting)
 		return;
 
 	p = t->ta;

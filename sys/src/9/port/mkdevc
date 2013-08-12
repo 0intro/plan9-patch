@@ -186,6 +186,7 @@ END{
 
 	printf "char* conffile = \"%s/%s\";\n", pwd, ARGV[1];
 	printf "ulong kerndate = KERNDATE;\n";
+	printf "char* kernfile = \"%s/9%s\";\n", pwd, ARGV[1];
 
 	exit
 }' $*

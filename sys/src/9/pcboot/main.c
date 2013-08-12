@@ -502,19 +502,15 @@ procsave(Proc *p)
 }
 
 static void
-shutdown(int ispanic)
+shutdown(void)
 {
 	int ms, once;
 
 	lock(&active);
-	if(ispanic)
-		active.ispanic = ispanic;
-	else if(m->machno == 0 && (active.machs & (1<<m->machno)) == 0)
-		active.ispanic = 0;
 	once = active.machs & (1<<m->machno);
 	/*
 	 * setting exiting will make hzclock() on each processor call exit(0),
-	 * which calls shutdown(0) and arch->reset(), which on mp systems is
+	 * which calls shutdown() and arch->reset(), which on mp systems is
 	 * mpshutdown, which idles non-bootstrap cpus and returns on bootstrap
 	 * processors (to permit a reboot).  clearing our bit in machs avoids
 	 * calling exit(0) from hzclock() on this processor.
@@ -533,17 +529,6 @@ shutdown(int ispanic)
 		if(active.machs == 0 && consactive() == 0)
 			break;
 	}
-
-	if(active.ispanic){
-		if(!cpuserver)
-			for(;;)
-				halt();
-		if(getconf("*debug"))
-			delay(5*60*1000);
-		else
-			delay(10000);
-	}else
-		delay(1000);
 }
 
 void
@@ -576,7 +561,7 @@ reboot(void *entry, void *code, ulong size)
 		lock(&active);
 		active.rebooting = 1;
 		unlock(&active);
-		shutdown(0);
+		shutdown();
 		if(arch->resetothers)
 			arch->resetothers();
 		delay(20);
@@ -621,12 +606,11 @@ reboot(void *entry, void *code, ulong size)
 	(*f)(PADDR(entry), PADDR(code), size);
 }
 
-
 void
 exit(int ispanic)
 {
-	shutdown(ispanic);
-	spllo();
+	if(!ispanic)
+		shutdown();
 	arch->reset();
 }
 

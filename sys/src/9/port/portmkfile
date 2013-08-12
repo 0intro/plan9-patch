@@ -30,12 +30,12 @@ all:V:
 		mk 'CONF='$i
 
 clean:V:
-	rm -f *.[$OS] *.root.s *.rootc.c cfs.h fs.h init.h conf.h reboot.h reboot.list *.out *.m errstr.h
+	rm -f *.[$OS] *acid *.root.s *.rootc.c cfs.h fs.h init.h conf.h reboot.h reboot.list *.out *.m errstr.h
 	for(i in $CONFLIST $CRAPLIST)
 		mk $i.clean
 
 %.clean:V:
-	rm -f $stem.c [9bz]$stem [9bz]$stem.gz s[9bz]$stem boot$stem.* *.acid
+	rm -f $stem.c [9bz]$stem [9bz]$stem.gz s[9bz]$stem boot$stem.*
 
 nuke:V:	clean
 	rm -f ../boot/libboot.a$O *.elf *.rr

@@ -503,6 +503,7 @@ _dumpstack(Ureg *ureg)
 	extern ulong etext;
 	int x;
 	char *s;
+	extern char *kernfile;
 
 	if (!Dumpstack) {
 		print("no stack dump\n");
@@ -512,10 +513,14 @@ _dumpstack(Ureg *ureg)
 		iprint("dumpstack disabled\n");
 		return;
 	}
+	if((s = getconf("*nodumppath")) != nil && strcmp(s, "0") != 0){
+		if(s = strrchr(kernfile, '/'))
+			kernfile = ++s;
+	}
 	iprint("dumpstack\n");
 
 	x = 0;
-	x += iprint("ktrace /kernel/path %.8lux %.8lux <<EOF\n", ureg->pc, ureg->sp);
+	x += iprint("ktrace %s %.8lux %.8lux <<EOF\n", kernfile, ureg->pc, ureg->sp);
 	i = 0;
 	if(up
 	&& (uintptr)&l >= (uintptr)up->kstack
@@ -548,20 +553,6 @@ _dumpstack(Ureg *ureg)
 	if(i)
 		iprint("\n");
 	iprint("EOF\n");
-
-	if(ureg->trap != VectorNMI)
-		return;
-
-	i = 0;
-	for(l = (uintptr)&l; l < estack; l += sizeof(uintptr)){
-		iprint("%.8p ", *(uintptr*)l);
-		if(++i == 8){
-			i = 0;
-			iprint("\n");
-		}
-	}
-	if(i)
-		iprint("\n");
 }
 
 void

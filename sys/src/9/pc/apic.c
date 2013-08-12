@@ -447,3 +447,14 @@ lapicnmidisable(void)
 	else
 		print("lapicnmidisable: no lapic\n");
 }
+
+void
+lapicnmibcast(void)
+{
+	if(lapicbase){
+		lapicw(LapicICRHI, 0);
+		lapicw(LapicICRLO, LapicALLEXC|ApicNMI);
+		microdelay(200);
+	}else
+		print("lapicnmibcast: no lapic\n");
+}

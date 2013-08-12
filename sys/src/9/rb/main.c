@@ -427,19 +427,15 @@ writeconf(void)
 }
 
 static void
-shutdown(int ispanic)
+shutdown(void)
 {
 	int ms, once;
 
 	ilock(&active);
-	if(ispanic)
-		active.ispanic = ispanic;
-	else if(m->machno == 0 && (active.machs & (1<<m->machno)) == 0)
-		active.ispanic = 0;
 	once = active.machs & (1<<m->machno);
 	/*
 	 * setting exiting will make hzclock() on each processor call exit(0),
-	 * which calls shutdown(0) and idles non-bootstrap cpus and returns
+	 * which calls shutdown() and idles non-bootstrap cpus and returns
 	 * on bootstrap processors (to permit a reboot).  clearing our bit
 	 * in machs avoids calling exit(0) from hzclock() on this processor.
 	 */
@@ -483,7 +479,7 @@ reboot(void *entry, void *code, ulong size)
 	if (m->machno != 0)
 		print("on cpu%d (not 0)!\n", m->machno);
 
-	shutdown(0);
+	shutdown();
 
 	/*
 	 * should be the only processor running now

@@ -486,19 +486,15 @@ main(void)
 }
 
 static void
-shutdown(int ispanic)
+shutdown(void)
 {
 	int ms, once;
 
 	lock(&active);
-	if(ispanic)
-		active.ispanic = ispanic;
-	else if(m->machno == 0 && (active.machs & (1<<m->machno)) == 0)
-		active.ispanic = 0;
 	once = active.machs & (1<<m->machno);
 	/*
 	 * setting exiting will make hzclock() on each processor call exit(0),
-	 * which calls shutdown(0) and idles non-bootstrap cpus and returns
+	 * which calls shutdown() and idles non-bootstrap cpus and returns
 	 * on bootstrap processors (to permit a reboot).  clearing our bit
 	 * in machs avoids calling exit(0) from hzclock() on this processor.
 	 */
@@ -527,9 +523,10 @@ shutdown(int ispanic)
  *  exit kernel either on a panic or user request
  */
 void
-exit(int code)
+exit(int ispanic)
 {
-	shutdown(code);
+	if(!ispanic)
+		shutdown();
 	splhi();
 	if (m->machno == 0)
 		archreboot();
@@ -606,7 +603,7 @@ reboot(void *entry, void *code, ulong size)
 	for (want = 0, cpu = 1; cpu < navailcpus; cpu++)
 		want |= 1 << cpu;
 	active.stopped = 0;
-	shutdown(0);
+	shutdown();
 	for (ms = 15*1000; ms > 0 && active.stopped != want; ms -= 10)
 		delay(10);
 	delay(20);

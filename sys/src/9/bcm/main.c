@@ -239,6 +239,7 @@ main(void)
 	confinit();		/* figures out amount of memory */
 	xinit();
 	uartconsinit();
+	rdbinit();
 	screeninit();
 
 	print("\nPlan 9 from Bell Labs\n");
@@ -500,15 +501,11 @@ confinit(void)
 }
 
 static void
-shutdown(int ispanic)
+shutdown(void)
 {
 	int ms, once;
 
 	lock(&active);
-	if(ispanic)
-		active.ispanic = ispanic;
-	else if(m->machno == 0 && (active.machs & (1<<m->machno)) == 0)
-		active.ispanic = 0;
 	once = active.machs & (1<<m->machno);
 	active.machs &= ~(1<<m->machno);
 	active.exiting = 1;
@@ -529,9 +526,10 @@ shutdown(int ispanic)
  *  exit kernel either on a panic or user request
  */
 void
-exit(int code)
+exit(int ispanic)
 {
-	shutdown(code);
+	if(!ispanic)
+		shutdown();
 	splfhi();
 	archreboot();
 }
@@ -558,7 +556,7 @@ reboot(void *entry, void *code, ulong size)
 
 	print("starting reboot...");
 	writeconf();
-	shutdown(0);
+	shutdown();
 
 	/*
 	 * should be the only processor running now

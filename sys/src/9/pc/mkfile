@@ -61,6 +61,12 @@ OBJ=\
 	$DEVS\
 	$PORT\
 
+ACID=\
+	../port/chan.c\
+	../port/proc.c\
+	../port/segment.c\
+	trap.c\
+
 LIB=\
 	/$objtype/lib/libmemlayer.a\
 	/$objtype/lib/libmemdraw.a\
@@ -154,8 +160,8 @@ uartaxp.i:	a100p.cp
 	 echo '};'
 	} > $target
 
-acid:V:
-	8c -a -w -I. i8253.c>acid
+acid:	$ACID errstr.h
+	$CC -a -w -I. $ACID > acid
 
 %.checkether:VQ:
 	for (i in ether*.c){

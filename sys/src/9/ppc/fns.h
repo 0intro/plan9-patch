@@ -110,6 +110,7 @@ void	tlbvec(void);
 void	touser(void*);
 void	trapinit(void);
 void	trapvec(void);
+#define	_debug()
 #define	userureg(ur) (((ur)->status & MSR_PR) != 0)
 #define	waserror()	(up->nerrlab++, setlabel(&up->errlab[up->nerrlab-1]))
 #define KADDR(a)	((void*)((ulong)(a)|KZERO))

@@ -212,6 +212,8 @@ struct Mach
 {
 	int	machno;			/* physical id of processor (KNOWN TO ASSEMBLY) */
 	ulong	splpc;			/* pc of last caller to splhi */
+	Ureg*	dbgreg;			/* registers for debugging this processor */
+	ulong	dbgsp;			/* sp for debugging this processor */
 
 	ulong*	pdb;			/* page directory base for this processor (va) */
 	Tss*	tss;			/* tss for this processor */
@@ -284,9 +286,9 @@ struct
 	Lock;
 	int	machs;			/* bitmap of active CPUs */
 	int	exiting;		/* shutdown */
-	int	ispanic;		/* shutdown in response to a panic */
-	int	thunderbirdsarego;	/* lets the added processors continue to schedinit */
+	int	panicking;		/* panic */
 	int	rebooting;		/* just idle cpus > 0 */
+	int	thunderbirdsarego;	/* lets the added processors continue to schedinit */
 }active;
 
 /*
@@ -312,6 +314,7 @@ struct PCArch
 	void	(*timerset)(uvlong);
 
 	void	(*resetothers)(void);	/* put other cpus into reset */
+	void	(*debugothers)(void);
 };
 
 /* cpuid instruction result register bits */

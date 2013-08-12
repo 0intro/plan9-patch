@@ -582,14 +582,25 @@ callwithureg(void (*fn)(Ureg*))
 static void
 _dumpstack(Ureg *ureg)
 {
+	char *s;
 	ulong l, v, top, i;
 	extern ulong etext;
+	extern char *kernfile;
 
 	if(up == 0)
 		return;
+	if((s = getconf("*nodumpstack")) != nil && strcmp(s, "0") != 0){
+		iprint("dumpstack disabled\n");
+		return;
+	}
+	if((s = getconf("*nodumppath")) != nil && strcmp(s, "0") != 0){
+		if(s = strrchr(kernfile, '/'))
+			kernfile = ++s;
+	}
+	iprint("dumpstack\n");
 
-	print("ktrace /kernel/path %.8lux %.8lux %.8lux\n",
-		ureg->pc, ureg->sp, ureg->r31);
+	print("ktrace %s %.8lux %.8lux %.8lux\n",
+		kernfile, ureg->pc, ureg->sp, ureg->r31);
 	top = (ulong)up->kstack + KSTACK;
 	i = 0;
 	for(l=ureg->sp; l < top; l += BY2WD) {

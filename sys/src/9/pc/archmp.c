@@ -18,6 +18,16 @@ mpresetothers(void)
 	lapicicrw(0, 0x000C0000|ApicINIT);
 }
 
+static void
+mpdebugothers(void)
+{
+	/*
+	 * NMI all excluding self iff we have started other machs.
+	 */
+	if(conf.nmach > 1)
+		lapicnmibcast();
+}
+
 static int identify(void);
 
 PCArch archmp = {
@@ -31,6 +41,7 @@ PCArch archmp = {
 .fastclock=	i8253read,
 .timerset=	lapictimerset,
 .resetothers=	mpresetothers,
+.debugothers=	mpdebugothers,
 };
 
 static int

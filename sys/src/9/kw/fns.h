@@ -176,6 +176,7 @@ void	vunmap(void*, usize);
 
 extern void kexit(Ureg*);
 
+#define	_debug()
 #define	getpgcolor(a)	0
 #define	kmapinval()
 

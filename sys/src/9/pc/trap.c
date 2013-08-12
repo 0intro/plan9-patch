@@ -160,22 +160,6 @@ trapenable(int vno, void (*f)(Ureg*, void*), void* a, char *name)
 	iunlock(&vctllock);
 }
 
-static void
-nmienable(void)
-{
-	int x;
-
-	/*
-	 * Hack: should be locked with NVRAM access.
-	 */
-	outb(0x70, 0x80);		/* NMI latch clear */
-	outb(0x70, 0);
-
-	x = inb(0x61) & 0x07;		/* Enable NMI */
-	outb(0x61, 0x08|x);
-	outb(0x61, x);
-}
-
 /*
  * Minimal trap setup.  Just enough so that we can panic
  * on traps (bugs) during kernel initialization.
@@ -223,7 +207,6 @@ trapinit(void)
 	trapenable(VectorPF, fault386, 0, "fault386");
 	trapenable(Vector2F, doublefault, 0, "doublefault");
 	trapenable(Vector15, unexpected, 0, "unexpected");
-	nmienable();
 
 	addarchfile("irqalloc", 0444, irqallocread, nil);
 	trapinited = 1;
@@ -413,16 +396,22 @@ trap(Ureg* ureg)
 			kexit(ureg);
 		return;
 	}
-	else{
-		if(vno == VectorNMI){
+	else if(vno == VectorNMI){
+		if(active.panicking){
 			/*
-			 * Don't re-enable, it confuses the crash dumps.
-			nmienable();
+			 * Use of m->dbgsp avoids stack confusion
+			 * caused by writing the address of the SP to
+			 * the top of the stack.
 			 */
-			iprint("cpu%d: NMI PC %#8.8lux\n", m->machno, ureg->pc);
-			while(m->machno != 0)
-				;
+			m->dbgreg = ureg;
+			m->dbgsp = (ulong)&ureg->sp;
+
+			for(;;)
+				halt();
 		}
+		panic("NMI");
+	}
+	else{
 		dumpregs(ureg);
 		if(!user){
 			ureg->sp = (ulong)&ureg->sp;
@@ -518,15 +507,20 @@ _dumpstack(Ureg *ureg)
 	extern ulong etext;
 	int x;
 	char *s;
+	extern char *kernfile;
 
 	if((s = getconf("*nodumpstack")) != nil && strcmp(s, "0") != 0){
 		iprint("dumpstack disabled\n");
 		return;
 	}
+	if((s = getconf("*nodumppath")) != nil && strcmp(s, "0") != 0){
+		if(s = strrchr(kernfile, '/'))
+			kernfile = ++s;
+	}
 	iprint("dumpstack\n");
 
 	x = 0;
-	x += iprint("ktrace /kernel/path %.8lux %.8lux <<EOF\n", ureg->pc, ureg->sp);
+	x += iprint("ktrace %s %.8lux %.8lux <<EOF\n", kernfile, ureg->pc, ureg->sp);
 	i = 0;
 	if(up
 	&& (uintptr)&l >= (uintptr)up->kstack
@@ -559,20 +553,6 @@ _dumpstack(Ureg *ureg)
 	if(i)
 		iprint("\n");
 	iprint("EOF\n");
-
-	if(ureg->trap != VectorNMI)
-		return;
-
-	i = 0;
-	for(l = (uintptr)&l; l < estack; l += sizeof(uintptr)){
-		iprint("%.8p ", *(uintptr*)l);
-		if(++i == 8){
-			i = 0;
-			iprint("\n");
-		}
-	}
-	if(i)
-		iprint("\n");
 }
 
 void

@@ -62,3 +62,5 @@ long dirpackage(uchar *buf, long ts, Dir **d);
 /* libip */
 int equivip4(uchar *, uchar *);
 int equivip6(uchar *, uchar *);
+
+#define	_debug()

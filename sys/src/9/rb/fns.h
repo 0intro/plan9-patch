@@ -138,6 +138,7 @@ int	_uartprint(char*, ...);
 #define PTR2UINT(p)	((uintptr)(p))
 #define UINT2PTR(i)	((void*)(i))
 
+#define	_debug()
 #define	waserror()	(up->nerrlab++, setlabel(&up->errlab[up->nerrlab-1]))
 
 #define KADDR(a)	((void*)((ulong)(a)|KSEG0))

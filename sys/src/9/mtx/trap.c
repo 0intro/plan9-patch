@@ -446,6 +446,8 @@ _dumpstack(Ureg *ureg)
 {
 	ulong l, sl, el, v;
 	int i;
+	char *s;
+	extern char *kernfile;
 
 	l = (ulong)&l;
 	if(up == 0){
@@ -462,14 +464,22 @@ _dumpstack(Ureg *ureg)
 	}
 	if(l > el || l < sl)
 		return;
-	print("ktrace /kernel/path %.8lux %.8lux %.8lux\n", ureg->pc, ureg->sp, ureg->lr);
+	if((s = getconf("*nodumpstack")) != nil && strcmp(s, "0") != 0){
+		iprint("dumpstack disabled\n");
+		return;
+	}
+	if((s = getconf("*nodumppath")) != nil && strcmp(s, "0") != 0){
+		if(s = strrchr(kernfile, '/'))
+			kernfile = ++s;
+	}
+	iprint("ktrace %s %.8lux %.8lux %.8lux\n", kernfile, ureg->pc, ureg->sp, ureg->lr);
 	i = 0;
 	for(; l < el; l += 4){
 		v = *(ulong*)l;
 		if(KTZERO < v && v < (ulong)etext){
-			print("%.8lux=%.8lux ", l, v);
+			iprint("%.8lux=%.8lux ", l, v);
 			if(i++ == 4){
-				print("\n");
+				iprint("\n");
 				i = 0;
 			}
 		}

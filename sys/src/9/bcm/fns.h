@@ -103,6 +103,7 @@ extern void sysprocsetup(Proc*);
 
 extern void kexit(Ureg*);
 
+#define	_debug()
 #define	getpgcolor(a)	0
 #define	kmapinval()
 #define countpagerefs(a, b)

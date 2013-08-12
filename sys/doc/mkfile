@@ -19,6 +19,7 @@ ALL=\
 	ape\
 	acidpaper\
 	acid\
+	acidmach\
 	mk\
 	mkfiles\
 	asm\

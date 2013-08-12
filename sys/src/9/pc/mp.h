@@ -223,6 +223,7 @@ extern void lapicintron(void);
 extern int lapicisr(int);
 extern void lapicnmidisable(void);
 extern void lapicnmienable(void);
+extern void lapicnmibcast(void);
 extern void lapiconline(void);
 extern void lapicspurious(Ureg*, void*);
 extern void lapicstartap(Apic*, int);

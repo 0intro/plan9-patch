@@ -94,26 +94,23 @@ i386excep(Map *map, Rgetter rget)
 static int
 i386trace(Map *map, uvlong pc, uvlong sp, uvlong link, Tracer trace)
 {
-	int i;
-	uvlong osp;
+	int kernel, i;
 	Symbol s, f;
 
 	USED(link);
 	i = 0;
-	osp = 0;
 	while(findsym(pc, CTEXT, &s)) {
-		if (osp == sp)
-			break;
-		osp = sp;
+		kernel = pc & mach->ktmask;
 
-		if(strcmp(STARTSYM, s.name) == 0 || strcmp(PROFSYM, s.name) == 0)
+		if(!kernel && (strcmp(STARTSYM, s.name) == 0 || strcmp(PROFSYM, s.name) == 0))
 			break;
 
 		if(pc != s.value) {	/* not at first instruction */
 			if(findlocal(&s, FRAMENAME, &f) == 0)
 				break;
 			sp += f.value-mach->szaddr;
-		}
+		} else if(kernel && strcmp("forkret", s.name) == 0)
+			sp += 15 * mach->szaddr;			/* pop interrupt frame */
 
 		if (geta(map, sp, &pc) < 0)
 			break;
@@ -123,6 +120,8 @@ i386trace(Map *map, uvlong pc, uvlong sp, uvlong link, Tracer trace)
 
 		(*trace)(map, pc, sp, &s);
 		sp += mach->szaddr;
+		if(kernel && strcmp("forkret", s.name) == 0)
+			sp += 2 * mach->szaddr;			/* pop iret cs, eflags */
 
 		if(++i > 1000)
 			break;
@@ -133,25 +132,35 @@ i386trace(Map *map, uvlong pc, uvlong sp, uvlong link, Tracer trace)
 static uvlong
 i386frame(Map *map, uvlong addr, uvlong pc, uvlong sp, uvlong link)
 {
+	int kernel;
 	Symbol s, f;
 
 	USED(link);
 	while (findsym(pc, CTEXT, &s)) {
-		if(strcmp(STARTSYM, s.name) == 0 || strcmp(PROFSYM, s.name) == 0)
+		kernel = pc & mach->ktmask;
+
+		if(!kernel && (strcmp(STARTSYM, s.name) == 0 || strcmp(PROFSYM, s.name) == 0))
 			break;
 
 		if(pc != s.value) {	/* not first instruction */
 			if(findlocal(&s, FRAMENAME, &f) == 0)
 				break;
 			sp += f.value-mach->szaddr;
-		}
+		} else if(kernel && strcmp("forkret", s.name) == 0)
+			sp += 15 * mach->szaddr;			/* pop interrupt frame */
 
 		if (s.value == addr)
 			return sp;
 
 		if (geta(map, sp, &pc) < 0)
 			break;
+
+		if(pc == 0)
+			break;
+
 		sp += mach->szaddr;
+		if(kernel && strcmp("forkret", s.name) == 0)
+			sp += 2 * mach->szaddr;			/* pop iret cs, eflags */
 	}
 	return 0;
 }
