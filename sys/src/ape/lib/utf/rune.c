@@ -35,13 +35,10 @@ enum
 	Rune1	= (1<<(Bit1+0*Bitx))-1,		/* 0000 0000 0000 0000 0111 1111 */
 	Rune2	= (1<<(Bit2+1*Bitx))-1,		/* 0000 0000 0000 0111 1111 1111 */
 	Rune3	= (1<<(Bit3+2*Bitx))-1,		/* 0000 0000 1111 1111 1111 1111 */
-	Rune4	= (1<<(Bit4+3*Bitx))-1,		/* 0001 1111 1111 1111 1111 1111 */
+	Rune4	= (1<<(Bit4+3*Bitx))-1,		/* 0011 1111 1111 1111 1111 1111 */
 
 	Maskx	= (1<<Bitx)-1,			/* 0011 1111 */
 	Testx	= Maskx ^ 0xFF,			/* 1100 0000 */
-
-	SurrogateMin	= 0xD800,
-	SurrogateMax	= 0xDFFF,
 
 	Bad	= Runeerror,
 };
@@ -64,7 +61,7 @@ chartorune(Rune *rune, char *str)
 
 	/*
 	 * two character sequence
-	 *	00080-007FF => T2 Tx
+	 *	0080-07FF => T2 Tx
 	 */
 	c1 = *(uchar*)(str+1) ^ Tx;
 	if(c1 & Testx)
@@ -81,17 +78,14 @@ chartorune(Rune *rune, char *str)
 
 	/*
 	 * three character sequence
-	 *	00800-0FFFF => T3 Tx Tx
+	 *	0800-FFFF => T3 Tx Tx
 	 */
 	c2 = *(uchar*)(str+2) ^ Tx;
-
 	if(c2 & Testx)
 		goto bad;
 	if(c < T4) {
 		l = ((((c << Bitx) | c1) << Bitx) | c2) & Rune3;
 		if(l <= Rune2)
-			goto bad;
-		if (SurrogateMin <= l && l <= SurrogateMax)
 			goto bad;
 		*rune = l;
 		return 3;
@@ -141,29 +135,21 @@ runetochar(char *str, Rune *rune)
 
 	/*
 	 * two character sequence
-	 *	0080-07FF => T2 Tx
+	 *	00080-007FF => T2 Tx
 	 */
 	if(c <= Rune2) {
 		str[0] = T2 | (c >> 1*Bitx);
 		str[1] = Tx | (c & Maskx);
 		return 2;
 	}
-	/*
-	 * If the Rune is out of range or a surrogate half, convert it to the error rune.
-	 * Do this test here because the error rune encodes to three bytes.
-	 * Doing it earlier would duplicate work, since an out of range
-	 * Rune wouldn't have fit in one or two bytes.
-	 */
-	if (c > Runemax)
-		c = Runeerror;
-	if (SurrogateMin <= c && c <= SurrogateMax)
-		c = Runeerror;
 
 	/*
 	 * three character sequence
-	 *	0800-FFFF => T3 Tx Tx
+	 *	00800-0FFFF => T3 Tx Tx
 	 */
-	if (c <= Rune3) {
+	if(c > Runemax)
+		c = Runeerror;
+	if(c <= Rune3) {
 		str[0] = T3 |  (c >> 2*Bitx);
 		str[1] = Tx | ((c >> 1*Bitx) & Maskx);
 		str[2] = Tx |  (c & Maskx);
@@ -171,13 +157,13 @@ runetochar(char *str, Rune *rune)
 	}
 
 	/*
-	 * four character sequence (21-bit value)
-	 *     10000-1FFFFF => T4 Tx Tx Tx
+	 * four character sequence
+	 *	010000-1FFFFF => T4 Tx Tx Tx
 	 */
-	str[0] = T4 | (c >> 3*Bitx);
+	str[0] = T4 |  (c >> 3*Bitx);
 	str[1] = Tx | ((c >> 2*Bitx) & Maskx);
 	str[2] = Tx | ((c >> 1*Bitx) & Maskx);
-	str[3] = Tx | (c & Maskx);
+	str[3] = Tx |  (c & Maskx);
 	return 4;
 }
 
@@ -201,10 +187,12 @@ runenlen(Rune *r, int nrune)
 		c = *r++;
 		if(c <= Rune1)
 			nb++;
-		else if(c <= Rune2)
+		else
+		if(c <= Rune2)
 			nb += 2;
-		else if(c <= Rune3)
- 			nb += 3;
+		else
+		if(c <= Rune3 || c > Runemax)
+			nb += 3;
 		else
 			nb += 4;
 	}
@@ -215,6 +203,7 @@ int
 fullrune(char *str, int n)
 {
 	int c;
+
 	if(n <= 0)
 		return 0;
 	c = *(uchar*)str;
@@ -222,7 +211,7 @@ fullrune(char *str, int n)
 		return 1;
 	if(c < T3)
 		return n >= 2;
-	if(c < T4)
+	if(UTFmax == 3 || c < T4)
 		return n >= 3;
 	return n >= 4;
 }

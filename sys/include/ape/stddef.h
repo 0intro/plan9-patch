@@ -17,7 +17,7 @@ typedef unsigned long size_t;
 #endif
 #ifndef _WCHAR_T
 #define _WCHAR_T
-typedef unsigned short wchar_t;
+typedef unsigned int wchar_t;
 #endif
 
 #endif /* __STDDEF_H */

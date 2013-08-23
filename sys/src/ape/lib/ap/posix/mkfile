@@ -13,4 +13,4 @@ OFILES=\
 
 </sys/src/cmd/mksyslib
 
-CFLAGS=$CFLAGS -c -D_POSIX_SOURCE
+CFLAGS=-TVwc -D_POSIX_SOURCE

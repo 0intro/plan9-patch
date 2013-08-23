@@ -8,8 +8,8 @@ typedef struct Ureg Ureg;
 /* mux buf for selecting (see _buf.c) */
 enum {
 	READMAX = 8192,			/* read at most this much with _READ */
-	PERFDMAX = 2*READMAX,		/* stop _READing an fd when it has this much */
-	INITBUFS = 4,			/* allow enough room for this many PERFDMAX */
+	PERFDMAX = 2*READMAX,	/* stop _READing an fd when it has this much */
+	INITBUFS = 90,			/* allow enough room for this many PERFDMAX */
 };
 
 typedef struct Muxbuf {

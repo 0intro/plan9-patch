@@ -24,15 +24,15 @@ extern	int C_fcr0(void);
 static void
 lockinit(void)
 {
-	int n;
+	void *v;
 
 	if(arch != 0)
 		return;	/* allow multiple calls */
 	arch = C_fcr0();
 	switch(arch) {
 	case POWER:
-		n = _SEGATTACH(0,  "lock", (void*)Lockaddr, Pagesize);
-		if(n < 0) {
+		v = (void*)Lockaddr;
+		if(_SEGATTACH(SG_CEXEC, "lock", v, Pagesize) == (void*)-1) {
 			arch = MAGNUM;
 			break;
 		}
@@ -43,8 +43,7 @@ lockinit(void)
 	case R4K:
 		break;
 	default:
-		arch = R4K;
-		break;
+		abort();
 	}
 	
 }

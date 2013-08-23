@@ -5,7 +5,7 @@ LIB=/$objtype/lib/ape/libmp.a
 
 OFILES=	\
 
-HFILES=/$objtype/include/u.h /sys/include/ape/mp.h ../../../../libmp/port/dat.h
+HFILES=/$objtype/include/u.h /sys/include/ape/mp.h /sys/src/libmp/port/dat.h
 
 UPDATE=\
 	mkfile\

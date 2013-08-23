@@ -19,5 +19,5 @@ UPDATE=mkfile\
 
 </sys/src/cmd/mksyslib
 
-%.$O:	../../../../libsec/mips/%.s
-	$AS ../../../../libsec/mips/$stem.s
+%.$O:	/sys/src/libsec/$objtype/%.s
+	$AS $AFLAGS /sys/src/libsec/$objtype/$stem.s

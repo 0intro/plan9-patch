@@ -4,6 +4,9 @@ APE=/sys/src/ape
 LIB=/$objtype/lib/ape/libutf.a
 
 OFILES=\
+	getfields.$O\
+	gettokens.$O\
+	rerrstr.$O\
 	rune.$O\
 	runestrcat.$O\
 	runestrchr.$O\
@@ -34,4 +37,4 @@ UPDATE=\
 
 </sys/src/cmd/mksyslib
 
-CFLAGS=$CFLAGS -c -D_POSIX_SOURCE -D_PLAN9_SOURCE -D_BSD_EXTENSION
+CFLAGS=-TVwc -D_POSIX_SOURCE -D_PLAN9_SOURCE -D_BSD_EXTENSION
