@@ -17,8 +17,9 @@
 /* The splay routine code included here is based on the public domain     */
 /* version written by D. Sleator <sleator@cs.cmu.edu> in 1992.            */
 
-static char *Dfa[] = {
+static const char *Dfa[] = {
 	"#ifdef MA",
+#if 0
 	"/*",
 	"#include <stdio.h>",
 	"#define uchar	unsigned char",
@@ -26,6 +27,7 @@ static char *Dfa[] = {
 	"#define ulong	unsigned long",
 	"#define ushort	unsigned short",
 	"",
+#endif
 	"#define TWIDTH		256",
 	"#define HASH(y,n)	(n)*(((long)y))",
 	"#define INRANGE(e,h)	((h>=e->From && h<=e->To)||(e->s==1 && e->S==h))",
@@ -466,7 +468,7 @@ static char *Dfa[] = {
 	"	for (j = 0; j < TWIDTH; j++)",
 	"	for (i = 0; i < dfa_depth+1; i++)",
 	"		cnt += tree_stats(layers[i*TWIDTH+j]);",
-	"	printf(\"Minimized Automaton:\t%%6d nodes and %%6g edges\\n\",",
+	"	printf(\"Minimized Automaton:\t%%6lu nodes and %%6g edges\\n\",",
 	"		nr_states, cnt);",
 	"}",
 	"",

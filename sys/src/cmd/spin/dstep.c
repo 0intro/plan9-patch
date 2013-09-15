@@ -204,7 +204,8 @@ CollectGuards(FILE *fd, Element *e, int inh)
 
 int
 putcode(FILE *fd, Sequence *s, Element *nxt, int justguards, int ln, int seqno)
-{	int isg=0; char buf[64];
+{	int isg=0;
+	static char buf[64];
 
 	NextLab[0] = "continue";
 	filterbad(s->frst);
@@ -215,6 +216,7 @@ putcode(FILE *fd, Sequence *s, Element *nxt, int justguards, int ln, int seqno)
 		return putcode(fd, s->frst->n->sl->this, nxt, 0, ln, seqno);
 	case NON_ATOMIC:
 		(void) putcode(fd, s->frst->n->sl->this, ZE, 1, ln, seqno);
+		if (justguards) return 0;	/* 6.2.5 */
 		break;
 	case IF:
 		fprintf(fd, "if (!(");
@@ -266,15 +268,22 @@ putcode(FILE *fd, Sequence *s, Element *nxt, int justguards, int ln, int seqno)
 	case ASGN:	/* new 3.0.8 */
 		fprintf(fd, "IfNotBlocked");
 		break;
+	default:
+		fprintf(fd, "/* default %d */\n\t\t", s->frst->n->ntyp);
 	}
+
+	/* 6.2.5 : before TstOnly */
+	fprintf(fd, "\n\n\t\treached[%d][%d] = 1;\n\t\t", Pid, seqno);
+	fprintf(fd, "reached[%d][t->st] = 1;\n\t\t", Pid); /* next state */
+	fprintf(fd, "reached[%d][tt] = 1;\n", Pid);	/* current state */
+
+	/* 6.2.5 : before sv_save() */
+	if (s->frst->n->ntyp != NON_ATOMIC)
+	fprintf(fd, "\n\t\tif (TstOnly) return 1;\n"); /* if called from enabled() */
+
 	if (justguards) return 0;
 
 	fprintf(fd, "\n\t\tsv_save();\n\t\t");
-#if 1
-	fprintf(fd, "reached[%d][%d] = 1;\n\t\t", Pid, seqno);
-	fprintf(fd, "reached[%d][t->st] = 1;\n\t\t", Pid);	/* true next state */
-	fprintf(fd, "reached[%d][tt] = 1;\n", Pid);		/* true current state */
-#endif
 	sprintf(buf, "Uerror(\"block in d_step seq, line %d\")", ln);
 	NextLab[0] = buf;
 	putCode(fd, s->frst, s->extent, nxt, isg);

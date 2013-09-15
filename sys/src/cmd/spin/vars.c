@@ -17,7 +17,7 @@ extern RunList	*X, *LastX;
 extern Symbol	*Fname;
 extern char	Buf[];
 extern int	lineno, depth, verbose, xspin, limited_vis;
-extern int	analyze, jumpsteps, nproc, nstop, columns;
+extern int	analyze, jumpsteps, nproc, nstop, columns, old_priority_rules;
 extern short	no_arrays, Have_claim;
 extern void	sr_mesg(FILE *, int, int);
 extern void	sr_buf(int, int);
@@ -42,6 +42,16 @@ getval(Lextok *sn)
 	{	if (!X) return 0;
 		return X->pid - Have_claim;
 	}
+	if (strcmp(s->name, "_priority") == 0)
+	{	if (!X) return 0;
+
+		if (old_priority_rules)
+		{	non_fatal("cannot refer to _priority with -o6", (char *) 0);
+			return 1;
+		}
+		return X->priority;
+	}
+
 	if (strcmp(s->name, "_nr_pr") == 0)
 		return nproc-nstop;	/* new 3.3.10 */
 

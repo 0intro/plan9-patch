@@ -19,7 +19,7 @@
 
 /* extern void free(void *); */
 
-static char *PsPre[] = {
+static const char *PsPre[] = {
 	"%%%%Pages: (atend)",
 	"%%%%PageOrder: Ascend",
 	"%%%%DocumentData: Clean7Bit",

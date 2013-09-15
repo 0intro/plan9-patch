@@ -9,7 +9,7 @@
 /*             http://spinroot.com/                                       */
 /* Send all bug-reports and/or questions to: bugs@spinroot.com            */
 
-static char *Xpt[] = {
+static const char *Xpt[] = {
 	"#if defined(MA) && (defined(W_XPT) || defined(R_XPT))",
 	"static Vertex	**temptree;",
 	"static char	wbuf[4096];",

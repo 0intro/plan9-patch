@@ -201,6 +201,8 @@ def_use(Lextok *now, int code)
 	case '~':
 	case 'c':
 	case ENABLED:
+	case SET_P:
+	case GET_P:
 	case ASSERT:
 	case EVAL:
 		def_use(now->lft, USE|code);
@@ -1060,6 +1062,8 @@ AST_track(Lextok *now, int code)	/* called from main.c */
 	case '~':
 	case 'c':
 	case ENABLED:
+	case SET_P:
+	case GET_P:
 	case ASSERT:
 		AST_track(now->lft, USE|code);
 		break;

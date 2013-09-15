@@ -15,7 +15,6 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <signal.h>
-/* #include <malloc.h> */
 #include <time.h>
 #ifdef PC
 #include <io.h>
@@ -32,6 +31,8 @@ extern char	*claimproc;
 extern void	repro_src(void);
 extern void	qhide(int);
 extern char	CurScope[MAXSCOPESZ];
+extern short	has_provided;
+extern int	realread;
 
 Symbol	*Fname, *oFname;
 
@@ -44,7 +45,8 @@ int	no_print, no_wrapup, Caccess, limited_vis, like_java;
 int	separate;	/* separate compilation */
 int	export_ast;	/* pangen5.c */
 int	old_scope_rules;	/* use pre 5.3.0 rules */
-int	split_decl = 1, product, Strict;
+int	old_priority_rules;	/* use pre 6.2.0 rules */
+int	product, Strict;
 
 int	merger = 1, deadvar = 1;
 int	ccache = 0; /* oyvind teig: 5.2.0 case caching off by default */
@@ -81,6 +83,7 @@ char	**trailfilename;	/* new option 'k' */
 
 void	explain(int);
 
+#ifndef CPP
 	/* to use visual C++:
 		#define CPP	"CL -E/E"
 	   or call spin as:	"spin -PCL  -E/E"
@@ -89,7 +92,6 @@ void	explain(int);
 		#define CPP	"icc -E/Pd+ -E/Q+"
 	   or call spin as:	"spin -Picc -E/Pd+ -E/Q+"
 	*/
-#ifndef CPP
 	#if defined(PC) || defined(MAC)
 		#define CPP	"gcc -E -x c"	/* most systems have gcc or cpp */
 		/* if gcc-4 is available, this setting is modified below */
@@ -97,11 +99,14 @@ void	explain(int);
 		#ifdef SOLARIS
 			#define CPP	"/usr/ccs/lib/cpp"
 		#else
+			#define CPP	"cpp"
+	/*
 			#if defined(__FreeBSD__) || defined(__OpenBSD__) || defined(__NetBSD__)
 				#define CPP	"cpp"
 			#else
-				#define CPP	"/bin/cpp"	/* classic Unix systems */
+				#define CPP	"/lib/cpp"
 			#endif
+	 */
 		#endif
 	#endif
 #endif
@@ -213,8 +218,10 @@ usage(void)
 	printf("\t-o3 turn off statement merging in verifier\n");
 	printf("\t-o4 turn on rendezvous optiomizations in verifier\n");
 	printf("\t-o5 turn on case caching (reduces size of pan.m, but affects reachability reports)\n");
+	printf("\t-o6 revert to the old rules for interpreting priority tags (pre version 6.2)\n");
 	printf("\t-Pxxx use xxx for preprocessing\n");
 	printf("\t-p print all statements\n");
+	printf("\t-pp pretty-print (reformat) stdin, write stdout\n");
 	printf("\t-qN suppress io for queue N in printouts\n");
 	printf("\t-r print receive events\n");
 	printf("\t-S1 and -S2 separate pan source for claim and model\n");
@@ -230,7 +237,7 @@ usage(void)
 	alldone(1);
 }
 
-void
+int
 optimizations(int nr)
 {
 	switch (nr) {
@@ -269,11 +276,18 @@ optimizations(int nr)
 		printf("spin: case caching turned %s\n",
 			ccache?"on":"off");
 		break;
+	case '6':
+		old_priority_rules = 1;
+		if (verbose&32)
+		printf("spin: using old priority rules (pre version 6.2)\n");
+		return 0; /* no break */
+		
 	default:
 		printf("spin: bad or missing parameter on -o\n");
 		usage();
 		break;
 	}
+	return 1;
 }
 
 int
@@ -327,10 +341,13 @@ main(int argc, char *argv[])
 			  argc--; argv++; break;
 		case 'n': T = atoi(&argv[1][2]); tl_terse = 1; break;
 		case 'O': old_scope_rules = 1; break;
-		case 'o': optimizations(argv[1][2]);
-			  usedopts = 1; break;
+		case 'o': usedopts += optimizations(argv[1][2]); break;
 		case 'P': PreProc = (char *) &argv[1][2]; break;
-		case 'p': verbose +=  4; break;
+		case 'p': if (argv[1][2] == 'p')
+			  {	pretty_print();
+				alldone(0);
+			  }
+			  verbose +=  4; break;
 		case 'q': if (isdigit((int) argv[1][2]))
 				qhide(atoi(&argv[1][2]));
 			  break;
@@ -349,9 +366,6 @@ main(int argc, char *argv[])
 			  alldone(0);
 			  break;
 		case 'w': verbose += 64; break;
-#if 0
-		case 'x': split_decl = 0; break;	/* experimental */
-#endif
 		case 'X': xspin = notabs = 1;
 #ifndef PC
 			  signal(SIGPIPE, alldone); /* not posix... */
@@ -366,7 +380,7 @@ main(int argc, char *argv[])
 	}
 
 	if (usedopts && !analyze)
-		printf("spin: warning -o[123] option ignored in simulations\n");
+		printf("spin: warning -o[1..5] option ignored in simulations\n");
 
 	if (ltl_file)
 	{	char formula[4096];
@@ -463,6 +477,7 @@ main(int argc, char *argv[])
 	s = lookup("_pid");	s->type = PREDEF;
 	s = lookup("_last");	s->type = PREDEF;
 	s = lookup("_nr_pr");	s->type = PREDEF; /* new 3.3.10 */
+	s = lookup("_priority"); s->type = PREDEF; /* new 6.2.0 */
 
 	yyparse();
 	fclose(yyin);
@@ -492,7 +507,10 @@ main(int argc, char *argv[])
 
 	chanaccess();
 	if (!Caccess)
-	{	if (!s_trail && (dataflow || merger))
+	{	if (has_provided && merger)
+		{	merger = 0;	/* cannot use statement merging in this case */
+		}
+		if (!s_trail && (dataflow || merger))
 			ana_src(dataflow, merger);
 		sched();
 		alldone(nr_errs);
@@ -503,7 +521,7 @@ main(int argc, char *argv[])
 void
 ltl_list(char *nm, char *fm)
 {
-	if (analyze || dumptab)	/* when generating pan.c only */
+	if (s_trail || analyze || dumptab)	/* when generating pan.c or replaying a trace */
 	{	if (!ltl_claims)
 		{	ltl_claims = "_spin_nvr.tmp";
 			if ((fd_ltl = fopen(ltl_claims, MFLAGS)) == NULL)
@@ -521,7 +539,6 @@ ltl_list(char *nm, char *fm)
 		strcat(add_ltl[4], fm);
 		strcat(add_ltl[4], ")");
 		/* add_ltl[4] = fm; */
-
 		nr_errs += tl_main(4, add_ltl);
 
 		fflush(tl_out);
@@ -540,11 +557,15 @@ non_fatal(char *s1, char *s2)
 {	extern char yytext[];
 
 	printf("spin: %s:%d, Error: ",
-		oFname?oFname->name:"nofilename", lineno);
+		Fname?Fname->name:(oFname?oFname->name:"nofilename"), lineno);
+#if 1
+	printf(s1, s2); /* avoids a gcc warning, but isn't really better code... */
+#else
 	if (s2)
 		printf(s1, s2);
 	else
 		printf(s1);
+#endif
 	if (strlen(yytext)>1)
 		printf(" near '%s'", yytext);
 	printf("\n");
@@ -560,7 +581,9 @@ fatal(char *s1, char *s2)
 	(void) unlink("pan.h");
 	(void) unlink("pan.m");
 	(void) unlink("pan.t");
+	(void) unlink("pan.p");
 	(void) unlink("pan.pre");
+	(void) unlink("_spin_nvr.tmp");
 	alldone(1);
 }
 
@@ -584,19 +607,19 @@ emalloc(size_t n)
 
 void
 trapwonly(Lextok *n /* , char *unused */)
-{	extern int realread;
-	short i = (n->sym)?n->sym->type:0;
+{	short i = (n->sym)?n->sym->type:0;
 
-	if (i != MTYPE
-	&&  i != BIT
-	&&  i != BYTE
-	&&  i != SHORT
-	&&  i != INT
-	&&  i != UNSIGNED)
-		return;
+	/* printf("%s	realread %d type %d\n", n->sym?n->sym->name:"--", realread, i); */
 
-	if (realread)
-	n->sym->hidden |= 128;	/* var is read at least once */
+	if (realread
+	&& (i == MTYPE
+	||  i == BIT
+	||  i == BYTE
+	||  i == SHORT
+	||  i == INT
+	||  i == UNSIGNED))
+	{	n->sym->hidden |= 128;	/* var is read at least once */
+	}
 }
 
 void
@@ -804,6 +827,7 @@ explain(int n)
 	case FI:	fprintf(fd, "%sfi",	Keyword); break;
 	case FULL:	fprintf(fd, "%sfull",	Function); break;
 	case GE:	fprintf(fd, "%s>=",	Operator); break;
+	case GET_P:	fprintf(fd, "%sget_priority",Function); break;
 	case GOTO:	fprintf(fd, "%sgoto",	Keyword); break;
 	case GT:	fprintf(fd, "%s>",	Operator); break;
 	case HIDDEN:	fprintf(fd, "%shidden",	Keyword); break;
@@ -843,6 +867,8 @@ explain(int n)
 	case RUN:	fprintf(fd, "%srun",	Operator); break;
 	case SEP:	fprintf(fd, "token: ::"); break;
 	case SEMI:	fprintf(fd, ";"); break;
+	case ARROW:	fprintf(fd, "->"); break;
+	case SET_P:	fprintf(fd, "%sset_priority",Function); break;
 	case SHOW:	fprintf(fd, "%sshow", Keyword); break;
 	case SND:	fprintf(fd, "%s!",	Operator); break;
 	case STRING:	fprintf(fd, "a string"); break;

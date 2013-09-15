@@ -55,21 +55,21 @@ struct Guard {
 	Guard *nxt;
 };
 
-SQueue	*sq, *sd, *render;	/* states move from sq to sd to render to holding */
-SQueue	*holding, *lasthold;
-State_Stack *dsts;
+static SQueue	*sq, *sd, *render;	/* states move from sq to sd to render to holding */
+static SQueue	*holding, *lasthold;
+static State_Stack *dsts;
 
-int nst;		/* max nr of states in claims */
-int *Ist;		/* initial states */
-int *Nacc;		/* number of accept states in claim */
-int *Nst;		/* next states */
-int **reached;		/* n claims x states */
-int unfolding;		/* to make sure all accept states are reached */
-int is_accept;		/* remember if the current state is accepting in any claim */
-int not_printing;	/* set during explore_product */
+static int nst;		/* max nr of states in claims */
+static int *Ist;	/* initial states */
+static int *Nacc;	/* number of accept states in claim */
+static int *Nst;	/* next states */
+static int **reached;	/* n claims x states */
+static int unfolding;	/* to make sure all accept states are reached */
+static int is_accept;	/* remember if the current state is accepting in any claim */
+static int not_printing; /* set during explore_product */
 
-Element ****matrix;	/* n x two-dimensional arrays state x state */
-Element **Selfs;	/* self-loop states at end of claims */
+static Element ****matrix;	/* n x two-dimensional arrays state x state */
+static Element **Selfs;	/* self-loop states at end of claims */
 
 static void get_seq(int, Sequence *);
 static void set_el(int n, Element *e);
@@ -151,9 +151,9 @@ more:
 static void
 wrap_text(char *pre, Lextok *t, char *post)
 {
-	printf(pre);
+	printf(pre, (char *) 0);
 	comment(stdout, t, 0);
-	printf(post);
+	printf(post, (char *) 0);
 }
 
 static State_Stack *
@@ -185,7 +185,7 @@ push_dsts(int *n)
 static void
 pop_dsts(void)
 {
-	assert(dsts);
+	assert(dsts != NULL);
 	dsts = dsts->nxt;
 }
 
@@ -249,7 +249,7 @@ state_body(OneState *s, Guard *guard)
 				y = push_dsts(s->combo);
 				if (!y)
 				{	if (once++ == 0)
-					{	assert(s->succ);
+					{	assert(s->succ != NULL);
 						state_body(s, guard);
 					}
 					pop_dsts();
@@ -499,7 +499,7 @@ print_product(void)
 	if (unfolding == 0)
 	{	printf("never Product {\n");	/* name expected by iSpin */
 		q = find_state(Ist);	/* should find it in the holding q */
-		assert(q);
+		assert(q != NULL);
 		q->nxt = holding;	/* put it at the front */
 		holding = q;
 	}

@@ -23,7 +23,7 @@ static Mapping	*Mapped = (Mapping *) 0;
 static Graph	*Nodes_Set = (Graph *) 0;
 static Graph	*Nodes_Stack = (Graph *) 0;
 
-static char	dumpbuf[2048];
+static char	dumpbuf[4096];
 static int	Red_cnt  = 0;
 static int	Lab_cnt  = 0;
 static int	Base     = 0;
