@@ -327,6 +327,7 @@ Window	*hidden[100];
 int		nhidden;
 int		nsnarf;
 Rune*	snarf;
+int		notresizing;
 int		scrolling;
 int		maxtab;
 Channel*	winclosechan;

@@ -8,7 +8,7 @@ rio \- window system files
 .BI ' cmd '
 ]
 [
-.B -s
+.B -sR
 ]
 [
 .B -f
@@ -230,8 +230,6 @@ The commands are
 (restore a hidden window),
 .B current
 (make the window the recipient of keyboard and mouse input),
-.B delete
-(delete the window)
 and
 .B new
 (make a new window).

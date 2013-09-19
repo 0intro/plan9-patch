@@ -10,7 +10,7 @@ rio, label, window, wloc \- window system
 .BI "-k '"kbdcmd '
 ]
 [
-.B -s
+.B -sR
 ]
 [
 .B -f
@@ -108,6 +108,9 @@ uses the imported value of
 .BR $font
 if set; otherwise it imports the default font from the underlying graphics
 server, usually the terminal's operating system.
+The
+.B -R
+option disables automatic resizing of windows if the geometry of the underlying screen changes.
 .PP
 The
 .I label

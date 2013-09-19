@@ -149,6 +149,9 @@ threadmain(int argc, char *argv[])
 		if(kbdin == nil)
 			usage();
 		break;
+	case 'R':
+		notresizing = TRUE;
+		break;
 	case 's':
 		scrolling = TRUE;
 		break;
@@ -623,10 +626,12 @@ resized(void)
 		if(w->deleted)
 			continue;
 		r = rectsubpt(w->i->r, viewr.min);
-		r.min.x = (r.min.x*n.x)/o.x;
-		r.min.y = (r.min.y*n.y)/o.y;
-		r.max.x = (r.max.x*n.x)/o.x;
-		r.max.y = (r.max.y*n.y)/o.y;
+		if(notresizing == 0){
+			r.min.x = (r.min.x*n.x)/o.x;
+			r.min.y = (r.min.y*n.y)/o.y;
+			r.max.x = (r.max.x*n.x)/o.x;
+			r.max.y = (r.max.y*n.y)/o.y;
+		}
 		r = rectaddpt(r, screen->clipr.min);
 		ishidden = 0;
 		for(j=0; j<nhidden; j++)
