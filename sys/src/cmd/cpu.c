@@ -31,6 +31,7 @@ int 	notechan;
 int	exportpid;
 char	*system;
 int	cflag;
+int	nflag;
 int	dbg;
 char	*user;
 char	*patternfile;
@@ -60,7 +61,7 @@ struct AuthMethod {
 {
 	{ "p9",		p9auth,		srvp9auth,},
 	{ "netkey",	netkeyauth,	netkeysrvauth,},
-//	{ "none",	noauth,		srvnoauth,},
+	{ "none",	noauth,		srvnoauth,},
 	{ nil,	nil}
 };
 AuthMethod *am = authmethod;	/* default is p9 */
@@ -170,6 +171,10 @@ main(int argc, char **argv)
 		break;
 	case 'f':
 		/* ignored but accepted for compatibility */
+		break;
+	case 'n':
+		/* must be specified before -R/-O */
+		nflag++;
 		break;
 	case 'O':
 		p9authproto = "p9sk2";
@@ -695,6 +700,8 @@ srvp9auth(int fd, char *user)
 int
 setam(char *name)
 {
+	if(nflag == 0 && strcmp("none", name) == 0)
+		return -1;
 	for(am = authmethod; am->name != nil; am++)
 		if(strcmp(am->name, name) == 0)
 			return 0;

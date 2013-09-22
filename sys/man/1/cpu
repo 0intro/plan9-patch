@@ -28,6 +28,8 @@ cpu \- connection to CPU server
 .PP
 .B cpu
 [
+.B -n
+] [
 .B -R
 |
 .B -O
@@ -176,6 +178,14 @@ flag is similar but simulates the pre-9P2000 version
 of the 
 .I cpu
 protocol.
+The
+.B -n
+option disables authentication for incoming connections and must be
+specified before the
+.B -R
+and
+.B -O
+flags.
 .SH FILES
 The name space of the terminal side of the
 .I cpu
