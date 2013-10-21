@@ -39,7 +39,16 @@ struct	Qid9p1
 	long	version;
 };
 
+/*
+ * oh rats!  this structure deeply assumes a 32-bit machine.
+ * to make this work for 64-bit, without breaking old kfs
+ * images, some dirty tricks are necessary.  first we have to
+ * pack the structure, but that packs too well,  the short
+ * "badplanning" fills in the traditional hole.
+ */
+
 /* DONT TOUCH, this is the disk structure */
+#pragma pack on
 struct	Dentry
 {
 	char	name[NAMELEN];
@@ -53,6 +62,7 @@ struct	Dentry
 		#define	DREAD	0x4
 		#define	DWRITE	0x2
 		#define	DEXEC	0x1
+	short	badplanning;
 	Qid9p1	qid;
 	long	size;
 	long	dblock[NDBLOCK];
@@ -61,6 +71,7 @@ struct	Dentry
 	long	atime;
 	long	mtime;
 };
+#pragma pack off
 
 /* DONT TOUCH, this is the disk structure */
 struct	Tag
@@ -150,7 +161,7 @@ struct	File
 	long	addr;
 	long	slot;
 	long	lastra;		/* read ahead address */
-	short	fid;
+	ulong	fid;
 	short	uid;
 	char	open;
 		#define	FREAD	1
