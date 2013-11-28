@@ -379,6 +379,7 @@ viewer(Document *dd)
 				}
 				break;
 			case 'q':
+			case 0x7f:	/* del */
 			case 0x04: /* ctrl-d */
 				wexits(0);
 			case 'u':
