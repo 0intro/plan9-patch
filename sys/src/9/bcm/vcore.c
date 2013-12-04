@@ -39,6 +39,7 @@ enum {
 	TagSetpower	= 0x00028001,
 		Powerwait	= 1<<1,
 	TagGetclkspd= 0x00030002,
+	TagGettemp	= 0x00030006,
 	TagFballoc	= 0x00040001,
 	TagFbfree	= 0x00048001,
 	TagFbblank	= 0x00040002,
@@ -288,5 +289,19 @@ getclkrate(int clkid)
 	buf[0] = clkid;
 	if(vcreq(TagGetclkspd, buf, sizeof(buf[0]), sizeof(buf)) != sizeof buf)
 		return 0;
+	return buf[1];
+}
+
+/*
+* Get temperature
+*/
+uint
+gettemp(int tempid)
+{
+	u32int buf[2];
+	buf[0] = tempid;
+	if(vcreq(TagGettemp, buf, sizeof(buf[0]), sizeof(buf)) != sizeof buf)
+		return 0;
+
 	return buf[1];
 }
