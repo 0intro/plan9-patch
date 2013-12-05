@@ -86,6 +86,15 @@ to a
 see all output, and enter commands.
 .PP
 The
+.I dev
+attribute is typically a UART-style device path, however
+.IR telnet (1)
+may be indicated by specifying a network address in the form of
+.IR net ! machine .
+This is primarily useful for integrating with non-Plan 9 console
+servers.
+.PP
+The
 .I cronly=
 attribute causes newlines typed by the user to be sent to
 the console as returns.

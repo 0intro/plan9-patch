@@ -86,8 +86,10 @@ struct Console
 	int	cronly;
 	int	ondemand;		/* open only on demand */
 	int	chat;			/* chat consoles are special */
+	int	telnet;
 
 	int	pid;			/* pid of reader */
+	int	tpid;			/* pid of telnet */
 
 	int	fd;
 	int	cfd;
@@ -105,7 +107,7 @@ struct Fs
 	Fid	*hash[Nhash];
 	Console	*cons[Maxcons];
 	int	ncons;
-};
+} root;
 
 extern	void	console(Fs*, char*, char*, int, int, int);
 extern	Fs*	fsmount(char*);
@@ -117,6 +119,7 @@ extern	void	fsputfid(Fs*, Fid*);
 extern	int	fsdirgen(Fs*, Qid, int, Dir*, uchar*, int);
 extern	void	fsreply(Fs*, Request*, char*);
 extern	void	fskick(Fs*, Fid*);
+extern	void	fsexit(void);
 extern	int	fsreopen(Fs*, Console*);
 
 extern	void	fsversion(Fs*, Request*, Fid*);
@@ -349,7 +352,7 @@ fsmount(char *mntpt)
 	int n;
 	static void *v[2];
 
-	fs = emalloc(sizeof(Fs));
+	fs = &root;
 
 	if(pipe(pfd) < 0)
 		fatal("opening pipe: %r");
@@ -383,6 +386,7 @@ fsmount(char *mntpt)
 int
 fsreopen(Fs* fs, Console *c)
 {
+	int pfd[2];
 	char buf[128];
 	static void *v[2];
 
@@ -390,6 +394,11 @@ fsreopen(Fs* fs, Console *c)
 		if(postnote(PNPROC, c->pid, "reopen") != 0)
 			fprint(2, "postnote failed: %r\n");
 		c->pid = 0;
+	}
+	if(c->tpid){
+		if(postnote(PNGROUP, c->tpid, "reopen") != 0)
+			fprint(2, "postnote failed: %r\n");
+		c->tpid = 0;
 	}
 
 	if(c->fd >= 0){
@@ -404,16 +413,37 @@ fsreopen(Fs* fs, Console *c)
 	if(c->flist == nil && c->ondemand)
 		return 0;
 
-	c->fd = open(c->dev, ORDWR);
-	if(c->fd < 0)
-		return -1;
+	if(c->telnet){
+		if(pipe(pfd) < 0)
+			fatal("opening pipe: %r");
 
-	snprint(buf, sizeof(buf), "%sctl", c->dev);
-	c->cfd = open(buf, ORDWR);
-	fprint(c->cfd, "b%d", c->speed);
-
-	snprint(buf, sizeof(buf), "%sstat", c->dev);
-	c->sfd = open(buf, OREAD);
+		switch(c->tpid = fork()){
+		case -1:
+			fatal("fork failed: %r");
+		case 0:
+			rfork(RFNOTEG);
+			dup(pfd[0], 0);
+			dup(pfd[0], 1);
+			dup(pfd[0], 2);
+			close(pfd[1]);
+			execl("/bin/telnet", "telnet", "-nr", c->dev, nil);
+			fatal("exec failed: %r");
+		default:
+			close(pfd[0]);
+			c->fd = c->cfd = pfd[1];
+		}
+	}else{
+		c->fd = open(c->dev, ORDWR);
+		if(c->fd < 0)
+			return -1;
+	
+		snprint(buf, sizeof(buf), "%sctl", c->dev);
+		c->cfd = open(buf, ORDWR);
+		fprint(c->cfd, "b%d", c->speed);
+	
+		snprint(buf, sizeof(buf), "%sstat", c->dev);
+		c->sfd = open(buf, OREAD);
+	}
 
 	v[0] = fs;
 	v[1] = c;
@@ -500,10 +530,14 @@ console(Fs* fs, char *name, char *dev, int speed, int cronly, int ondemand)
 	fs->ncons++;
 	c->name = strdup(name);
 	c->dev = strdup(dev);
-	if(strcmp(c->dev, "/dev/null") == 0) 
-		c->chat = 1;
-	else 
-		c->chat = 0;
+	/* Assume remote machine if device does not exist */
+	if(access(c->dev, AEXIST) == 0){
+		if(strcmp(c->dev, "/dev/null") == 0) 
+			c->chat = 1;
+		else 
+			c->chat = 0;
+	}else
+		c->telnet = 1;
 	c->fd = -1;
 	c->cfd = -1;
 	c->sfd = -1;
@@ -577,9 +611,27 @@ bcastmembers(Fs *fs, Console *c, char *msg, Fid *f)
 void
 handler(void*, char *msg)
 {
+	Fs *fs;
+	Console *c;
+	int i, pid;
+
+	fs = &root;
+
 	if(strstr(msg, "reopen") != nil ||
 	   strstr(msg, "write on closed pipe") != nil)
 		noted(NCONT);
+	pid = getpid();
+	for(i = 0; i < fs->ncons; i++){
+		c = fs->cons[i];
+		if(c->pid == pid){
+			if(c->tpid){
+				if(postnote(PNGROUP, c->tpid, "die") != 0)
+					fprint(2, "postnote failed: %r\n");
+				c->tpid = 0;
+			}
+			break;
+		}
+	}
 	noted(NDFLT);
 }
 
@@ -1101,7 +1153,17 @@ fswrite(Fs *fs, Request *r, Fid *f)
 		fsreply(fs, r, Eperm);
 		return;
 	case Qctl:
-		write(f->c->cfd, r->f.data, r->f.count);
+		/*
+		 * Unfortunately there is not a good way to notify the
+		 * telnet process that it should send a break.  Rather
+		 * than mess about with note handlers, we instead send
+		 * the raw command.  Retching is appropriate.
+		 */
+		if(f->c->telnet){
+			if(r->f.data[0] == 'k')
+				write(f->c->cfd, "\xff\xf3", 2);	/* IAC, Break */
+		}else
+			write(f->c->cfd, r->f.data, r->f.count);
 		break;
 	case Qdata:
 		for(i = 0; i < r->f.count; i++){
@@ -1253,6 +1315,28 @@ fskick(Fs *fs, Fid *f)
 	unlock(f);
 }
 
+/*
+ *  clean up consoles at exit
+ */
+void
+fsexit(void)
+{
+	Fs *fs;
+	Console *c;
+	int i;
+
+	fs = &root;
+
+	for(i = 0; i < fs->ncons; ++i){
+		c = fs->cons[i];
+		if(c->tpid){
+			if(postnote(PNGROUP, c->tpid, "die") != 0)
+				fprint(2, "postnote failed: %r\n");
+			c->tpid = 0;
+		}
+	}
+}
+
 void
 usage(void)
 {
@@ -1287,4 +1371,5 @@ threadmain(int argc, char **argv)
  		fatal("can't open %s: %r", consoledb);
 
 	fsmount(mntpt);
+	atexit(fsexit);
 }
