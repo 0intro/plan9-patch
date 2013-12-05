@@ -159,12 +159,13 @@ telnet(int net)
 		netpid = pid;
 		notify(notifyf);
 		fromkbd(net);
-		if(notkbd)
-			for(;;)
-				sleep(1000); // sleep(0) is a cpuhog
+		if(notkbd){
+			while(waitpid() != -1)
+				;
+		}else
+			sendnote(netpid, "die");
 		if (svc)
 			remove(svc);
-		sendnote(netpid, "die");
 		exits(0);
 	}
 }
@@ -323,6 +324,8 @@ fromnet(int net)
 void
 rawon(void)
 {
+	if(notkbd)
+		return;
 	if(debug)
 		fprint(2, "rawon\n");
 	if(consctl < 0)
@@ -340,6 +343,8 @@ rawon(void)
 void
 rawoff(void)
 {
+	if(notkbd)
+		return;
 	if(debug)
 		fprint(2, "rawoff\n");
 	if(consctl < 0)
