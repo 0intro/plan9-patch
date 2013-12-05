@@ -138,7 +138,7 @@ prepare(int i, char *arg)
 			 * brave new UNICODE world
 			 */
 			cp += chartorune(&r, cp);
-			if (r == 0 || (r > 0x7f && r <= 0xa0)) {
+			if (r == 0 || (r > 0x7f && r < 0xa0)) {
 				binary++;
 				return bp;
 			}
