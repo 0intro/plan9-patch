@@ -692,7 +692,7 @@ mesgtagpost(Message *m)
 {
 	if(m->tagposted)
 		return;
-	wintagwrite(m->w, " Post", 5);
+	wintagwrite(m->w, " Post Undo", 5);
 	m->tagposted = 1;
 }
 
