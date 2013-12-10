@@ -111,6 +111,46 @@ Rune kbtabesc1[Nscan] =
 [0x78]	No,	Up,	No,	No,	No,	No,	No,	No,
 };
 
+Rune kbtabshiftesc1[Nscan] =
+{
+[0x00]	No,	No,	No,	No,	No,	No,	No,	No,
+[0x08]	No,	No,	No,	No,	No,	No,	No,	No,
+[0x10]	No,	No,	No,	No,	No,	No,	No,	No,
+[0x18]	No,	No,	No,	No,	No,	No,	No,	No,
+[0x20]	No,	No,	No,	No,	No,	No,	No,	No,
+[0x28]	No,	No,	No,	No,	No,	No,	No,	No,
+[0x30]	No,	No,	No,	No,	No,	No,	No,	No,
+[0x38]	No,	No,	No,	No,	No,	No,	No,	No,
+[0x40]	No,	No,	No,	No,	No,	No,	No,	No,
+[0x48]	Up,	No,	No,	No,	No,	No,	No,	No,
+[0x50]	No,	No,	No,	No,	No,	No,	No,	No,
+[0x58]	No,	No,	No,	No,	No,	No,	No,	No,
+[0x60]	No,	No,	No,	No,	No,	No,	No,	No,
+[0x68]	No,	No,	No,	No,	No,	No,	No,	No,
+[0x70]	No,	No,	No,	No,	No,	No,	No,	No,
+[0x78]	No,	Up,	No,	No,	No,	No,	No,	No,
+};
+
+Rune kbtabctrlesc1[Nscan] =
+{
+[0x00]	No,	No,	No,	No,	No,	No,	No,	No,
+[0x08]	No,	No,	No,	No,	No,	No,	No,	No,
+[0x10]	No,	No,	No,	No,	No,	No,	No,	No,
+[0x18]	No,	No,	No,	No,	No,	No,	No,	No,
+[0x20]	No,	No,	No,	No,	No,	No,	No,	No,
+[0x28]	No,	No,	No,	No,	No,	No,	No,	No,
+[0x30]	No,	No,	No,	No,	No,	No,	No,	No,
+[0x38]	No,	No,	No,	No,	No,	No,	No,	No,
+[0x40]	No,	No,	No,	No,	No,	No,	No,	No,
+[0x48]	Up,	No,	No,	No,	No,	No,	No,	No,
+[0x50]	No,	No,	No,	No,	No,	No,	No,	No,
+[0x58]	No,	No,	No,	No,	No,	No,	No,	No,
+[0x60]	No,	No,	No,	No,	No,	No,	No,	No,
+[0x68]	No,	No,	No,	No,	No,	No,	No,	No,
+[0x70]	No,	No,	No,	No,	No,	No,	No,	No,
+[0x78]	No,	Up,	No,	No,	No,	No,	No,	No,
+};
+
 Rune kbtabaltgr[Nscan] =
 {
 [0x00]	No,	No,	No,	No,	No,	No,	No,	No,
@@ -211,7 +251,10 @@ kbdputsc(int c, int external)
 		return;
 	}
 
-	if(kbscan->esc1){
+	if(kbscan->esc1 && kbscan->shift){
+		c = kbtabshiftesc1[c];
+		kbscan->esc1 = 0;
+	} else if(kbscan->esc1){
 		c = kbtabesc1[c];
 		kbscan->esc1 = 0;
 	} else if(kbscan->esc2){
@@ -378,6 +421,12 @@ kbdputmap(ushort m, ushort scanc, Rune r)
 	case 4:	
 		kbtabctrl[scanc] = r;
 		break;
+	case 5:	
+		kbtabctrlesc1[scanc] = r;
+		break;
+	case 6:	
+		kbtabshiftesc1[scanc] = r;
+		break;
 	}
 }
 
@@ -405,6 +454,12 @@ kbdgetmap(uint offset, int *t, int *sc, Rune *r)
 		return 1;
 	case 4:
 		*r = kbtabctrl[*sc];
+		return 1;
+	case 5:
+		*r = kbtabctrlesc1[*sc];
+		return 1;
+	case 6:
+		*r = kbtabshiftesc1[*sc];
 		return 1;
 	}
 }
