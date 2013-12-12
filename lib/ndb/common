@@ -83,14 +83,14 @@ dom=10.in-addr.arpa soa=		# rfc1918 zones
 #
 #  ip protocol numbers
 #
-protocol=reserved	ipv4proto=0
+protocol=hopopt		ipv4proto=0
 protocol=icmp		ipv4proto=1
 protocol=igmp		ipv4proto=2
 protocol=ggp		ipv4proto=3
 protocol=ip		ipv4proto=4
 protocol=st		ipv4proto=5
 protocol=tcp		ipv4proto=6
-protocol=ucl		ipv4proto=7
+protocol=cbt		ipv4proto=7
 protocol=egp		ipv4proto=8
 protocol=igp		ipv4proto=9
 protocol=bbn-rcc-mon	ipv4proto=10
@@ -116,7 +116,7 @@ protocol=iso-tp4	ipv4proto=29
 protocol=netblt		ipv4proto=30
 protocol=mfe-nsp	ipv4proto=31
 protocol=merit-inp	ipv4proto=32
-protocol=sep		ipv4proto=33
+protocol=dccp		ipv4proto=33
 protocol=3pc		ipv4proto=34
 protocol=idpr		ipv4proto=35
 protocol=xtp		ipv4proto=36
@@ -124,20 +124,26 @@ protocol=ddp		ipv4proto=37
 protocol=idpr-cmtp	ipv4proto=38
 protocol=tp++		ipv4proto=39
 protocol=il		ipv4proto=40
-protocol=sip		ipv4proto=41
+protocol=ipv6		ipv4proto=41
 protocol=sdrp		ipv4proto=42
-protocol=sip-sr		ipv4proto=43
-protocol=sip-frag	ipv4proto=44
+protocol=route		ipv6proto=43
+protocol=frag		ipv6proto=44
 protocol=idrp		ipv4proto=45
 protocol=rsvp		ipv4proto=46
 protocol=gre		ipv4proto=47
-protocol=mhrp		ipv4proto=48
+protocol=dsr		ipv4proto=48
 protocol=bna		ipv4proto=49
-protocol=sipp-esp	ipv4proto=50
-protocol=sipp-ah	ipv4proto=51
+protocol=esp		ipv4proto=50
+protocol=ah		ipv4proto=51
 protocol=i-nlsp		ipv4proto=52
 protocol=swipe		ipv4proto=53
-protocol=nhrp		ipv4proto=54
+protocol=narp		ipv4proto=54
+protocol=mobile		ipv4proto=55
+protocol=tlsp		ipv4proto=56
+protocol=skip		ipv4proto=57
+protocol=icmp		ipv6proto=58
+protocol=nonxt		ipv6proto=59
+protocol=opts		ipv6proto=60
 protocol=any		ipv4proto=61
 protocol=cftp		ipv4proto=62
 protocol=any		ipv4proto=63
@@ -161,11 +167,11 @@ protocol=iso-ip		ipv4proto=80
 protocol=vmtp		ipv4proto=81
 protocol=secure-vmtp	ipv4proto=82
 protocol=vines		ipv4proto=83
-protocol=ttp		ipv4proto=84
+protocol=iptm		ipv4proto=84
 protocol=nsfnet-igp	ipv4proto=85
 protocol=dgp		ipv4proto=86
 protocol=tcf		ipv4proto=87
-protocol=igrp		ipv4proto=88
+protocol=eigrp		ipv4proto=88
 protocol=ospfigp	ipv4proto=89	protocol=ospf
 protocol=sprite-rpc	ipv4proto=90
 protocol=larp		ipv4proto=91
@@ -178,7 +184,52 @@ protocol=etherip	ipv4proto=97
 protocol=encap		ipv4proto=98
 protocol=any		ipv4proto=99
 protocol=gmtp		ipv4proto=100
+protocol=ifmp		ipv4proto=101
+protocol=pnni		ipv4proto=102
+protocol=pim		ipv4proto=103
+protocol=aris		ipv4proto=104
+protocol=scps		ipv4proto=105
+protocol=qnx		ipv4proto=106
+protocol=a/n		ipv4proto=107
+protocol=ipcomp		ipv4proto=108
+protocol=snp		ipv4proto=109
+protocol=compaq-peer	ipv4proto=110
+protocol=ipx-in-ip	ipv4proto=111
+protocol=vrrp		ipv4proto=112
+protocol=pgm		ipv4proto=113
+protocol=any		ipv4proto=114
+protocol=l2tp		ipv4proto=115
+protocol=ddx		ipv4proto=116
+protocol=iatp		ipv4proto=117
+protocol=stp		ipv4proto=118
+protocol=srp		ipv4proto=119
+protocol=uti		ipv4proto=120
+protocol=smp		ipv4proto=121
+protocol=sm		ipv4proto=122
+protocol=ptp		ipv4proto=123
+protocol=isis		ipv4proto=124
+protocol=fire		ipv4proto=125
+protocol=crtp		ipv4proto=126
+protocol=crudp		ipv4proto=127
+protocol=sscopmce	ipv4proto=128
+protocol=iplt		ipv4proto=129
+protocol=sps		ipv4proto=130
+protocol=pipe		ipv4proto=131
+protocol=sctp		ipv4proto=132
+protocol=fc		ipv4proto=133
+protocol=rsvp-e2e-ignore	ipv4proto=134
+protocol=mobility	ipv4proto=135
+protocol=udplite	ipv4proto=136
+protocol=mpls-in-ip	ipv4proto=137
+protocol=manet		ipv4proto=138
+protocol=hip		ipv4proto=139
+protocol=shim6		ipv4proto=140
+protocol=wesp		ipv4proto=141
+protocol=rohc		ipv4proto=142
+protocol=any		ipv4proto=253
 protocol=rudp		ipv4proto=254	# unofficial
+protocol=reserved	ipv4proto=255
+
 
 #
 #  services
