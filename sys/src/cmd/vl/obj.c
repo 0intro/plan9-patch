@@ -1389,6 +1389,7 @@ nuxiinit(void)
 			if(i >= 3)
 				inuxi1[i-3] = c;
 			inuxi4[i] = c;
+			fnuxi4[i] = c;
 			fnuxi8[i] = c+4;
 			fnuxi8[i+4] = c;
 		} else {			/* oddball little-endian case */
@@ -1413,6 +1414,9 @@ nuxiinit(void)
 		for(i=0; i<4; i++)
 			Bprint(&bso, "%d", inuxi4[i]);
 		Bprint(&bso, "\nfnuxi = ");
+		for(i=0; i<4; i++)
+			Bprint(&bso, "%d", fnuxi4[i]);
+		Bprint(&bso, " ");
 		for(i=0; i<8; i++)
 			Bprint(&bso, "%d", fnuxi8[i]);
 		Bprint(&bso, "\n");
