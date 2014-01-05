@@ -372,3 +372,12 @@ auth=ibmremote.dyndns.org
 
 # for sape
 auth=130.89.145.31 authdom=cs.utwente.nl
+
+# for coraid
+auth=tyty.coraid.com authdom=coraid.com
+
+# for quanstro
+auth=ladd.quanstro.net authdom=plan9.quanstro.net
+
+# for 9atom
+auth=atom.9atom.org authdom=9atom.org
