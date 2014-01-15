@@ -281,6 +281,14 @@ sysopen(ulong *arg)
 	return fd;
 }
 
+long
+sysnanotime(ulong *arg)
+{
+	validaddr(arg[0], BY2V, 1);
+	*(vlong*)arg[0] = todget(nil);
+	return 0;
+}
+
 void
 fdclose(int fd, int flag)
 {

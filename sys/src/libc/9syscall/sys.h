@@ -49,3 +49,4 @@
 #define	PREAD		50
 #define	PWRITE		51
 #define	TSEMACQUIRE	52
+#define	NANOTIME	53

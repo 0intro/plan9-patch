@@ -668,6 +668,7 @@ extern	int	fversion(int, int, char*, int);
 extern	int	mount(int, int, char*, int, char*);
 extern	int	unmount(char*, char*);
 extern	int	noted(int);
+extern	vlong	nanotime(void);
 extern	int	notify(void(*)(void*, char*));
 extern	int	open(char*, int);
 extern	int	fd2path(int, char*, int);
