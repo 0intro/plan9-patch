@@ -192,18 +192,22 @@ startdevproc(void *a)
 static void
 writeinfo(Dev *d)
 {
-	char buf[128];
-	char *s;
-	char *se;
+	char *buf, *s, *se;
 	Usbdev *ud;
 	Conf *c;
 	Iface *ifc;
-	int i, j;
+	int i, j, n;
 
 	ud = d->usb;
+	n = 1;		/* for the \0 */
+	for(i = 0; i < ud->nconf; i++){
+		if((c = ud->conf[i]) != nil)
+			for(j = 0; j < nelem(c->iface); j++)
+				n += 16*(c->iface[j] != nil);
+	}
+	buf = emallocz(n, 1);
 	s = buf;
-	se = buf+sizeof(buf);
-	s = seprint(s, se, "info %s csp %#08ulx", classname(ud->class), ud->csp);
+	se = buf + n;
 	for(i = 0; i < ud->nconf; i++){
 		c = ud->conf[i];
 		if(c == nil)
@@ -216,9 +220,10 @@ writeinfo(Dev *d)
 				s = seprint(s, se, " csp %#08ulx", ifc->csp);
 		}
 	}
-	s = seprint(s, se, " vid %06#x did %06#x", ud->vid, ud->did);
-	seprint(s, se, " %q %q", ud->vendor, ud->product);
-	devctl(d, "%s", buf);
+	devctl(d, "info %s" "csp %#08lux %s vid %#06x did %#06x %q %q",
+		classname(ud->class), ud->csp,
+		buf, ud->vid, ud->did, ud->vendor, ud->product);
+	free(buf);
 }
 
 int
