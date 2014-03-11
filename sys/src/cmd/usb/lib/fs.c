@@ -647,6 +647,7 @@ usbfsinit(char* srv, char *mnt, Usbfs *f, int flag)
 	user = getuser();
 	epoch = time(nil);
 
+	fmtinstall('H', encodefmt);
 	fmtinstall('D', dirfmt);
 	fmtinstall('M', dirmodefmt);
 	fmtinstall('F', fcallfmt);
