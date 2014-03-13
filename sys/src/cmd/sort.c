@@ -1292,14 +1292,14 @@ dokey_dfi(Key *k, uchar *lp, uchar *lpe, Field *f)
 		/*
 		 * for characters out of range,
 		 * the table does not do Rflag.
-		 * ignore is based on mapto[nelem(f->mapto)-1]
+		 * ignore is computed directly.
 		 */
 		if(c != 0 && c < nelem(f->mapto)) {
 			c = f->mapto[c];
 			if(c == 0)
 				continue;
 		} else {
-			if(f->mapto[nelem(f->mapto)-1] == 0)
+			if(f->flags & Iflag)
 				continue;
 			/*
 			 * consider building maps as necessary
