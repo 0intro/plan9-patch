@@ -255,7 +255,7 @@ diskWriteAndWait(Disk *disk, Block *b)
 int
 diskBlockSize(Disk *disk)
 {
-	return disk->h.blockSize;	/* immuttable */
+	return disk->h.blockSize;	/* immutable */
 }
 
 int
