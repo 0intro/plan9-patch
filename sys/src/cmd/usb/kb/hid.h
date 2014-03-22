@@ -14,13 +14,33 @@ enum {
 	KbdCSP		= 0x010103,	/* keyboard.boot.hid */
 
 	/* Requests */
-	Getproto	= 0x03,
-	Setidle		= 0x0a,
-	Setproto	= 0x0b,
+	Getreport	= 1,
+	Getidle		= 2,
+	Getproto	= 3,
+	Setreport	= 9,
+	Setidle		= 0xa,
+	Setproto		= 0xb,
 
 	/* protocols for SET_PROTO request */
 	Bootproto	= 0,
 	Reportproto	= 1,
+
+	/* report type for get/set report.  or'd with reportid */
+	Reportin	= 1<<8,
+	Reportout	= 2<<8,
+	Reportfeat	= 3<<8,
+
+	/* report ids */
+	Ledreport	= 0,		/* unsure if this isn't just "no id" */
+};
+
+enum {
+	/* led report bits.  led report is 1 byte long */
+	Lnum		= 1<<0,		/* num lock led */
+	Lcaps		= 1<<1,
+	Lscroll		= 1<<2,
+	Lcompose	= 1<<3,
+	Lkana		= 1<<4,
 };
 
 enum {

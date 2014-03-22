@@ -19,24 +19,45 @@
 
 enum
 {
-	Awakemsg= 0xdeaddead,
-	Diemsg	= 0xbeefbeef,
+	Stoprpt	= -2,
+	Tick	= -3,
+	Exiting	= -4,
+
+	Msec	= 1000*1000,		/* msec per ns */
+
 	Dwcidle	= 8,
 };
 
+typedef ushort Scan;
 typedef struct KDev KDev;
+typedef struct Kbd Kbd;
+typedef struct Mouse Mouse;
 typedef struct Kin Kin;
+
+struct Kbd
+{
+	Channel*	repeatc;
+	Channel*	exitc;
+	long		nproc;
+	uint		led;
+};
+
+struct Mouse
+{
+	int	accel;		/* only for mouse */
+};
 
 struct KDev
 {
 	Dev*	dev;		/* usb device*/
 	Dev*	ep;		/* endpoint to get events */
+	int	eid;		/* id of endpoint (not of open ep) */
 	Kin*	in;		/* used to send events to kernel */
 	int	idle;		/* min time between reports (× 4ms) */
-	Channel*repeatc;	/* only for keyboard */
-	int	accel;		/* only for mouse */
 	int	bootp;		/* has associated keyboard */
 	int	debug;
+	Kbd;
+	Mouse;
 	HidRepTempl templ;
 	int	(*ptrvals)(KDev *kd, Chain *ch, int *px, int *py, int *pb);
 };
@@ -66,44 +87,84 @@ struct Kin
  */
 
 /*
- * key code to scan code; for the page table used by
+ * usb key code to ps/2 scan code; for the page table used by
  * the logitech bluetooth keyboard.
  */
-static char sctab[256] =
-{
-[0x00]	0x0,	0x0,	0x0,	0x0,	0x1e,	0x30,	0x2e,	0x20,
+#define E	SCesc1<<8
+
+static Scan sctaben[256] ={
+[0x00]	0,	0,	0,	0,	0x1e,	0x30,	0x2e,	0x20,
 [0x08]	0x12,	0x21,	0x22,	0x23,	0x17,	0x24,	0x25,	0x26,
 [0x10]	0x32,	0x31,	0x18,	0x19,	0x10,	0x13,	0x1f,	0x14,
-[0x18]	0x16,	0x2f,	0x11,	0x2d,	0x15,	0x2c,	0x2,	0x3,
-[0x20]	0x4,	0x5,	0x6,	0x7,	0x8,	0x9,	0xa,	0xb,
-[0x28]	0x1c,	0x1,	0xe,	0xf,	0x39,	0xc,	0xd,	0x1a,
+[0x18]	0x16,	0x2f,	0x11,	0x2d,	0x15,	0x2c,	0x02,	0x03,
+[0x20]	0x04,	0x05,	0x06,	0x07,	0x08,	0x09,	0x0a,	0x0b,
+[0x28]	0x1c,	0x01,	0x0e,	0x0f,	0x39,	0x0c,	0x0d,	0x1a,
+[0x30]	0x1b,	0x2b,	0x2b,	0x27,	0x28,	0x29,	0x33,	0x34,
+[0x38]	0x35,	0x3a,	0x3b,	0x3c,	0x3d,	0x3e,	0x3f,	0x40,		/* /, ctl, f1-f6 */
+[0x40]	0x41,	0x42,	0x43,	0x44,	0x57,	0x58,	E|0x63,	0x46,		/* f7-f10, ... */
+[0x48]	E|0x77,	E|0x52,	E|0x47,	E|0x49,	E|0x53,	E|0x4f,	E|0x51,	E|0x4d,
+[0x50]	E|0x4b,	E|0x50,	E|0x48,	0x45,	0x35,	0x37,	0x4a,	0x4e,
+[0x58]	0x1c,	0x4f,	0x50,	0x51,	0x4b,	0x4c,	0x4d,	0x47,
+[0x60]	0x48,	0x49,	0x52,	0x53,	E|0x56,	E|0x7f,	E|0x74,	E|0x75,
+[0x68]	0x64,	0x65,	0x66,	0x67,	0x68,	0x69,	0x6a,	0x6b,		/* f13-f20 */
+[0x70]	0x6c,	0x6d,	0x6e,	0x6f,	0,	0,	0,	0,		/* f21-f24, */
+[0x78]	0,	0,	0,	0,	0,	0,	0,	E|0x71,
+[0x80]	E|0x73,	E|0x72,	0,	0,	0,	E|0x7c,	0,	0,
+[0x88]	0,	0,	0,	0,	0,	0,	0,	0,
+[0x90]	0,	0,	0,	0,	0,	0,	0,	0,
+[0x98]	0,	0,	0,	0,	0,	0,	0,	0,
+[0xa0]	0,	0,	0,	0,	0,	0,	0,	0,
+[0xa8]	0,	0,	0,	0,	0,	0,	0,	0,
+[0xb0]	0,	0,	0,	0,	0,	0,	0,	0,
+[0xb8]	0,	0,	0,	0,	0,	0,	0,	0,
+[0xc0]	0,	0,	0,	0,	0,	0,	0,	0,
+[0xc8]	0,	0,	0,	0,	0,	0,	0,	0,
+[0xd0]	0,	0,	0,	0,	0,	0,	0,	0,
+[0xd8]	0,	0,	0,	0,	0,	0,	0,	0,
+[0xe0]	0x1d,	0x2a,	E|0x38,	E|0x7d,	E|0x61,	0x36,	E|0x64,	E|0x7e,
+[0xe8]	0,	0,	0,	0,	0,	E|0x73,	E|0x72,	E|0x71,
+[0xf0]	0,	0,	0,	0,	0,	0,	0,	0,
+[0xf8]	0,	0,	0,	0,	0,	0,	0,	0,
+};
+
+/*
+ * scan codes above 0x7f are keyup + sc&0x7f.  i don't understand this.
+ */
+static Scan sctabjp[256] = {
+[0x00]	0,	0,	0xfc,	0,	0x1e,	0x30,	0x2e,	0x20,
+[0x08]	0x12,	0x21,	0x22,	0x23,	0x17,	0x24,	0x25,	0x26,
+[0x10]	0x32,	0x31,	0x18,	0x19,	0x10,	0x13,	0x1f,	0x14,
+[0x18]	0x16,	0x2f,	0x11,	0x2d,	0x15,	0x2c,	0x02,	0x03,
+[0x20]	0x04,	0x05,	0x06,	0x07,	0x08,	0x09,	0x0a,	0x0b,
+[0x28]	0x1c,	0x01,	0x0e,	0x0f,	0x39,	0x0c,	0x0d,	0x1a,
 [0x30]	0x1b,	0x2b,	0x2b,	0x27,	0x28,	0x29,	0x33,	0x34,
 [0x38]	0x35,	0x3a,	0x3b,	0x3c,	0x3d,	0x3e,	0x3f,	0x40,
-[0x40]	0x41,	0x42,	0x43,	0x44,	0x57,	0x58,	0x63,	0x46,
-[0x48]	0x77,	0x52,	0x47,	0x49,	0x53,	0x4f,	0x51,	0x4d,
-[0x50]	0x4b,	0x50,	0x48,	0x45,	0x35,	0x37,	0x4a,	0x4e,
-[0x58]	0x1c,	0x4f,	0x50,	0x51,	0x4b,	0x4c,	0x4d,	0x47,
-[0x60]	0x48,	0x49,	0x52,	0x53,	0x56,	0x7f,	0x74,	0x75,
-[0x68]	0x55,	0x59,	0x5a,	0x5b,	0x5c,	0x5d,	0x5e,	0x5f,
-[0x70]	0x78,	0x79,	0x7a,	0x7b,	0x0,	0x0,	0x0,	0x0,
-[0x78]	0x0,	0x0,	0x0,	0x0,	0x0,	0x0,	0x0,	0x71,
-[0x80]	0x73,	0x72,	0x0,	0x0,	0x0,	0x7c,	0x0,	0x0,
-[0x88]	0x0,	0x0,	0x0,	0x0,	0x0,	0x0,	0x0,	0x0,
-[0x90]	0x0,	0x0,	0x0,	0x0,	0x0,	0x0,	0x0,	0x0,
-[0x98]	0x0,	0x0,	0x0,	0x0,	0x0,	0x0,	0x0,	0x0,
-[0xa0]	0x0,	0x0,	0x0,	0x0,	0x0,	0x0,	0x0,	0x0,
-[0xa8]	0x0,	0x0,	0x0,	0x0,	0x0,	0x0,	0x0,	0x0,
-[0xb0]	0x0,	0x0,	0x0,	0x0,	0x0,	0x0,	0x0,	0x0,
-[0xb8]	0x0,	0x0,	0x0,	0x0,	0x0,	0x0,	0x0,	0x0,
-[0xc0]	0x0,	0x0,	0x0,	0x0,	0x0,	0x0,	0x0,	0x0,
-[0xc8]	0x0,	0x0,	0x0,	0x0,	0x0,	0x0,	0x0,	0x0,
-[0xd0]	0x0,	0x0,	0x0,	0x0,	0x0,	0x0,	0x0,	0x0,
-[0xd8]	0x0,	0x0,	0x0,	0x0,	0x0,	0x0,	0x0,	0x0,
-[0xe0]	0x1d,	0x2a,	0x38,	0x7d,	0x61,	0x36,	0x64,	0x7e,
-[0xe8]	0x0,	0x0,	0x0,	0x0,	0x0,	0x73,	0x72,	0x71,
-[0xf0]	0x0,	0x0,	0x0,	0x0,	0x0,	0x0,	0x0,	0x0,
-[0xf8]	0x0,	0x0,	0x0,	0x0,	0x0,	0x0,	0x0,	0x0,
+[0x40]	0x41,	0x42,	0x43,	0x44,	0x57,	0x58,	0x37,	0x46,
+[0x48]	0xc6,	E|0x52,	E|0x47,	E|0x49,	E|0x53,	E|0x4f,	E|0x51,	E|0x4d,
+[0x50]	E|0x4b,	E|0x50,	E|0x48,	0x45,	0x35,	0x37,	E|0x4a,	E|0x4e,
+[0x58]	0x1c,	E|0x4f,	E|0x50,	E|0x51,	E|0x4b,	E|0x4c,	E|0x4d,	E|0x47,
+[0x60]	E|0x48,	E|0x49,	E|0x52,	E|0x53,	0x56,	0,	0x5e,	0x59,
+[0x68]	0x64,	0x65,	E|0x66,	0x67,	0x68,	0x69,	0x6a,	0x6b,
+[0x70]	0x6c,	0x6d,	0x6e,	0x76,	0,	0,	0,	0,
+[0x78]	0,	0,	0,	0,	0,	0,	0,	0,
+[0x80]	0,	0,	0,	0,	0,	0x7e,	0,	0x73,
+[0x88]	0x70,	0x7d,	0x79,	0x7b,	0x5c,	0,	0,	0,
+[0x90]	0xf2,	0xf1,	0x78,	0x77,	0x76,	0,	0,	0,
+[0x98]	0,	0,	0,	0,	0,	0,	0,	0,
+[0xa0]	0,	0,	0,	0,	0,	0,	0,	0,
+[0xa8]	0,	0,	0,	0,	0,	0,	0,	0,
+[0xb0]	0,	0,	0,	0,	0,	0,	0,	0,
+[0xb8]	0,	0,	0,	0,	0,	0,	0,	0,
+[0xc0]	0,	0,	0,	0,	0,	0,	0,	0,
+[0xc8]	0,	0,	0,	0,	0,	0,	0,	0,
+[0xd0]	0,	0,	0,	0,	0,	0,	0,	0,
+[0xd8]	0,	0,	0,	0,	0,	0,	0,	0,
+[0xe0]	0x1d,	0x2a,	0x38,	0x5b,	0x1d,	0x36,	0x38,	0x5c,
+[0xe8]	0,	0,	0,	0,	0,	0,	0,	0,
+[0xf0]	0,	0,	0,	0,	0,	0,	0,	0,
+[0xf8]	0,	0,	0,	0,	0,	0,	0,	0,
 };
+static Scan *sctab = sctaben;
 
 static QLock inlck;
 static Kin kbdin =
@@ -129,13 +190,27 @@ setbootproto(KDev* f, int eid, uchar *, int)
 
 	f->ptrvals = ptrbootpvals;
 	r = Rh2d|Rclass|Riface;
-	dprint(2, "setting boot protocol\n");
+	dprint(2, "setting boot protocol %d\n", eid);
 	id = f->dev->usb->ep[eid]->iface->id;
 	nr = usbcmd(f->dev, r, Setproto, Bootproto, id, nil, 0);
 	if(nr < 0)
 		return -1;
 	usbcmd(f->dev, r, Setidle, f->idle<<8, id, nil, 0);
 	return nr;
+}
+
+static int
+setled(KDev* f, uint v)
+{
+	uchar led[1];
+	int r, id;
+
+	r = Rh2d|Rclass|Riface;
+	led[0] = v;
+
+	dprint(2, "led: %.2ux\n", led[0]);
+	id = f->dev->usb->ep[f->eid]->iface->id;
+	return usbcmd(f->dev, r, Setreport, Reportout | Ledreport, id, led, 1);
 }
 
 static uchar ignoredesc[128];
@@ -145,7 +220,7 @@ setfirstconfig(KDev* f, int eid, uchar *desc, int descsz)
 {
 	int nr, r, id, i;
 
-	dprint(2, "setting first config\n");
+	dprint(2, "setting first config %d\n", eid);
 	if(desc == nil){
 		descsz = sizeof ignoredesc;
 		desc = ignoredesc;
@@ -194,9 +269,9 @@ recoverkb(KDev *f)
 		if(opendevdata(f->dev, ORDWR) >= 0){
 			if(f->bootp)
 				/* TODO func pointer */
-				setbootproto(f, f->ep->id, nil, 0);
+				setbootproto(f, f->eid, nil, 0);
 			else
-				setfirstconfig(f, f->ep->id, nil, 0);
+				setfirstconfig(f, f->eid, nil, 0);
 			break;
 		}
 		/* else usbd still working... */
@@ -212,8 +287,15 @@ kbfatal(KDev *kd, char *sts)
 		fprint(2, "kb: fatal: %s\n", sts);
 	else
 		fprint(2, "kb: exiting\n");
-	if(kd->repeatc != nil)
-		nbsendul(kd->repeatc, Diemsg);
+	if(kd->repeatc != nil){
+		chanclose(kd->repeatc);
+		for(; kd->nproc != 0; kd->nproc--)
+			recvul(kd->exitc);
+		chanfree(kd->repeatc);
+		chanfree(kd->exitc);
+		kd->repeatc = nil;
+		kd->exitc = nil;
+	}
 	dev = kd->dev;
 	kd->dev = nil;
 	if(kd->ep != nil)
@@ -299,9 +381,9 @@ ptrrepvals(KDev *kd, Chain *ch, int *px, int *py, int *pb)
 	for(i = 0; i<sizeof buts; i++)
 		b |= (hidifcval(&kd->templ, KindButtons, i) & 1) << buts[i];
 	if(c > 3 && hidifcval(&kd->templ, KindWheel, 0) > 0)	/* up */
-		b |= 0x08;
-	if(c > 3 && hidifcval(&kd->templ, KindWheel, 0) < 0)	/* down */
 		b |= 0x10;
+	if(c > 3 && hidifcval(&kd->templ, KindWheel, 0) < 0)	/* down */
+		b |= 0x08;
 
 	*px = x;
 	*py = y;
@@ -392,97 +474,109 @@ ptrwork(void* a)
 static void
 stoprepeat(KDev *f)
 {
-	sendul(f->repeatc, Awakemsg);
+	sendul(f->repeatc, Stoprpt);
 }
 
 static void
-startrepeat(KDev *f, uchar esc1, uchar sc)
+startrepeat(KDev *f, Scan sc)
 {
-	ulong c;
-
-	if(esc1)
-		c = SCesc1 << 8 | (sc & 0xff);
-	else
-		c = sc;
-	sendul(f->repeatc, c);
+	sendul(f->repeatc, sc);
 }
 
 static void
-putscan(KDev *f, uchar esc, uchar sc)
+putscan(KDev *f, Scan sc)
 {
-	int kbinfd;
-	uchar s[2] = {SCesc1, 0};
+	uchar s[2];
 
-	kbinfd = f->in->fd;
-	if(sc == 0x41){
-		f->debug += 2;
-		return;
-	}
-	if(sc == 0x42){
-		f->debug = 0;
-		return;
-	}
 	if(f->debug > 1)
-		fprint(2, "sc: %x %x\n", (esc? SCesc1: 0), sc);
+		fprint(2, "sc: %.4ux\n", sc);
+	if((uchar)sc == 0)
+		return;
+	s[0] = sc>>8;
 	s[1] = sc;
-	if(esc && sc != 0)
-		write(kbinfd, s, 2);
-	else if(sc != 0)
-		write(kbinfd, s+1, 1);
+	if(sc >= 0x100)
+		write(f->in->fd, s, 2);
+	else
+		write(f->in->fd, s+1, 1);
+}
+
+static void
+repeattimerproc(void *a)
+{
+	Channel *c;
+	KDev *f;
+
+	threadsetname("kbd reptimer");
+	f = a;
+	c = f->repeatc;
+
+	for(;;){
+		sleep(30);
+		if(sendul(c, Tick) == -1)
+			break;
+	}
+	sendul(f->exitc, Exiting);
+	threadexits("aborted");
 }
 
 static void
 repeatproc(void* a)
 {
 	KDev *f;
-	Channel *repeatc;
-	ulong l, t, i;
-	uchar esc1, sc;
+	Channel *c;
+	int code;
+	uint l;
+	uvlong timeout;
 
 	threadsetname("kbd repeat");
-	/*
-	 * too many jumps here.
-	 * Rewrite instead of debug, if needed.
-	 */
 	f = a;
-	repeatc = f->repeatc;
-	l = Awakemsg;
-Repeat:
-	if(l == Diemsg)
-		goto Abort;
-	while(l == Awakemsg)
-		l = recvul(repeatc);
-	if(l == Diemsg)
-		goto Abort;
-	esc1 = l >> 8;
-	sc = l;
-	t = 160;
-	for(;;){
-		for(i = 0; i < t; i += 5){
-			if(l = nbrecvul(repeatc))
-				goto Repeat;
-			sleep(5);
-		}
-		putscan(f, esc1, sc);
-		t = 30;
-	}
-Abort:
-	chanfree(repeatc);
-	threadexits("aborted");
+	c = f->repeatc;
 
+	timeout = 0;
+	code = -1;
+	for(;;){
+		switch(l = recvul(c)){
+		default:
+			code = l;
+			timeout = nsec() + 500*Msec;
+			break;
+		case ~0ul:
+			sendul(f->exitc, Exiting);
+			threadexits("aborted");
+			break;
+		case Stoprpt:
+			code = -1;
+			break;
+		case Tick:
+			if(code == -1 || nsec() < timeout)
+				continue;
+			putscan(f, code);
+			timeout = nsec() + 30*Msec;
+			break;
+		}
+	}
 }
 
-
-#define hasesc1(sc)	((sc) >= 0x47 || (sc) == 0x38)
-
 static void
-putmod(KDev *f, uchar mods, uchar omods, uchar mask, uchar esc, uchar sc)
+putmod(KDev *f, uchar mods, uchar omods, uchar mask, Scan sc)
 {
 	/* BUG: Should be a single write */
 	if((mods&mask) && !(omods&mask))
-		putscan(f, esc, sc);
+		putscan(f, sc);
 	if(!(mods&mask) && (omods&mask))
-		putscan(f, esc, Keyup|sc);
+		putscan(f, sc | Keyup);
+}
+
+static Scan
+usbtosc(KDev *f, uchar usbcode)
+{
+	Scan sc;
+
+	sc = sctab[usbcode];
+	if((f->led & Lnum) == 0)
+	if(usbcode >= 0x54 && usbcode <= 0x63)
+		sc |= SCesc1<<8;
+	return sc;
 }
 
 /*
@@ -493,17 +587,17 @@ putmod(KDev *f, uchar mods, uchar omods, uchar mask, uchar esc, uchar sc)
  * The aim is to allow future addition of other keycode pages
  * for other keyboards.
  */
-static uchar
-putkeys(KDev *f, uchar buf[], uchar obuf[], int n, uchar dk)
+static Scan
+putkeys(KDev *f, uchar buf[], uchar obuf[], int n, Scan dk)
 {
 	int i, j;
-	uchar uk;
+	Scan uk;
 
-	putmod(f, buf[0], obuf[0], Mctrl, 0, SCctrl);
-	putmod(f, buf[0], obuf[0], (1<<Mlshift), 0, SClshift);
-	putmod(f, buf[0], obuf[0], (1<<Mrshift), 0, SCrshift);
-	putmod(f, buf[0], obuf[0], Mcompose, 0, SCcompose);
-	putmod(f, buf[0], obuf[0], Maltgr, 1, SCcompose);
+	putmod(f, buf[0], obuf[0], Mctrl, SCctrl);
+	putmod(f, buf[0], obuf[0], (1<<Mlshift), SClshift);
+	putmod(f, buf[0], obuf[0], (1<<Mrshift), SCrshift);
+	putmod(f, buf[0], obuf[0], Mcompose, SCcompose);
+	putmod(f, buf[0], obuf[0], Maltgr, 1<<8 | SCcompose);	/* i don't understand this one */
 
 	/* Report key downs */
 	for(i = 2; i < n; i++){
@@ -511,9 +605,33 @@ putkeys(KDev *f, uchar buf[], uchar obuf[], int n, uchar dk)
 			if(buf[i] == obuf[j])
 			 	break;
 		if(j == n && buf[i] != 0){
-			dk = sctab[buf[i]];
-			putscan(f, hasesc1(dk), dk);
-			startrepeat(f, hasesc1(dk), dk);
+			switch(buf[i]){
+			case 0x40:
+				f->debug += 2;
+				break;
+			case 0x41:
+				f->debug = 0;
+				break;
+			case 0x53:
+				f->led ^= Lnum;
+				setled(f, f->led);
+				break;
+			case 0x47:
+				f->led ^= Lscroll;
+				setled(f, f->led);
+				break;
+			case 0x39:
+			//	f->led ^= Lcaps;
+			//	setled(f, f->led);
+				break;
+			case 0x70:	/* f21 */
+				f->led ^= Lkana;
+				setled(f, f->led);
+				break;
+			}
+			dk = usbtosc(f, buf[i]);
+			putscan(f, dk);
+			startrepeat(f, dk);
 		}
 	}
 
@@ -524,8 +642,8 @@ putkeys(KDev *f, uchar buf[], uchar obuf[], int n, uchar dk)
 			if(obuf[i] == buf[j])
 				break;
 		if(j == n && obuf[i] != 0){
-			uk = sctab[obuf[i]];
-			putscan(f, hasesc1(uk), uk|Keyup);
+			uk = usbtosc(f, obuf[i]);
+			putscan(f, uk|Keyup);
 		}
 	}
 	if(uk && (dk == 0 || dk == uk)){
@@ -549,9 +667,10 @@ kbdbusy(uchar* buf, int n)
 static void
 kbdwork(void *a)
 {
-	int c, i, kbdfd, nerrs;
-	uchar dk, buf[64], lbuf[64];
-	char err[128];
+	int c, kbdfd, nerrs;
+	uchar buf[64], lbuf[64];
+	char err[ERRMAX];
+	Scan dk;
 	KDev *f = a;
 
 	threadsetname("kbd %s", f->ep->dir);
@@ -560,11 +679,18 @@ kbdwork(void *a)
 	if(f->ep->maxpkt < 3 || f->ep->maxpkt > sizeof buf)
 		kbfatal(f, "weird maxpkt");
 
-	f->repeatc = chancreate(sizeof(ulong), 0);
-	if(f->repeatc == nil)
+	f->exitc = chancreate(sizeof(ulong), 0);
+	if(f->exitc == nil)
 		kbfatal(f, "chancreate failed");
+	f->repeatc = chancreate(sizeof(ulong), 0);
+	if(f->repeatc == nil){
+		chanfree(f->exitc);
+		kbfatal(f, "chancreate failed");
+	}
 
+	f->nproc = 2;
 	proccreate(repeatproc, f, Stack);
+	proccreate(repeattimerproc, f, Stack);
 	memset(lbuf, 0, sizeof lbuf);
 	dk = nerrs = 0;
 	for(;;){
@@ -587,10 +713,7 @@ kbdwork(void *a)
 		if(kbdbusy(buf + 2, c - 2))
 			continue;
 		if(usbdebug > 2 || f->debug > 1){
-			fprint(2, "kbd mod %x: ", buf[0]);
-			for(i = 2; i < c; i++)
-				fprint(2, "kc %x ", buf[i]);
-			fprint(2, "\n");
+			fprint(2, "kbd %c mod %.2ux: %.*lH\n", sctab==sctabjp? 'j': 'e', buf[0], c-2, buf+2);
 		}
 		dk = putkeys(f, buf, lbuf, f->ep->maxpkt, dk);
 		memmove(lbuf, buf, c);
@@ -639,9 +762,10 @@ kbstart(Dev *d, Ep *ep, Kin *in, void (*f)(void*), KDev *kd)
 	res = -1;
 	kd->ep = openep(d, ep->id);
 	if(kd->ep == nil){
-		fprint(2, "kb: %s: openep %d: %r\n", d->dir, ep->id);
+		fprint(2, "kb: %s: workep: openep %d: %r\n", d->dir, ep->id);
 		return;
 	}
+	kd->eid = ep->id;
 	if(in == &kbdin){
 		/*
 		 * DWC OTG controller misses some split transaction inputs.
@@ -675,6 +799,9 @@ kbstart(Dev *d, Ep *ep, Kin *in, void (*f)(void*), KDev *kd)
 		return;
 	}
 
+	kd->led = Lnum;
+	setled(kd, kd->led);
+
 	incref(d);
 	proccreate(f, kd, Stack);
 }
@@ -682,7 +809,7 @@ kbstart(Dev *d, Ep *ep, Kin *in, void (*f)(void*), KDev *kd)
 static int
 usage(void)
 {
-	werrstr("usage: usb/kb [-bdkm] [-a n] [-N nb]");
+	werrstr("usage: usb/kb [-bdjkm] [-a n] [-N nb]");
 	return -1;
 }
 
@@ -709,6 +836,9 @@ kbmain(Dev *d, int argc, char* argv[])
 	case 'k':
 		kena = 1;
 		pena = 0;
+		break;
+	case 'j':
+		sctab = sctabjp;
 		break;
 	case 'm':
 		kena = 0;
@@ -740,7 +870,7 @@ kbmain(Dev *d, int argc, char* argv[])
 	for(i = 0; i < nelem(ud->ep); i++){
 		if((ep = ud->ep[i]) == nil)
 			continue;
-		if(kena && ep->type == Eintr && ep->dir == Ein &&
+		if(kena && ep->type == Eintr && (ep->dir == Ein | ep->dir == Eboth) &&
 		    ep->iface->csp == KbdCSP){
 			kd = d->aux = emallocz(sizeof(KDev), 1);
 			kd->accel = 0;
@@ -748,7 +878,7 @@ kbmain(Dev *d, int argc, char* argv[])
 			kd->debug = debug;
 			kbstart(d, ep, &kbdin, kbdwork, kd);
 		}
-		if(pena && ep->type == Eintr && ep->dir == Ein &&
+		if(pena && ep->type == Eintr && (ep->dir == Ein | ep->dir == Eboth)  &&
 		    ep->iface->csp == PtrCSP){
 			kd = d->aux = emallocz(sizeof(KDev), 1);
 			kd->accel = accel;
@@ -759,3 +889,4 @@ kbmain(Dev *d, int argc, char* argv[])
 	}
 	return 0;
 }
+
