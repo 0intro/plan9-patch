@@ -186,6 +186,7 @@ dotls(int fd)
 {
 	TLSconn conn;
 
+	memset(&conn, 0, sizeof conn);
 	if((fd=tlsClient(fd, &conn)) < 0)
 		sysfatal("tlsclient: %r");
 
