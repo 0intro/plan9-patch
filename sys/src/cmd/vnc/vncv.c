@@ -118,6 +118,7 @@ main(int argc, char **argv)
 	if(dfd < 0)
 		sysfatal("cannot dial %s: %r", addr);
 	if(tls){
+		memset(&conn, 0, sizeof conn);
 		dfd = tlsClient(dfd, &conn);
 		if(dfd < 0)
 			sysfatal("tlsClient: %r");

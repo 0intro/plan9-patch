@@ -93,6 +93,7 @@ hello(char *dest)
 		if(getreply(&ctlin, msg, sizeof(msg), 1) != Success)
 			fatal("bad auth tls");
 
+		memset(&conn, 0, sizeof conn);
 		ctlfd = tlsClient(ctlfd, &conn);
 		if(ctlfd < 0)
 			fatal("starting tls: %r");
