@@ -230,7 +230,7 @@ used by the routines described in
 converts the machine-independent form starting at
 .I ap
 into
-.IR d
+.I d
 and returns the length of the machine-independent encoding.
 The strings in the returned
 .B Dir
