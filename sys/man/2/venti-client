@@ -1,6 +1,6 @@
 .TH VENTI-CLIENT 2
 .SH NAME
-vtconnect, vthello, vtread, vtwrite, vtreadpacket, vtwritepacket, vtsync, vtping, vtrpc, ventidoublechecksha1 \- Venti client
+vtconnect, vthello, vtread, vtwrite, vtreadpacket, vtwritepacket, vtsync, vtping, vtgoodbye, vtrpc, ventidoublechecksha1 \- Venti client
 .SH SYNOPSIS
 .ft L
 #include <u.h>
@@ -50,6 +50,9 @@ int	vtsync(VtConn *z)
 int	vtping(VtConn *z)
 .PP
 .B
+int	vtgoodbye(VtConn *z)
+.PP
+.B
 extern int ventidoublechecksha1;  /* default 1 */
 .SH DESCRIPTION
 These routines execute the client side of the 
@@ -59,7 +62,7 @@ protocol.
 .I Vtrpc
 executes a single Venti RPC transaction, sending the request 
 packet
-.IR p
+.I p
 and then waiting for and returning the response packet.
 .I Vtrpc
 will set the tag in the packet.
@@ -141,6 +144,9 @@ to disk before returning.
 .PP
 .I Vtping
 executes a ping transaction with the server.
+.PP
+.I Vtgoodbye
+closes the connection.
 .PP
 By default,
 .I vtread

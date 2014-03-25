@@ -8,6 +8,7 @@ vtlogdump,
 vtlognames,
 vtlogopen,
 vtlogprint,
+vtlogvprint,
 vtlogremove,
 vtlogopen,
 ventilogging \- Venti logs
@@ -25,6 +26,9 @@ VtLog*	vtlogopen(char *name, uint size);
 .PP
 .B
 void	vtlogprint(VtLog *log, char *fmt, ...);
+.PP
+.B
+void	vtlogvprint(VtLog *log, va_list arg);
 .PP
 .B
 void	vtlogclose(VtLog *log);
@@ -68,7 +72,9 @@ releases the reference returned by
 .IR vtlogopen .
 .PP
 .I Vtlogprint
-writes to
+and
+.I vtlogvprint
+write to
 .IR log ,
 which must be open.
 .PP
