@@ -444,12 +444,12 @@ above).
 .B r
 Print as
 .SM UTF
-the addressed two-byte integer (rune).
+the addressed four-byte integer (rune).
 .TP
 .B R
 Print as
 .SM UTF
-the addressed two-byte integers as runes
+the addressed four-byte integers as runes
 until a zero rune is reached.
 Advance dot
 by the length of the string,
