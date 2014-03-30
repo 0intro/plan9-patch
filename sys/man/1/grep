@@ -4,7 +4,7 @@ grep \- search a file for a pattern
 .SH SYNOPSIS
 .B grep
 [
-.B -bchiLlnsv
+.B -bchiILlnsv
 ]
 [
 .B -e
@@ -51,6 +51,13 @@ might confuse argument parsing, such as
 Ignore alphabetic case distinctions.  The implementation
 folds into lower case all letters in the pattern and input before
 interpretation.  Matched lines are printed in their original form.
+.TP
+.B -I
+Ignore Unicode variations; use base codepoint.  The implementation
+folds all letters in the pattern and input into their base codepoint before
+interpretation.  Matched lines are printed in their original form. This
+may be combined with
+.BR -i .
 .TP
 .B -l
 (ell) Print the names of files with selected lines; don't print the lines.

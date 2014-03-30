@@ -135,11 +135,13 @@ Rune	tab1[] =
 {
 	0x007f,
 	0x07ff,
+	0xffff,
 };
 Rune	tab2[] =
 {
 	0x003f,
 	0x0fff,
+	0xffff,
 };
 
 Re2
@@ -215,7 +217,7 @@ pcmp(void *va, void *vb)
 Re2
 re2class(char *s)
 {
-	Rune pairs[200+2], *p, *q, ov;
+	Rune pairs[400+2], *p, *q, ov;
 	int nc;
 	Re2 x;
 
@@ -234,7 +236,7 @@ re2class(char *s)
 			break;
 		p[1] = *p;
 		p += 2;
-		if(p >= pairs + nelem(pairs) - 2)
+		if(p == pairs + nelem(pairs) - 2)
 			error("class too big");
 		s += chartorune(p, s);
 		if(*p != '-')
@@ -254,7 +256,7 @@ re2class(char *s)
 	for(p=pairs+2; *p; p+=2) {
 		if(p[0] > p[1])
 			continue;
-		if(p[0] > q[1] || p[1] < q[0]) {
+		if(p[0] > q[1]+1 || p[1] < q[0]) {
 			q[2] = p[0];
 			q[3] = p[1];
 			q += 2;
@@ -275,7 +277,7 @@ re2class(char *s)
 			x = re2or(x, rclass(ov, p[0]-1));
 			ov = p[1]+1;
 		}
-		x = re2or(x, rclass(ov, Runemask));
+		x = re2or(x, rclass(ov, 0xffff));
 	} else {
 		x = rclass(p[0], p[1]);
 		for(p+=2; *p; p+=2)

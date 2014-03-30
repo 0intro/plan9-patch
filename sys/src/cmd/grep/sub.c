@@ -196,17 +196,35 @@ int
 getrec(void)
 {
 	int c;
+	Rune r;
+	static char rem[10], *remp, *reme;
 
-	if(flags['f']) {
-		c = Bgetc(rein);
-		if(c <= 0)
-			return 0;
-	} else
-		c = *input++ & 0xff;
-	if(flags['i'] && c >= 'A' && c <= 'Z')
-		c += 'a'-'A';
-	if(c == '\n')
-		lineno++;
+	if(remp != reme)
+		c = (uchar)*remp++;
+	else {
+		if(flags['f']) {
+			c = Bgetrune(rein);
+			if(c <= 0)
+				return 0;
+		}else{
+			input += chartorune(&r, input);
+			c = r;
+		}
+		if(flags['I']){
+			r = tobaserune(c);
+			if(Iflag)
+				r = tolowerrune(r);
+		}else if(flags['i'] && c >= 'A' && c <= 'Z')
+			c += 'a'-'A';
+		if(c >= Runesync){
+			reme = rem + runetochar(rem, &r);
+			*reme = 0;
+			remp = rem;
+			c = (uchar)*remp++;
+		}
+		if(c == '\n')
+			lineno++;
+	}
 	return c;
 }
 

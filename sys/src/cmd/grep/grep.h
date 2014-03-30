@@ -64,7 +64,8 @@ enum
 	Nflag		= 1<<5,
 	Sflag		= 1<<6,
 	Vflag		= 1<<7,
-	Bflag		= 1<<8
+	Bflag		= 1<<8,
+	IIflag		= 1<<9,
 };
 
 EXTERN	union

@@ -1,7 +1,7 @@
 #define	EXTERN
 #include	"grep.h"
 
-char *validflags = "bchiLlnsv";
+char *validflags = "bchIiLlnsv";
 void
 usage(void)
 {
@@ -73,9 +73,11 @@ main(int argc, char *argv[])
 int
 search(char *file, int flag)
 {
+	Rune r;
 	State *s, *ns;
 	int c, fid, eof, nl, empty;
 	long count, lineno, n;
+	uchar rem[10], *remp, *reme;
 	uchar *elp, *lp, *bol;
 
 	if(file == 0) {
@@ -98,6 +100,8 @@ search(char *file, int flag)
 		flag &= ~Hflag;		/* do not print file name in output */
 	if(flags['i'])
 		flag |= Iflag;		/* fold upper-lower */
+	if(flags['I'])
+		flag |= IIflag;		/* fold runes to base rune */
 	if(flags['l'])
 		flag |= Llflag;		/* print only name of file if any match */
 	if(flags['L'])
@@ -117,6 +121,7 @@ search(char *file, int flag)
 	nl = 0;
 	lp = u.buf;
 	bol = lp;
+	reme = remp = rem;
 
 loop0:
 	n = lp-bol;
@@ -154,6 +159,8 @@ loop0:
 	}
 	lp = u.buf;
 	elp = lp+n;
+	if(flag & IIflag)
+		goto loopI;
 	if(flag & Iflag)
 		goto loopi;
 
@@ -236,6 +243,64 @@ loopi:
 	if(lp != elp)
 		goto loopi;
 	goto loop0;
+
+/*
+ * character loop for -I flag
+ * for speed
+ */
+loopI:
+	if(remp != reme)
+		c = *remp++;
+	else{
+		c = *lp;
+		if(c > Runesync){
+			if(!fullrune((char*)lp, elp-lp) && !empty)
+				goto loop0;
+			lp += chartorune(&r, (char*)lp);
+			r = tobaserune(r);
+			if(flag & Iflag)
+				r = tolowerrune(r);
+			reme = rem + runetochar((char*)rem, &r);
+			*reme = 0;
+			remp = rem;
+			c = *remp++;
+		}else{
+			lp++;
+			if((flag & Iflag) && c >= 'A' && c <= 'Z')
+				c += 'a'-'A';
+		}
+	}
+loopI0:
+	ns = s->next[c];
+	if(ns == 0) {
+		increment(s, c);
+		goto loopI0;
+	}
+	s = ns;
+	if(c == '\n') {
+		lineno++;
+		if(!!s->match == !(flag&Vflag)) {
+			count++;
+			if(flag & (Cflag|Sflag|Llflag|LLflag))
+				goto contI;
+			if(flag & Hflag)
+				Bprint(&bout, "%s:", file);
+			if(flag & Nflag)
+				Bprint(&bout, "%ld: ", lineno);
+			/* suppress extra newline at EOF unless we are labeling matches with file name */
+			Bwrite(&bout, bol, lp-bol-(eof && !(flag&Hflag)));
+			if(flag & Bflag)
+				Bflush(&bout);
+		}
+		if((lineno & Flshcnt) == 0)
+			Bflush(&bout);
+	contI:
+		bol = lp;
+	}
+	if(lp != elp)
+		goto loopI;
+	goto loop0;
+
 }
 
 State*
