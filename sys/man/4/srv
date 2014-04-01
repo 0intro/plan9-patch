@@ -36,7 +36,9 @@ srv, srvold9p, 9fs, srvssh \- start network file service
 .I srvname
 [
 .I mtpt
-] ]
+[
+.I aname
+] ] ]
 .PP
 .B 9fs
 .RI [ net !] system
@@ -119,6 +121,8 @@ options are used to control the mount flags as in
 .I mount
 (see
 .IR bind (1)).
+.I Aname
+selects an file tree on the server other than the default.
 The
 .B e
 option causes

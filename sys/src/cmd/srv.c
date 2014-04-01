@@ -15,7 +15,7 @@ int	doauth = 1;
 void
 usage(void)
 {
-	fprint(2, "usage: %s [-abcCm] [net!]host [srvname [mtpt]]\n", argv0);
+	fprint(2, "usage: %s [-abcCm] [net!]host [srvname [mtpt [attachpt]]]\n", argv0);
 	fprint(2, "    or %s -e [-abcCm] command [srvname [mtpt]]\n", argv0);
 
 	exits("usage");
@@ -65,7 +65,7 @@ void
 main(int argc, char *argv[])
 {
 	int fd, doexec;
-	char *srv, *mtpt;
+	char *srv, *mtpt, *aname;
 	char dir[1024];
 	char err[ERRMAX];
 	char *p, *p2;
@@ -128,6 +128,8 @@ main(int argc, char *argv[])
 		usage();
 
 	switch(argc){
+	default:
+		usage();
 	case 1:	/* calculate srv and mtpt from address */
 		p = strrchr(argv[0], '/');
 		p = p ? p+1 : argv[0];
@@ -135,6 +137,7 @@ main(int argc, char *argv[])
 		p2 = strchr(p, '!');
 		p2 = p2 ? p2+1 : p;
 		mtpt = smprint("/n/%s", p2);
+		aname = smprint("");
 		break;
 	case 2:	/* calculate mtpt from address, srv given */
 		srv = smprint("/srv/%s", argv[1]);
@@ -143,16 +146,22 @@ main(int argc, char *argv[])
 		p2 = strchr(p, '!');
 		p2 = p2 ? p2+1 : p;
 		mtpt = smprint("/n/%s", p2);
+		aname = smprint("");
 		break;
 	case 3:	/* srv and mtpt given */
 		domount = 1;
 		reallymount = 1;
 		srv = smprint("/srv/%s", argv[1]);
 		mtpt = smprint("%s", argv[2]);
+		aname = smprint("");
 		break;
-	default:
-		srv = mtpt = nil;
-		usage();
+	case 4:
+		domount = 1;
+		reallymount = 1;
+		srv = smprint("/srv/%s", argv[1]);
+		mtpt = smprint("%s", argv[2]);
+		aname = smprint("%s", argv[3]);
+		break;
 	}
 
 	try = 0;
@@ -197,8 +206,8 @@ Mount:
 	if(domount == 0 || reallymount == 0)
 		exits(0);
 
-	if((!doauth && mount(fd, -1, mtpt, mountflag, "") < 0)
-	|| (doauth && amount(fd, mtpt, mountflag, "") < 0)){
+	if((!doauth && mount(fd, -1, mtpt, mountflag, aname) < 0)
+	|| (doauth && amount(fd, mtpt, mountflag, aname) < 0)){
 		err[0] = 0;
 		errstr(err, sizeof err);
 		if(strstr(err, "Hangup") || strstr(err, "hungup") || strstr(err, "timed out")){
