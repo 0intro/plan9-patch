@@ -44,6 +44,12 @@ numok(char *s)
 	return 0;
 }
 
+static int
+isrooted(char* s)
+{
+	return *s == '/' || *s == '#';
+}
+
 /*
  * configs	:
  *		| configs config
@@ -69,7 +75,7 @@ runconfig(char *file, Config *config)
 	ArenaPart **av;
 	ISect **sv;
 	IFile f;
-	char *s, *line, *flds[MaxArgs + 1];
+	char *s, *p, *q, *line, *flds[MaxArgs + 1];
 	int i, ok;
 
 	if(readifile(&f, file) < 0)
@@ -78,6 +84,15 @@ runconfig(char *file, Config *config)
 	config->mem = Unspecified;
 	ok = -1;
 	line = nil;
+	
+	/* conf basename as default prefix for partitions */
+	p = estrdup(file);
+	s = strrchr(p, '/');
+	if(s)
+		*s = 0;
+	else
+		*p = 0;
+
 	for(;;){
 		s = ifileline(&f);
 		if(s == nil){
@@ -92,7 +107,12 @@ runconfig(char *file, Config *config)
 				sv[i] = config->sects[i];
 			free(config->sects);
 			config->sects = sv;
-			config->sects[config->nsects] = configisect(flds[1]);
+			if(!isrooted(flds[1])){
+				q = smprint("%s/%s", p, flds[1]);
+				config->sects[config->nsects] = configisect(q);
+				free(q);
+			}else
+				config->sects[config->nsects] = configisect(flds[1]);
 			if(config->sects[config->nsects] == nil)
 				break;
 			config->nsects++;
@@ -102,7 +122,12 @@ runconfig(char *file, Config *config)
 				av[i] = config->aparts[i];
 			free(config->aparts);
 			config->aparts = av;
-			config->aparts[config->naparts] = configarenas(flds[1]);
+			if(!isrooted(flds[1])){
+				q = smprint("%s/%s", p, flds[1]);
+				config->aparts[config->naparts] = configarenas(q);
+				free(q);
+			}else
+				config->aparts[config->naparts] = configarenas(flds[1]);
 			if(config->aparts[config->naparts] == nil)
 				break;
 			config->naparts++;
@@ -111,7 +136,13 @@ runconfig(char *file, Config *config)
 				seterr(EAdmin, "duplicate bloom lines in configuration file %s", file);
 				break;
 			}
-			if((config->bloom = configbloom(flds[1])) == nil)
+			if(!isrooted(flds[1])){
+				q = smprint("%s/%s", p, flds[1]);
+				config->bloom = configbloom(q);
+				free(q);
+			}else
+				config->bloom = configbloom(flds[1]);
+			if(config->bloom == nil)
 				break;
 		}else if(i == 2 && strcmp(flds[0], "index") == 0){
 			if(nameok(flds[1]) < 0){
@@ -187,6 +218,7 @@ runconfig(char *file, Config *config)
 		free(line);
 		line = nil;
 	}
+	free(p);
 	free(line);
 	freeifile(&f);
 	if(ok < 0){
