@@ -3,6 +3,9 @@ U=`{cat /dev/user}
 if(~ $#* 1){
 	U=$1
 }
+if(~ $U -a){
+	U='.*'
+}
 ps | sed -n '/^'$U' .* Broken/s%[^ ]*  *%~>/proc/%
 s%  *.* (.*)%/ctl # \1%
 s%~%echo kill%p'

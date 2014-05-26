@@ -10,6 +10,9 @@ kill, slay, broke \- print commands to kill processes
 .PP
 .B broke
 [
+.B -a
+]
+[
 .I user
 ]
 .SH DESCRIPTION
@@ -49,8 +52,15 @@ in the
 state
 and owned by
 .I user
-(by default, the current user)
 to go away.
+.I user
+defaults to the current user. 
+Specify
+.B -a
+to print all
+.I Broken
+processes.
+(Processes you don't own won't go away.)
 When a process dies because of an error caught by
 the system, it may linger in the
 .I Broken
