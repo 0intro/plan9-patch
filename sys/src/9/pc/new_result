@@ -1,0 +1,22 @@
+term% echo > '#o/test'
+echo: write error: testwrite: va 0xe0c00000
+term% echo > '#o/test'
+echo: write error: testwrite: va 0xe2c00000
+term% echo > '#o/test'
+echo: write error: testwrite: va 0xe4c00000
+term% echo > '#o/test'
+echo: write error: testwrite: va 0xe6c00000
+term% echo > '#o/test'
+echo: write error: testwrite: va 0xe8c00000
+term% echo > '#o/test'
+echo: write error: testwrite: va 0xeac00000
+term% echo > '#o/test'
+echo: write error: testwrite: va 0xecc00000
+term% echo > '#o/test'
+echo: write error: testwrite: va 0xe0c00000
+term% echo > '#o/test'
+echo: write error: testwrite: va 0xe0c00000
+term% echo > '#o/test'
+echo: write error: testwrite: va 0xe0c00000
+term% echo > '#o/test'
+echo: write error: testwrite: va 0xe0c00000

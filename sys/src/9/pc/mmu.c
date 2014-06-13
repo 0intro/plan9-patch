@@ -88,8 +88,6 @@ mmuinit(void)
 	m->pdb[PDX(VPT)] = PADDR(m->pdb)|PTEWRITE|PTEVALID;
 	
 	m->tss = malloc(sizeof(Tss));
-	if(m->tss == nil)
-		panic("mmuinit: no memory");
 	memset(m->tss, 0, sizeof(Tss));
 	m->tss->iomap = 0xDFFF<<16;
 
@@ -597,30 +595,58 @@ static ulong
 vmapalloc(ulong size)
 {
 	int i, n, o;
-	ulong *vpdb;
-	int vpdbsize;
-	
-	vpdb = &MACHP(0)->pdb[PDX(VMAP)];
+	ulong *vpdb, have, want, count;
+ 	int vpdbsize;
+                                                                            
+ 	vpdb = &MACHP(0)->pdb[PDX(VMAP)];
 	vpdbsize = VMAPSIZE/(4*MB);
 
 	if(size >= 4*MB){
+		/* Large request: try to satisfy with 4M-aligned 4M hole(s) */
 		n = (size+4*MB-1) / (4*MB);
 		if((o = findhole(vpdb, vpdbsize, n)) != -1)
 			return VMAP + o*4*MB;
-		return 0;
 	}
+	
 	n = (size+BY2PG-1) / BY2PG;
-	for(i=0; i<vpdbsize; i++)
-		if((vpdb[i]&PTEVALID) && !(vpdb[i]&PTESIZE))
-			if((o = findhole(KADDR(PPN(vpdb[i])), WD2PG, n)) != -1)
-				return VMAP + i*4*MB + o*BY2PG;
-	if((o = findhole(vpdb, vpdbsize, 1)) != -1)
-		return VMAP + o*4*MB;
-		
+	have = 0; 
+	want = n; 
+	
 	/*
-	 * could span page directory entries, but not worth the trouble.
-	 * not going to be very much contention.
+	 * Consider one or more non-4M-aligned holes.
+	 *
+	 * If size>4MB, we are doing this because the code above failed
+	 * to find enough free directory entries.  This can happen even
+	 * if a range is free: the PDEs might point to page tables that
+	 * previously mapped something but no longer do.
+	 *
+	 * If this is a small request, we are hoping to fit into an existing
+	 * page table rather than starting a new one.
 	 */
+	for(i=0; i<vpdbsize; i++){
+		if((vpdb[i]&PTEVALID) && !(vpdb[i]&PTESIZE)){
+			count = want > WD2PG ? WD2PG : want;
+			want -= count;
+			if((o = findhole(KADDR(PPN(vpdb[i])), WD2PG, count)) != -1)
+				have += count;
+			else {
+				have = 0;
+				want = n; 
+			}    
+			if(have >= n)
+				return VMAP + i*4*MB + (o+count)*BY2PG - have*BY2PG;
+		} else {
+			if(have > 0){
+				have = 0;
+				want = n;
+			}
+		}
+	}
+
+	/* Last chance (for a small request): start using a new page table. */
+	if((size < 4*MB) && ((o = findhole(vpdb, vpdbsize, 1)) != -1))
+		return VMAP + o*4*MB;
+
 	return 0;
 }
 
@@ -698,7 +724,7 @@ pdbmap(ulong *pdb, ulong pa, ulong va, int size)
 	flag = pa&0xFFF;
 	pa &= ~0xFFF;
 
-	if((MACHP(0)->cpuiddx & Pse) && (getcr4() & 0x10))
+	if((MACHP(0)->cpuiddx & 0x08) && (getcr4() & 0x10))
 		pse = 1;
 	else
 		pse = 0;
