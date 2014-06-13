@@ -1,0 +1,58 @@
+cpu% echo $sysname
+spice
+
+cpu% echo $venti
+tcp!127.1!17034
+
+cpu% cd /usr/davide/9projects/nwf-venticopy
+
+cpu% sha1sum *
+c03e1c65fa0164390a211001733244d18341b57f	8.find-trouble
+0fa00dde56be2856f9537fee51525dcb8fa42051	find-trouble.8
+a857283380ebe2895d27f3ae4502f46376a528d7	find-trouble.c
+0ec1e820a48a06552d56ee934235e3969d8da500	trouble
+
+cpu% vac -v .
+8.find-trouble
+find-trouble.8
+find-trouble.c
+trouble
+vac:f19254ae7a33e7f9460cbfe1dd8f6a259b5ff287
+
+cpu% unvac -tv vac:f19254ae7a33e7f9460cbfe1dd8f6a259b5ff287
+--rwxrwxr-x davide     davide           66041 2014-06-09 18:00 8.find-trouble
+--rw-rw-r-- davide     davide            2315 2014-06-09 18:00 find-trouble.8
+--rw-rw-r-- davide     davide            1163 2014-06-09 17:59 find-trouble.c
+--rw-rw-r-- davide     davide            8192 2014-06-09 18:01 trouble
+
+cpu% unvac -c vac:f19254ae7a33e7f9460cbfe1dd8f6a259b5ff287 trouble | cmp /fd/0 trouble
+cpu% 
+
+cpu% venti/copy $venti tcp!depraz.ugrad.cs.cmu.edu!17036 f19254ae7a33e7f9460cbfe1dd8f6a259b5ff287
+
+cpu% unvac -h tcp!depraz.ugrad.cs.cmu.edu!17036 -c vac:f19254ae7a33e7f9460cbfe1dd8f6a259b5ff287 trouble | cmp /fd/0 trouble
+EOF on /fd/0 after 0 bytes
+
+cpu% unvac -h tcp!depraz.ugrad.cs.cmu.edu!17036 -c vac:f19254ae7a33e7f9460cbfe1dd8f6a259b5ff287 find-trouble.c | cmp /fd/0 find-trouble.c
+
+cpu% unvac -h tcp!depraz.ugrad.cs.cmu.edu!17036 -c vac:f19254ae7a33e7f9460cbfe1dd8f6a259b5ff287 find-trouble.8 | cmp /fd/0 find-trouble.8
+
+cpu% venti/read -h $venti a857283380ebe2895d27f3ae4502f46376a528d7 > /dev/null
+venti/read -htcp!127.1!17034 a857283380ebe2895d27f3ae4502f46376a528d7 0
+cpu% venti/read -h $venti 0ec1e820a48a06552d56ee934235e3969d8da500 > /dev/null
+venti/read -htcp!127.1!17034 0ec1e820a48a06552d56ee934235e3969d8da500 0
+cpu% 
+
+cpu% venti/read -h tcp!depraz.ugrad.cs.cmu.edu!17036 a857283380ebe2895d27f3ae4502f46376a528d7 > /dev/null
+venti/read -htcp!depraz.ugrad.cs.cmu.edu!17036 a857283380ebe2895d27f3ae4502f46376a528d7 0
+cpu% venti/read -h tcp!depraz.ugrad.cs.cmu.edu!17036 0ec1e820a48a06552d56ee934235e3969d8da500 > /dev/null
+venti/read: could not read block: no block with score 0ec1e820a48a06552d56ee934235e3969d8da500/16 exists
+
+cpu% /usr/davide/trees/nwf-venticopy/files/cmd/venti/8.copy $venti tcp!depraz.ugrad.cs.cmu.edu!17036 f19254ae7a33e7f9460cbfe1dd8f6a259b5ff287
+
+cpu% venti/read -h tcp!depraz.ugrad.cs.cmu.edu!17036 0ec1e820a48a06552d56ee934235e3969d8da500 > /dev/null
+venti/read -htcp!depraz.ugrad.cs.cmu.edu!17036 0ec1e820a48a06552d56ee934235e3969d8da500 0
+
+cpu% unvac -h tcp!depraz.ugrad.cs.cmu.edu!17036 -c vac:f19254ae7a33e7f9460cbfe1dd8f6a259b5ff287 trouble | cmp /fd/0 trouble
+cpu% 
+
