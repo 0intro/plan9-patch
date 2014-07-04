@@ -57,7 +57,7 @@ scsiverify(SDunit* unit)
 		return 0;
 	}
 	memmove(unit->inquiry, inquiry, r->dlen);
-	free(inquiry);
+	sdfree(inquiry);
 
 	SET(status);
 	for(i = 0; i < 3; i++){
@@ -244,7 +244,7 @@ scsionline(SDunit* unit)
 		}
 		break;
 	}
-	free(p);
+	sdfree(p);
 	free(r);
 
 	if(ok)
@@ -298,7 +298,7 @@ scsiexec(SDunit* unit, int write, uchar* cmd, int clen, void* data, int* dlen)
 		 */
 		break;
 	}
-	sdfree(r);
+	free(r);
 
 	return status;
 }
