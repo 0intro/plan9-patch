@@ -247,6 +247,10 @@ xd(char *name, int title)
 						break;
 				if(i == nsee){
 					addr += nsee;
+					if(nread>nsee){
+						nleft = nread - nsee;
+						memmove(data, data + nsee, nleft);
+					}
 					if(star == 0){
 						star++;
 						xprint("*\n", 0);
