@@ -131,7 +131,7 @@ Rune kbtabaltgr[Nscan] =
 [0x18]	No,	No,	No,	No,	'\n',	Ctrl,	No,	No,
 [0x20]	No,	No,	No,	No,	No,	No,	No,	No,
 [0x28]	No,	No,	Shift,	No,	No,	No,	No,	No,
-[0x30]	No,	No,	No,	No,	No,	'/',	No,	Print,
+[0x30]	No,	No,	No,	No,	No,	'/',	Shift,	Print,
 [0x38]	Altgr,	No,	No,	No,	No,	No,	No,	No,
 [0x40]	No,	No,	No,	No,	No,	No,	Break,	Home,
 [0x48]	Up,	Pgup,	No,	Left,	No,	Right,	No,	End,
@@ -161,6 +161,26 @@ Rune kbtabctrl[Nscan] =
 [0x68]	No,	No,	No,	No,	No,	No,	No,	No,
 [0x70]	No,	No,	No,	No,	No,	No,	No,	No,
 [0x78]	No,	'', 	No,	'\b',	No,	No,	No,	No,
+};
+
+Rune kbtabshiftaltgr[Nscan] =
+{
+[0x00]	No,	No,	No,	No,	No,	No,	No,	No,
+[0x08]	No,	No,	No,	No,	No,	No,	No,	No,
+[0x10]	No,	No,	No,	No,	No,	No,	No,	No,
+[0x18]	No,	No,	No,	No,	No,	Ctrl,	No,	No,
+[0x20]	No,	No,	No,	No,	No,	No,	No,	No,
+[0x28]	No,	No,	Shift,	No,	No,	No,	No,	No,
+[0x30]	No,	No,	No,	No,	No,	No,	Shift,	No,
+[0x38]	Altgr,	No,	Ctrl,	No,	No,	No,	No,	No,
+[0x40]	No,	No,	No,	No,	No,	No,	No,	No,
+[0x48]	No,	No,	No,	No,	No,	No,	No,	No,
+[0x50]	No,	No,	No,	No,	No,	No,	No,	No,
+[0x58]	No,	No,	No,	No,	No,	No,	No,	No,
+[0x60]	No,	No,	No,	No,	No,	No,	No,	No,
+[0x68]	No,	No,	No,	No,	No,	No,	No,	No,
+[0x70]	No,	No,	No,	No,	No,	No,	No,	No,
+[0x78]	No,	No,	No,	No,	No,	No,	No,	No,
 };
 
 enum
@@ -419,7 +439,10 @@ kbdputsc(int c, int external)
 		kbscan->esc2--;
 		return;
 	} else if(kbscan->shift)
-		c = kbtabshift[c];
+		if(kbscan->altgr)
+			c = kbtabshiftaltgr[c];
+		else
+			c = kbtabshift[c];
 	else if(kbscan->altgr)
 		c = kbtabaltgr[c];
 	else if(kbscan->ctl)
@@ -709,6 +732,9 @@ kbdputmap(ushort m, ushort scanc, Rune r)
 	case 4:	
 		kbtabctrl[scanc] = r;
 		break;
+	case 5:	
+		kbtabshiftaltgr[scanc] = r;
+		break;
 	}
 }
 
@@ -736,6 +762,9 @@ kbdgetmap(uint offset, int *t, int *sc, Rune *r)
 		return 1;
 	case 4:
 		*r = kbtabctrl[*sc];
+		return 1;
+	case 5:
+		*r = kbtabshiftaltgr[*sc];
 		return 1;
 	}
 }
