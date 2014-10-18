@@ -28,7 +28,7 @@ void
 realmode(Ureg *ureg)
 {
 	int s;
-	ulong cr3;
+	ulong cr3, cr4;
 	extern void realmode0(void);	/* in l.s */
 
 	if(getconf("*norealmode"))
@@ -43,6 +43,7 @@ realmode(Ureg *ureg)
 	s = splhi();
 	m->pdb[PDX(0)] = m->pdb[PDX(KZERO)];	/* identity map low */
 	cr3 = getcr3();
+	cr4 = getcr4();
 	putcr3(PADDR(m->pdb));
 	if (arch)
 		arch->introff();
@@ -61,6 +62,7 @@ realmode(Ureg *ureg)
 	}
 	m->pdb[PDX(0)] = 0;	/* remove low mapping */
 	putcr3(cr3);
+	putcr4(cr4);
 	splx(s);
 	*ureg = realmoderegs;
 	unlock(&rmlock);

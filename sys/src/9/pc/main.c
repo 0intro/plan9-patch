@@ -648,6 +648,8 @@ mathemu(Ureg *ureg, void*)
 	switch(up->fpstate){
 	case FPinit:
 		fpinit();
+		if(fpsave == fpssesave)
+			ldmxcsr(0);
 		up->fpstate = FPactive;
 		break;
 	case FPinactive:
@@ -674,6 +676,17 @@ mathemu(Ureg *ureg, void*)
 }
 
 /*
+ * SIMD error
+ */
+static void
+simderror(Ureg *ureg, void*)
+{
+	fpsave(&up->fpsave);
+	up->fpstate = FPinactive;
+	mathnote();
+}
+
+/*
  *  math coprocessor segment overrun
  */
 static void
@@ -690,6 +703,7 @@ mathinit(void)
 		intrenable(IrqIRQ13, matherror, 0, BUSUNKNOWN, "matherror");
 	trapenable(VectorCNA, mathemu, 0, "mathemu");
 	trapenable(VectorCSO, mathover, 0, "mathover");
+	trapenable(VectorSIMD, simderror, 0, "simderror");
 }
 
 /*

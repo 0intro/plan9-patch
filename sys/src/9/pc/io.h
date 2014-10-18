@@ -13,6 +13,7 @@ enum {
 	VectorPF	= 14,		/* page fault */
 	Vector15	= 15,		/* reserved */
 	VectorCERR	= 16,		/* coprocessor error */
+	VectorSIMD	= 19,		/* simd error */
 
 	VectorPIC	= 32,		/* external i8259 interrupts */
 	IrqCLOCK	= 0,

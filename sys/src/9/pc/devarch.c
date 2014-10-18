@@ -40,6 +40,7 @@ enum {
 
 enum {
 	CR4Osfxsr = 1 << 9,
+	CR4Oxmmex = 1 << 10,
 };
 
 enum {				/* cpuid standard function codes */
@@ -805,7 +806,7 @@ cpuidentify(void)
 	 * If machine check was enabled clear out any lingering status.
 	 */
 	if(m->cpuiddx & (Pge|Mce|Pse)){
-		cr4 = 0;
+		cr4 = getcr4();
 		if(m->cpuiddx & Pse)
 			cr4 |= 0x10;		/* page size extensions */
 		if(p = getconf("*nomce"))
@@ -848,7 +849,7 @@ cpuidentify(void)
 	if(m->cpuiddx & Fxsr){			/* have sse fp? */
 		fpsave = fpssesave;
 		fprestore = fpsserestore;
-		putcr4(getcr4() | CR4Osfxsr);
+		putcr4(getcr4() | CR4Osfxsr|CR4Oxmmex);
 	} else {
 		fpsave = fpx87save;
 		fprestore = fpx87restore;

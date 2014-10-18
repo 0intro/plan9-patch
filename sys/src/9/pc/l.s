@@ -19,6 +19,7 @@
 #define WBINVD	BYTE $0x0F; BYTE $0x09
 #define FXSAVE		BYTE $0x0f; BYTE $0xae; BYTE $0x00  /* SSE FP save */
 #define FXRSTOR		BYTE $0x0f; BYTE $0xae; BYTE $0x08  /* SSE FP restore */
+#define LDMXCSR		BYTE $0x0f; BYTE $0xae; BYTE $0x10  /* SSE MXCSR */
 
 /*
  * Macros for calculating offsets within the page directory base
@@ -833,6 +834,11 @@ TEXT fpsserestore0(SB), $0			/* enable and restore state */
 	MOVL	p+0(FP), AX
 	FXRSTOR
 	WAIT
+	RET
+
+TEXT ldmxcsr(SB), $0				/* Load MXCSR */
+	LEAL	mxcsr+0(FP), AX
+	LDMXCSR
 	RET
 
 /*
