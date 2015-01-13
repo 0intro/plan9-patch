@@ -21,6 +21,8 @@ OFILES=errstr.$O\
 	u32.$O\
 	u64.$O\
 	unmount.$O\
+	argv0.$O\
+
 
 </sys/src/cmd/mksyslib
 
